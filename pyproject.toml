@@ -1,16 +1,20 @@
 [project]
-name =  "my-python-template"
+name =  "track-back"
 authors = [
     {name = "Alexander Carrels"},
 ]
+dependencies = [
+    "spotipy==2.25.1",
+    "python-dotenv==1.1.0"
+]
 
-description = "Sample Python Project for creating a new Python Module"
+description = "A game where players sort songs played by release date"
 readme = "README.md"
 version = "0.1.0"
 requires-python = ">=3.8.1"
 
 [project.scripts]
-my-sum = "main:entry_point"
+run-track-back = "main:run_track_back_server"
 
 
 [project.optional-dependencies]

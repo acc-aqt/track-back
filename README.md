@@ -1,8 +1,8 @@
-# my-python-template
+# track-back
 
 ## Description
 
-Template for my python projects.
+A game where players sort songs played by release date.
 
 ## Prerequisites
 Make sure you have `pip` and `python3` installed on your system. You can check by running on the command line:
@@ -12,22 +12,29 @@ python3 --version
 pip --version
 ```
 
+- ToDo: Docu for Spotify for Developers
+
 ## Installation
 
 Clone the repository and install the package using pip:
 
 ```
-git clone https://github.com/acc-aqt/my-python-template
-cd my-python-template
+git clone git@github.com:acc-aqt/track-back.git
+cd track-back
 pip install .
 ```
 
-As `my-python-template` is configured as a GitHub-template you can also use this template by clicking "use this template" on the GitHub page.
+Inside the tra-back directory create a .env file containing the information found in the spotify developers section:
+
+```
+SPOTIPY_CLIENT_ID=your-client-id
+SPOTIPY_CLIENT_SECRET=your-client-secret
+SPOTIPY_REDIRECT_URI=your-redirect-uri
+```
 
 ## Execution
 
-An exemplary entry point `my-sum` is configured in the 'pyproject.toml'.
-Call `my-sum  --help` to check the required arguments.
+Call `run-track-back` to run the server.
 
 ## Development Setup (if needed)
 
