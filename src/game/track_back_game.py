@@ -7,14 +7,16 @@ from music_providers.abstract_music_provider import AbstractMusicProvider
 class TrackBackGame:
     """Implements the game logic."""
 
-    def __init__(self, users, target_song_count: int, music_provider: AbstractMusicProvider):
+    def __init__(
+        self, users: list[User], target_song_count: int, music_provider: AbstractMusicProvider
+    ):
         self.music_provider = music_provider
         self.users = users
         self.target_song_count = target_song_count
         self.round_counter = 0
         self.finished = False
 
-    def run(self):
+    def run(self) -> None:
         """Runs the game."""
         while True:
             self.round_counter += 1
@@ -24,8 +26,8 @@ class TrackBackGame:
                 if self.finished:
                     return
 
-    def _process_user_turn(self, user: User):
-        print(f"\n\nIt's {user.name}'s turn. Current Songlist:")
+    def _process_user_turn(self, user: User) -> None:
+        print(f"\n\nIt's {user.name}'s turn. Current song list:")
         user.print_song_list()
         input_index = user.get_valid_index_by_input()
 

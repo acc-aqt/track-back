@@ -25,7 +25,7 @@ class SpotifyClient(AbstractMusicProvider):
 
         return Song(title=song_name, artist=artist_names, release_year=release_year)
 
-    def start_playback(self):
+    def start_playback(self) -> None:
         try:
             self.session.start_playback()
         except spotipy.exceptions.SpotifyException:
@@ -36,7 +36,7 @@ class SpotifyClient(AbstractMusicProvider):
                 print("Could not start playback. Please start a song manually.")
                 exit(1)
 
-    def next_track(self):
+    def next_track(self) -> None:
         return self.session.next_track()
 
     def _initialize_spotify_session(self):

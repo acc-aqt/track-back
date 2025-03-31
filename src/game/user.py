@@ -4,16 +4,16 @@
 class User:
     """Represents a user with a name and a list of songs."""
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
         self.song_list = []
 
-    def print_song_list(self):
+    def print_song_list(self) -> None:
         """Prints the song list of the user."""
         for index, song in enumerate(self.song_list):
             print(f"{index} : {song.release_year} | '{song.title}' by {song.artist}")
 
-    def get_valid_index_by_input(self):
+    def get_valid_index_by_input(self) -> int:
         """Gets a valid index from the user by input."""
         while True:
             input_index = input(
@@ -28,7 +28,8 @@ class User:
             except ValueError:
                 print("Please enter a valid index.")
 
-def get_users():
+
+def get_users() -> list[User]:
     """Gets the user names by input."""
     users = []
     while True:

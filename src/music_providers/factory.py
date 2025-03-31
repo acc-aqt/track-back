@@ -12,7 +12,7 @@ class MusicProviderFactory:
     """Creates music providers based on the provider name."""
 
     @staticmethod
-    def create_music_provider(provider) -> AbstractMusicProvider:
+    def create_music_provider(provider: str) -> AbstractMusicProvider:
         """Creates a music provider based on the provider name."""
         if provider == "spotify":
             music_provider = SpotifyClient()
