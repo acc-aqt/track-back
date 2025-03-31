@@ -5,7 +5,7 @@ from music_providers.abstract_music_provider import AbstractMusicProvider
 
 
 class TrackBackGame:
-    """Handles the game logic."""
+    """Implements the game logic."""
 
     def __init__(self, users, target_song_count: int, music_provider: AbstractMusicProvider):
         self.music_provider = music_provider

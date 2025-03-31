@@ -15,9 +15,9 @@ def load_user_config(path="config.toml"):
 
 def main():
     """Main entry point to start the game."""
-    load_dotenv() # load credentials from .env file
+    load_dotenv()  # load credentials from .env file
 
-    config = load_user_config() 
+    config = load_user_config()
 
     provider = config.get("music_provider")
     music_provider = MusicProviderFactory.create_music_provider(provider)
