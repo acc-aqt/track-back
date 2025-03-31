@@ -2,8 +2,10 @@
 
 from dotenv import load_dotenv
 import tomllib
+
 from music_providers.factory import MusicProviderFactory
 from music_providers.abstract_music_provider import AbstractMusicProvider
+
 from game.user import get_users
 from game.track_back_game import TrackBackGame
 
