@@ -1,0 +1,2 @@
+# User preferences
+music_provider = "spotify"  # currently only "spotify" supported. ToDo: "apple_music" or "youtube"
