@@ -24,7 +24,7 @@ cd track-back
 pip install .
 ```
 
-Inside the tra-back directory create a .env file containing the information found in the spotify developers section:
+Inside the track-back directory create a .env file containing the information found in the spotify developers section:
 
 ```
 SPOTIPY_CLIENT_ID=your-client-id
