@@ -1,5 +1,7 @@
 """Contains the user class."""
 
+from game.song import Song
+
 
 class User:
     """Represents a user with a name and a list of songs."""
@@ -13,7 +15,11 @@ class User:
         for index, song in enumerate(self.song_list):
             print(f"{index} : {song.release_year} | '{song.title}' by {song.artist}")
 
-    def get_valid_index_by_input(self) -> int:
+    def add_song(self, index: int, song: Song) -> None:
+        """Adds a song to the song_list of the user."""
+        self.song_list.insert(index if index != -1 else len(self.song_list), song)
+
+    def get_index_by_input(self) -> int:
         """Gets a valid index from the user by input."""
         while True:
             input_index = input(
