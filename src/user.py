@@ -27,3 +27,17 @@ class User:
                 print("Please enter a valid index.")
             except ValueError:
                 print("Please enter a valid index.")
+
+def get_users():
+    """Gets the user names by input."""
+    users = []
+    while True:
+        user_name = input("Enter the name of the user (if empty, continue to play): ")
+        if user_name.strip() == "":
+            break
+        users.append(User(user_name))
+
+    if not users:
+        users = [User("Noname")]
+
+    return users

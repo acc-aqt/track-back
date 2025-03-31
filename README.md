@@ -13,6 +13,7 @@ pip --version
 ```
 
 - ToDo: Docu for Spotify for Developers
+- ToDo: Docu for config.toml
 
 ## Installation
 

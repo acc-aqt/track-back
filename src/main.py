@@ -4,9 +4,7 @@ from dotenv import load_dotenv
 import tomllib
 from music_providers.factory import MusicProviderFactory
 from music_providers.abstract_music_provider import AbstractMusicProvider
-from user import User
-from song import Song
-
+from user import User, get_users
 
 class TrackBackException(Exception):
     """Base class for exceptions in this module."""
@@ -15,10 +13,10 @@ class TrackBackException(Exception):
 class TrackBackGame:
     """Handles the game session."""
 
-    def __init__(self, users, target_history_length: int, music_provider: AbstractMusicProvider):
+    def __init__(self, users, target_song_count: int, music_provider: AbstractMusicProvider):
         self.music_provider = music_provider
         self.users = users
-        self.target_history_length = target_history_length
+        self.target_song_count = target_song_count
         self.round_counter = 0
         self.finished = False
 
@@ -62,24 +60,9 @@ class TrackBackGame:
 
         self.music_provider.next_track()
 
-        if len(user.song_list) == self.target_history_length:
+        if len(user.song_list) == self.target_song_count:
             print(f"{user.name} wins!")
             self.finished = True
-
-
-def get_users():
-    """Gets the user names by input."""
-    users = []
-    while True:
-        user_name = input("Enter the name of the user (if empty, continue to play): ")
-        if user_name.strip() == "":
-            break
-        users.append(User(user_name))
-
-    if not users:
-        users = [User("Noname")]
-
-    return users
 
 
 def load_config(path="config.toml"):
@@ -91,17 +74,17 @@ def main():
     """Main entry point to start the game."""
     load_dotenv()
 
-    target_history_length = 2
-
     config = load_config()
+
     provider = config.get("music_provider")
     music_provider = MusicProviderFactory.create_music_provider(provider)
     music_provider.start_playback()
 
     users = get_users()
 
+    target_song_count = config.get("target_song_count")
     game = TrackBackGame(
-        users=users, target_history_length=target_history_length, music_provider=music_provider
+        users=users, target_song_count=target_song_count, music_provider=music_provider
     )
     game.run()
 
