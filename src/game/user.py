@@ -36,7 +36,7 @@ class User:
 
 
 def get_users() -> list[User]:
-    """Ask for input of user names and return a list of User objects."""
+    """Asks for input of user names and return a list of User objects."""
     users = []
     while True:
         user_name = input("Enter the name of the user (if empty, continue to play): ")

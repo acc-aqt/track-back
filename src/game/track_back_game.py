@@ -36,14 +36,15 @@ class TrackBackGame:
     def _process_user_turn(self, user: User) -> None:
         print(f"\n\nIt's {user.name}'s turn. Current song list:")
         user.print_song_list()
+        
         input_index = user.get_index_by_input()
         current_song = self.music_provider.current_song()
 
         if self._correct_choice(user.song_list, input_index, current_song):
-            print(f"Correct! Song was {current_song}")
+            print(f"✅ Correct! Song was {current_song}")
             user.add_song(input_index, current_song)
         else:
-            print(f"Wrong! Song was {current_song}")
+            print(f"❌ Wrong! Song was {current_song}")
 
     def _correct_choice(self, song_list, index: int, selected_song: Song) -> bool:
         if not song_list:  # handle empty list case
