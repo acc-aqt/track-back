@@ -1,7 +1,7 @@
 """Defines the interface for AbstractMusicProvider."""
 
 from abc import ABC, abstractmethod
-from song import Song
+from game.song import Song
 
 
 class AbstractMusicProvider(ABC):
