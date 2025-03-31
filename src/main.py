@@ -28,6 +28,7 @@ def main():
     users = get_users()
 
     target_song_count = config.get("target_song_count")
+
     game = TrackBackGame(
         users=users, target_song_count=target_song_count, music_provider=music_provider
     )
