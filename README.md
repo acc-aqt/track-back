@@ -1,91 +1,118 @@
 # 🎵 TrackBack
 
-TrackBack is a music-based game where players have to sort the songs currently being played by year of release.
+**TrackBack** is a music-based game where players need to sort currently playing songs by their year of release.
+
+---
 
 ## 1. Requirements
 
 ### 1.1. General
 
-The game is implemented in python. 
-Make sure you have `python3` (3.12 or higher) and `pip`  installed on your system. 
-You can check by running on the command line:
+The game is implemented in python. You need
 
-```
+- `Python 3.12` or higher
+- `pip` for package management
+
+You can check your installed versions as follows:
+
+```bash
 python3 --version
 pip --version
 ```
 
-### 1.2. Using Spotify
+### 1.2. Spotify
 
-- ✅ You need a Spotify Premium Account
-- ✅ You must register the app in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
-   1. Log in and **create a new app**
+- ✅ A Spotify Premium account is required
+- ✅ A registered app in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
+   1. Log in and create a new app
    2. Specify a **redirect URI**:  e.g. `http://localhost:8888/callback`
-   2. Go to setting and note down the following credentials:
+   2. Go to `Edit Settings` and note down the following credentials:
       - `Client ID`
       - `Client secret`
-   3. Spotify requires you to **add each player’s Spotify account** as an approved user:
-      - Go to your app in the developer dashboard
-      - Click **Edit Settings**
-      - Add their Spotify Account details under **"User Management"**
+   3. Add the users
+      - Go to `Edit Settings`
+      - Under `User Management`, add the Spotify accounts of users who should be allowed to play
 
-### 1.3. Using Apple Music
+### 1.3. Apple Music
 
-- ✅ Playing music from Apple Music only works on machines running on macOS (Catalina (10.15)+).
-- ✅ The "Music" app must be installed on the machine.
+- ✅ Only supported on macOS Catalina (10.15+)
+- ✅ The built-in Music app must be installed and running
 
 ## 2. Installation
 
 ### 2.1. General
 
-1. Clone this repository or download the code via `Download zip`.
-2. On the top level of the created directory call `pip install .`
-
-### 2.2. Using Spotify
-
-- Inside the top level directory edit the .env file and pass the information  found in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
-
+1. Clone this repository:
+```bash
+git clone git@github.com:acc-aqt/track-back.git
+cd track-back
 ```
+(Alternatively you can download the code using `Download zip`.)
+
+2. Install dependencies:
+```bash
+pip install .
+```
+
+### 2.2. Spotify Setup
+
+1.  Add your Spotify app credentials to the `.env` file in the root directory.
+
+```env
 SPOTIPY_CLIENT_ID=your-client-id
 SPOTIPY_CLIENT_SECRET=your-client-secret
 SPOTIPY_REDIRECT_URI=your-redirect-uri
 ```
 
-- In the config.toml following setting is required:
+2.  In the `config.toml` set:
 
-```
+```toml
 music_provider = "spotify"
 ```
 
-### 2.3. Using Apple Music
+### 2.3. Apple Music Setup
 
-- In the config.toml following setting is required:
+- In the `config.toml` set:
 
-```
+```toml
 music_provider = "applemusic"
 ```
 
-## 3. Run the game
+## 3. Running the game
 
 ### 3.1. Using Spotify
 
-1. The spotify app must be open on a user's device. A user who has been registered for the app in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) must be logged in.
-2. A playlist to be used for the must be selected.
-3. Run `track-back` to play the game.
-4. When the game starts you will need to authenticate with the spotify credentials of the user mentioned under point 2.
+1. Ensure the Spotify app is open on a device logged in with a registered user’s account
+2. Select a playlist that should be used during the game
+3. Run the game:
+```bash
+track-back
+```
+4. When prompted, authenticate with the Spotify credentials of the registered user
 
 ### 3.2. Using Apple Music
 
-1. The Music app must be running and a playlist to be used for the game must be selected.
+1. Open the Music app and select a playlist
 
-2. Run `track-back` to play the game.
+2. Run the game:
+```bash
+track-back
+```
+
+Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
 
 ## 4. Development Setup - not necessary for execution
 
 If you are developing or testing and need to use the source code directly:
 
-- Run `make setup-venv` to create and activate a virtual environment. The python interpreter is located in `.venv/bin/python3`.
+```bash
+make setup-venv   # Sets up virtual environment (.venv/)
+make install      # Installs in develop mode
+make test         # Runs tests
+```
 
-- Run `make install` to install the project in develop mode.
+## 📌 To-Do
 
-- Run `make test` to run the tests. ToDo: implement tests.
+- Add unit tests
+- Implement Web-based GUI
+- Implement further music services (e.g. youtube, deezer, soundcloud)
