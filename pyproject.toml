@@ -14,7 +14,7 @@ version = "0.1.0"
 requires-python = ">=3.8.1"
 
 [project.scripts]
-track-back = "src.main:main"
+track-back = "main:main"
 
 
 [project.optional-dependencies]
