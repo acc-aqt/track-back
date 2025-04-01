@@ -2,7 +2,7 @@
 
 ## Description
 
-A game where players sort songs played by release date.
+A game in which players have to sort the songs currently being played by year of release.
 
 ## Prerequisites
 Make sure you have `pip` and `python3` installed on your system. You can check by running on the command line:
