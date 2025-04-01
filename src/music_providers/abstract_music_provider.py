@@ -5,7 +5,7 @@ from game.song import Song
 
 
 class AbstractMusicProvider(ABC):
-    """Abstract base class for a music provider."""
+    """Abstract base class that defines the interface for a music provider."""
 
     @abstractmethod
     def current_song(self) -> Song:

@@ -1,4 +1,4 @@
-"""Implementation of the SpotifyService class."""
+"""Implementation of the SpotifyClient class."""
 
 import os
 
