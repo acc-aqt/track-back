@@ -38,12 +38,12 @@ pip --version
 
 ### 2.1. General
 
-1. Clone the repository or download the code (`Download zip`).
+1. Clone this repository or download the code via `Download zip`.
 2. On the top level of the created directory call `pip install .`
 
 ### 2.2. Using Spotify
 
-- Inside the top-level directory edit the .env file and pass the information the found in the spotify developers section:
+- Inside the top level directory edit the .env file and pass the information  found in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
 
 ```
 SPOTIPY_CLIENT_ID=your-client-id
