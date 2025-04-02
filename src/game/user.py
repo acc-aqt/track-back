@@ -8,7 +8,7 @@ class User:
 
     def __init__(self, name: str):
         self.name = name
-        self.song_list = []
+        self.song_list = []  # type: list[Song]
 
     def print_song_list(self) -> None:
         """Prints the song list of the user."""
@@ -22,12 +22,12 @@ class User:
     def get_index_by_input(self) -> int:
         """Gets a valid index from the user by input."""
         while True:
-            input_index = input(
+            raw_input_index = input(
                 "\nEnter the index in front of which the song shall be added. "
                 "(0 for the first song, -1 for the last song): "
             )
             try:
-                input_index = int(input_index)
+                input_index = int(raw_input_index)
                 if -1 <= input_index <= len(self.song_list):
                     return input_index
                 print("Please enter a valid index.")

@@ -1,10 +1,10 @@
 """Implementation of the AppleMusicClient class."""
 
-import sys
 import subprocess
-from music_providers.abstract_music_provider import AbstractMusicProvider
+import sys
 
 from game.song import Song
+from music_providers.abstract_music_provider import AbstractMusicProvider
 
 
 class AppleMusicClient(AbstractMusicProvider):
@@ -33,11 +33,17 @@ class AppleMusicClient(AbstractMusicProvider):
         end if
     end tell
     """
-        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        result = subprocess.run(
+            ["osascript", "-e", script], capture_output=True, text=True
+        )
         try:
-            track_name, artist_name, release_year = result.stdout.strip().split(separator)
+            track_name, artist_name, release_year = result.stdout.strip().split(
+                separator
+            )
         except ValueError:
-            raise RuntimeError("Failed to parse the current song information. Check if a song is playing!")
+            raise RuntimeError(
+                "Failed to parse the current song information. Check if a song is playing!"
+            )
 
         return Song(title=track_name, artist=artist_name, release_year=release_year)
 
@@ -56,7 +62,9 @@ class AppleMusicClient(AbstractMusicProvider):
         return player state is playinƒg
     end tell
     """
-        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        result = subprocess.run(
+            ["osascript", "-e", script], capture_output=True, text=True
+        )
         return result.stdout.strip().lower() == "true"
 
     def next_track(self) -> None:
@@ -71,6 +79,10 @@ class AppleMusicClient(AbstractMusicProvider):
         return sys.platform == "darwin"
 
     def _music_app_is_running(self):
-        script = 'tell application "System Events" to (name of processes) contains "Music"'
-        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        script = (
+            'tell application "System Events" to (name of processes) contains "Music"'
+        )
+        result = subprocess.run(
+            ["osascript", "-e", script], capture_output=True, text=True
+        )
         return result.stdout.strip().lower() == "true"

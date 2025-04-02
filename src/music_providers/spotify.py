@@ -5,10 +5,9 @@ import os
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+from game.song import Song
 from music_providers.abstract_music_provider import AbstractMusicProvider
 from music_providers.utils import extract_year
-
-from game.song import Song
 
 
 class SpotifyClient(AbstractMusicProvider):
@@ -21,7 +20,9 @@ class SpotifyClient(AbstractMusicProvider):
         playback = self.session.current_playback()
 
         song_name = playback["item"]["name"]
-        artist_names = ", ".join([artist["name"] for artist in playback["item"]["artists"]])
+        artist_names = ", ".join(
+            [artist["name"] for artist in playback["item"]["artists"]]
+        )
         release_year = extract_year(playback["item"]["album"]["release_date"])
 
         return Song(title=song_name, artist=artist_names, release_year=release_year)

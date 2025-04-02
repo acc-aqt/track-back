@@ -1,13 +1,13 @@
 """Entry point to start the track-back server."""
 
-from dotenv import load_dotenv
 import tomllib
 
-from music_providers.factory import MusicProviderFactory
-from music_providers.abstract_music_provider import AbstractMusicProvider
+from dotenv import load_dotenv
 
-from game.user import get_users
 from game.track_back_game import TrackBackGame
+from game.user import get_users
+from music_providers.abstract_music_provider import AbstractMusicProvider
+from music_providers.factory import MusicProviderFactory
 
 
 def load_user_config(path="config.toml"):

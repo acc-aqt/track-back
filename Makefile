@@ -25,6 +25,7 @@ create-venv:
 	@python3 -m venv .venv
 	@./.venv/bin/pip install -U pip
 	@./.venv/bin/pip install -e .[test]
+	@./.venv/bin/pip install black isort ruff mypy
 
 .PHONY: setup-venv
 setup-venv: create-venv
@@ -33,10 +34,14 @@ setup-venv: create-venv
 
 .PHONY: lint
 lint:             ## Run linters
-	$(ENV_PREFIX)flake8 src/ tests/
-	$(ENV_PREFIX)black src/ tests/
-	$(ENV_PREFIX)mypy src/ tests/
-	$(ENV_PREFIX)pylint src/ tests/
+	@echo "Running isort..."
+	$(ENV_PREFIX)isort .
+	@echo "Running black..."
+	$(ENV_PREFIX)black .
+	@echo "Running ruff..."
+	$(ENV_PREFIX)ruff format .
+	@echo "Running mypy..."
+	$(ENV_PREFIX)mypy .
 
 .PHONY: install
 install:          ## Install the project in dev mode.

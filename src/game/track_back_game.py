@@ -1,7 +1,7 @@
 """Contains the TrackBackGame class that implements the game logic."""
 
-from game.user import User
 from game.song import Song
+from game.user import User
 from music_providers.abstract_music_provider import AbstractMusicProvider
 
 
@@ -13,7 +13,10 @@ class TrackBackGame:
     """Implements the game logic."""
 
     def __init__(
-        self, users: list[User], target_song_count: int, music_provider: AbstractMusicProvider
+        self,
+        users: list[User],
+        target_song_count: int,
+        music_provider: AbstractMusicProvider,
     ):
         self.music_provider = music_provider
         self.users = users
@@ -36,7 +39,7 @@ class TrackBackGame:
     def _process_user_turn(self, user: User) -> None:
         print(f"\n\nIt's {user.name}'s turn. Current song list:")
         user.print_song_list()
-        
+
         input_index = user.get_index_by_input()
         current_song = self.music_provider.current_song()
 

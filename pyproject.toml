@@ -11,38 +11,30 @@ dependencies = [
 description = "A game where players sort songs played by release date"
 readme = "README.md"
 version = "0.1.0"
-requires-python = ">=3.8.1"
+requires-python = ">=3.12"
 
 [project.scripts]
 track-back = "main:main"
 
-
-[project.optional-dependencies]
-test = [
-    "bandit[toml]==1.7.5", # find common security issues in Python code
-    "black==23.3.0",
-    "flake8-bugbear==23.5.9",
-    "flake8-docstrings",
-    "flake8-formatter_junit_xml",
-    "flake8",
-    "flake8-pyproject",
-    "pylint==2.17.4",
-    "pylint_junit",
-    "pytest-cov==4.0.0",
-    "pytest-mock<3.10.1",
-    "pytest-runner",
-    "pytest==7.3.1",
-    "mypy"]
-
 [tool.black]
-line-length = 120
-fast = true
+target-version = ['py312']
+line-length = 88 
+# fast = True
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+lint.extend-select = ["I"] # exclude imports
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
 
 [tool.coverage.run]
 branch = true
 
 [tool.coverage.report]
 fail_under = 100
-
-[tool.flake8]
-max-line-length = 120
