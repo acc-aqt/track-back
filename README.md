@@ -2,7 +2,8 @@
 
 **TrackBack** is a music-based game where players need to sort currently playing songs by their year of release.
 The music can be played via Spotiy or Apple Music.
----
+
+-------
 
 # 1 Installation
 
@@ -34,6 +35,8 @@ cd track-back
 pip install .
 ```
 
+-------
+
 ## 2 Connecting with Spotify
 
 ### 2.1 Requirements
@@ -47,8 +50,6 @@ pip install .
    3. Add the users
       - Go to `Edit Settings`
       - Under `User Management`, add the Spotify accounts of users who should be allowed to play
-
-      -------
 
 ### 2.2 Setup
 
@@ -76,6 +77,7 @@ track-back
 ```
 4. When prompted, authenticate with the Spotify credentials of the registered user
 
+-------
 
 ## 3 Connecting with Apple Music
 
@@ -102,6 +104,7 @@ track-back
 
 Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
 
+-------
 
 ## 4 Development Setup - not necessary to run the game
 
@@ -112,6 +115,8 @@ make setup-venv   # Sets up virtual environment (.venv/)
 make install      # Installs in develop mode
 make test         # Runs tests
 ```
+
+-------
 
 ## 5 To-Dos
 
