@@ -44,7 +44,7 @@ pip --version
 
 1. Clone this repository:
 ```bash
-git clone git@github.com:acc-aqt/track-back.git
+git clone https://github.com/acc-aqt/track-back.git
 cd track-back
 ```
 (Alternatively you can download the code using `Download zip`.)
