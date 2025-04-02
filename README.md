@@ -22,8 +22,8 @@ pip --version
 
 ### 1.2. Spotify
 
-- ✅ A Spotify Premium account is required
-- ✅ A registered app in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
+- A Spotify Premium account is required
+- A registered app in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
    1. Log in and create a new app
    2. Specify a **redirect URI**:  e.g. `http://localhost:8888/callback`
    2. Go to `Edit Settings` and note down the following credentials:
@@ -35,8 +35,8 @@ pip --version
 
 ### 1.3. Apple Music
 
-- ✅ Only supported on macOS Catalina (10.15+)
-- ✅ The built-in Music app must be installed and running
+- Only supported on macOS Catalina (10.15+)
+- The built-in `Music` app must be installed and running
 
 ## 2. Installation
 
