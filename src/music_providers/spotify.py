@@ -44,9 +44,9 @@ class SpotifyClient(AbstractMusicProvider):
         """Initializes a spotify session."""
 
         o_authenticator = SpotifyOAuth(
-            client_id=os.getenv("SPOTIPY_CLIENT_ID"),
-            client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-            redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
+            client_id=os.getenv("SPOTIFY_CLIENT_ID"),
+            client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
+            redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
             scope="user-library-read,user-read-playback-state,user-modify-playback-state",
         )
 
