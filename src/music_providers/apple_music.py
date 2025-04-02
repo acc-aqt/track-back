@@ -4,7 +4,8 @@ import subprocess
 import sys
 
 from game.song import Song
-from music_providers.abstract_music_provider import AbstractMusicProvider
+
+from .abstract_music_provider import AbstractMusicProvider
 
 
 class AppleMusicClient(AbstractMusicProvider):

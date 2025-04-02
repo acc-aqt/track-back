@@ -1,12 +1,13 @@
 """Contains the user class."""
 
-from game.song import Song
+from .song import Song
 
 
 class User:
     """Represents a user with a name and a list of songs."""
 
     def __init__(self, name: str):
+        "User has name and song list (release year ascending)."
         self.name = name
         self.song_list = []  # type: list[Song]
 
@@ -24,7 +25,7 @@ class User:
         while True:
             raw_input_index = input(
                 "\nEnter the index in front of which the song shall be added. "
-                "(0 for the first song, -1 for the last song): "
+                "\n0 -> sort in as first song; -1 -> sort in as last song: "
             )
             try:
                 input_index = int(raw_input_index)
@@ -43,8 +44,5 @@ def get_users() -> list[User]:
         if user_name.strip() == "":
             break
         users.append(User(user_name))
-
-    if not users:
-        users = [User("Noname")]
 
     return users

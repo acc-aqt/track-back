@@ -120,6 +120,5 @@ make test         # Runs tests
 
 ## 5 To-Dos
 
-- Add unit tests
 - Implement Web-based GUI
 - Implement further music services (e.g. youtube, deezer, soundcloud)

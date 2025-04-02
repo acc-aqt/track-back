@@ -6,8 +6,9 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 from game.song import Song
-from music_providers.abstract_music_provider import AbstractMusicProvider
-from music_providers.utils import extract_year
+
+from .abstract_music_provider import AbstractMusicProvider
+from .utils import extract_year
 
 
 class SpotifyClient(AbstractMusicProvider):

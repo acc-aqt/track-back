@@ -1,8 +1,8 @@
 """Defines the MusicProviderFactory class."""
 
-from music_providers.abstract_music_provider import AbstractMusicProvider
-from music_providers.apple_music import AppleMusicClient
-from music_providers.spotify import SpotifyClient
+from .abstract_music_provider import AbstractMusicProvider
+from .apple_music import AppleMusicClient
+from .spotify import SpotifyClient
 
 
 class MusicProvicerException(Exception):

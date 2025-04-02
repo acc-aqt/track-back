@@ -32,6 +32,11 @@ setup-venv: create-venv
 	@echo "activating virtual environment ..."
 	@. .venv/bin/activate
 
+.PHONY: install
+install:          ## Install the project in dev mode.
+	@echo "Don't forget to run 'make setup-venv' if you got errors."
+	$(ENV_PREFIX)pip install -e .[test]
+
 .PHONY: lint
 lint:             ## Run linters
 	@echo "Running isort..."
@@ -43,18 +48,13 @@ lint:             ## Run linters
 	@echo "Running mypy..."
 	$(ENV_PREFIX)mypy .
 
-.PHONY: install
-install:          ## Install the project in dev mode.
-	@echo "Don't forget to run 'make setup-venv' if you got errors."
-	$(ENV_PREFIX)pip install -e .[test]
+#.PHONY: test
+#test:             ## Run tests
+#	$(ENV_PREFIX)python -m unittest discover -s tests
 
 .PHONY: test
-test:       ## Run tests and generate coverage report.
-	$(ENV_PREFIX)set -e; \
-	$(ENV_PREFIX)pytest -v --cov=src/ --tb=short --maxfail=1 tests/
-	$(ENV_PREFIX)coverage xml
-	$(ENV_PREFIX)coverage html
+test:
+	$(ENV_PREFIX)pytest tests
 
-.PHONY: bandit
-bandit:        ## find common security issues in Python code
-	$(ENV_PREFIX)bandit -r src/
+run:              ## Run main.py
+	$(ENV_PREFIX)python src/main.py
