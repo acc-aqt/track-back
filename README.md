@@ -101,7 +101,7 @@ track-back
 
 Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
 
-## 4. Development Setup - not necessary for execution
+## 4. Development Setup - not necessary to run the game
 
 If you are developing or testing and need to use the source code directly:
 
