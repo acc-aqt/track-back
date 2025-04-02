@@ -1,12 +1,12 @@
 # 🎵 TrackBack
 
 **TrackBack** is a music-based game where players need to sort currently playing songs by their year of release.
-
+The music can be played via Spotiy or Apple Music.
 ---
 
-## 1. Requirements
+# 1 Installation
 
-### 1.1. General
+## 1.1 Requirements
 
 The game is implemented in python. You need
 
@@ -20,27 +20,7 @@ python3 --version
 pip --version
 ```
 
-### 1.2. Spotify
-
-- A Spotify Premium account is required
-- A registered app in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
-   1. Log in and create a new app
-   2. Specify a redirect URI:  e.g. `http://localhost:8888/callback`
-   2. Go to `Edit Settings` and note down the following credentials:
-      - `Client ID`
-      - `Client secret`
-   3. Add the users
-      - Go to `Edit Settings`
-      - Under `User Management`, add the Spotify accounts of users who should be allowed to play
-
-### 1.3. Apple Music
-
-- Only supported on macOS Catalina (10.15+)
-- The built-in `Music` app must be installed and running
-
-## 2. Installation
-
-### 2.1. General
+## 1.2 Run installation
 
 1. Clone this repository:
 ```bash
@@ -54,9 +34,25 @@ cd track-back
 pip install .
 ```
 
-### 2.2. Spotify Setup
+## 2 Connecting with Spotify
 
-1.  Add your Spotify app credentials to the `.env` file in the root directory.
+### 2.1 Requirements
+- A Spotify Premium account is required
+- The game must be registered in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
+   1. Log in and create a new app
+   2. Specify a redirect URI:  e.g. `http://localhost:8888/callback`
+   2. Go to `Edit Settings` and note down the following credentials:
+      - `Client ID`
+      - `Client secret`
+   3. Add the users
+      - Go to `Edit Settings`
+      - Under `User Management`, add the Spotify accounts of users who should be allowed to play
+
+      -------
+
+### 2.2 Setup
+
+1.  Add your Spotify app credentials (see 2.1.) to the `.env` file in the root directory.
 
 ```env
 SPOTIFY_CLIENT_ID=your-client-id
@@ -70,19 +66,9 @@ SPOTIFY_REDIRECT_URI=your-redirect-uri
 music_provider = "spotify"
 ```
 
-### 2.3. Apple Music Setup
+### 2.3 Run the game
 
-- In the `config.toml` set:
-
-```toml
-music_provider = "applemusic"
-```
-
-## 3. Running the game
-
-### 3.1. Using Spotify
-
-1. Ensure the Spotify app is open on a device logged in with a registered user’s account
+1. Ensure the Spotify app is open on a device and a registered user (see 2.1.) is logged in
 2. Select a playlist that should be used during the game
 3. Run the game:
 ```bash
@@ -90,7 +76,22 @@ track-back
 ```
 4. When prompted, authenticate with the Spotify credentials of the registered user
 
-### 3.2. Using Apple Music
+
+## 3 Connecting with Apple Music
+
+### 3.1 Requirements
+- Only supported on macOS Catalina (10.15+)
+- The built-in `Music` app must be installed and running
+
+### 3.2 Setup
+
+- In the `config.toml` set:
+
+```toml
+music_provider = "applemusic"
+```
+
+### 3.3 Run the game
 
 1. Open the Music app and select a playlist
 
@@ -101,7 +102,8 @@ track-back
 
 Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
 
-## 4. Development Setup - not necessary to run the game
+
+## 4 Development Setup - not necessary to run the game
 
 If you are developing or testing and need to use the source code directly:
 
@@ -111,7 +113,7 @@ make install      # Installs in develop mode
 make test         # Runs tests
 ```
 
-## 📌 To-Do
+## 5 To-Dos
 
 - Add unit tests
 - Implement Web-based GUI
