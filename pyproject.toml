@@ -20,6 +20,13 @@ track-back = "main:main"
 test = [
   "pytest"
 ]
+lint = [
+  "black",
+  "isort",
+  "ruff",
+  "mypy",
+  "pylint"
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -27,22 +34,95 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.black]
-target-version = ['py312']
-line-length = 88 
-# fast = True
 
 [tool.isort]
 profile = "black"
-
+line_length = 79
+ 
+[tool.black]
+line-length = 79
+preview = true
+target-version = ["py312"]
+ 
 [tool.ruff]
+line-length = 79
+fix = true
 target-version = "py312"
-line-length = 88
-lint.extend-select = ["I"] # exclude imports
+ 
+[tool.ruff.format]
+docstring-code-format = true
+ 
+[tool.ruff.lint]
+exclude = ["conf.py", "stubs"]
 
+extend-select = [
+  "ARG",  # flake8-unused-arguments
+  "ANN",  # flake8-annotations
+  "B",    # flake8-bugbear
+  "BLE",  # flake8-blind-except
+  "C4",   # flake8-comprehensions
+  "C90",  # flake8-mccabe
+  "D",    # pydocstyle
+  "E",    # pycodestyle
+  "ERA",  # eradicate
+  "F",    # pyflakes
+  "FLY",  # flynt
+  "I",    # isort
+  "N",    # pep8-naming
+  "NPY",  # numpy
+  "PD",   # pandas-vet
+  "PERF", # perflint
+  "PL",   # pylint
+  "PT",   # flake8-pytest-style
+  "PTH",  # flake8-use-pathlib
+  "Q",    # flake8-quotes
+  "RUF",  # ruff
+  "S",    # flake8-bandit
+  "SIM",  # flake8-simplify
+  "TD",   # flake8-todos
+  "UP", # pyupgrade
+]
+ignore = [
+  "TD002", # missing author
+  "TD003", # missing issue/link
+  "PD011", # Use `.to_numpy()` instead of `.values`
+  "PT011", # pytest.raises is too broad
+  "E501",  # line length --> blacks job
+]
+unfixable = ["ERA001", "F841"] # commented code
+ 
+[tool.ruff.lint.isort]
+known-first-party = ["my_package"]
+ 
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["PLR2004", "S101"]
+ 
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+ 
+[tool.pylint.MISCELLANEOUS]
+notes = '''''' # disables listing of todos
+ 
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+  "import-error",
+  "too-few-public-methods"] 
+max-line-length = 79
+ 
 [tool.mypy]
-python_version = "3.12"
+strict = true
+show_error_codes = true
+show_error_context = true
+python_version = "3.12"  # makes code compatible with 3.8 upwards
 ignore_missing_imports = true
+ 
+[tool.pydocstringformatter]
+style = "numpydoc"
+write = true
+max-line-length = 88
+ 
+[tool.docstrfmt]
+files = ["CHANGELOG.rst", "docs/**/*.rst"]
 
 [tool.coverage.run]
 branch = true

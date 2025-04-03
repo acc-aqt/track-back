@@ -1,6 +1,7 @@
 """Implementation of the SpotifyClient class."""
 
 import os
+import sys
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -14,10 +15,11 @@ from .utils import extract_year
 class SpotifyClient(AbstractMusicProvider):
     """Interface to the Spotify API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.session = self._initialize_spotify_session()
 
     def current_song(self) -> Song:
+        """Get the currently playing song."""
         playback = self.session.current_playback()
 
         song_name = playback["item"]["name"]
@@ -26,9 +28,12 @@ class SpotifyClient(AbstractMusicProvider):
         )
         release_year = extract_year(playback["item"]["album"]["release_date"])
 
-        return Song(title=song_name, artist=artist_names, release_year=release_year)
+        return Song(
+            title=song_name, artist=artist_names, release_year=release_year
+        )
 
     def start_playback(self) -> None:
+        """Start playing music."""
         try:
             self.session.start_playback()
         except spotipy.exceptions.SpotifyException:
@@ -36,20 +41,24 @@ class SpotifyClient(AbstractMusicProvider):
             try:
                 self.session.next_track()
             except spotipy.exceptions.SpotifyException:
-                print("Could not start playback. Please start a song manually.")
-                exit(1)
+                print(
+                    "Could not start playback. Please start a song manually."
+                )
+                sys.exit(1)
 
     def next_track(self) -> None:
-        return self.session.next_track()
+        """Skip to the next track."""
+        self.session.next_track()
 
-    def _initialize_spotify_session(self):
-        """Initializes a spotify session."""
-
+    def _initialize_spotify_session(self) -> spotipy.Spotify:
+        """Initialize a spotify session, including authentication."""
         o_authenticator = SpotifyOAuth(
             client_id=os.getenv("SPOTIFY_CLIENT_ID"),
             client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
             redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
-            scope="user-library-read,user-read-playback-state,user-modify-playback-state",
+            scope="user-library-read,"
+            "user-read-playback-state,"
+            "user-modify-playback-state",
         )
 
         return spotipy.Spotify(auth_manager=o_authenticator)

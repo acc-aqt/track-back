@@ -24,8 +24,7 @@ create-venv:
 	@rm -rf .venv
 	@python3 -m venv .venv
 	@./.venv/bin/pip install -U pip
-	@./.venv/bin/pip install -e .[test]
-	@./.venv/bin/pip install black isort ruff mypy
+	@./.venv/bin/pip install -e ".[test,lint]"
 
 .PHONY: setup-venv
 setup-venv: create-venv
@@ -43,10 +42,14 @@ lint:             ## Run linters
 	$(ENV_PREFIX)isort .
 	@echo "Running black..."
 	$(ENV_PREFIX)black .
-	@echo "Running ruff..."
+	@echo "Running ruff format..."
 	$(ENV_PREFIX)ruff format .
+	@echo "Running ruff check..."
+	$(ENV_PREFIX)ruff check .
 	@echo "Running mypy..."
 	$(ENV_PREFIX)mypy .
+	@echo "Running pylint..."
+	$(ENV_PREFIX)pylint src/ tests/
 
 #.PHONY: test
 #test:             ## Run tests

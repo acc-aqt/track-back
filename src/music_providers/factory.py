@@ -5,7 +5,7 @@ from .apple_music import AppleMusicClient
 from .spotify import SpotifyClient
 
 
-class MusicProvicerException(Exception):
+class MusicProvicerError(Exception):
     """Base class for exceptions in this module."""
 
 
@@ -14,11 +14,11 @@ class MusicProviderFactory:
 
     @staticmethod
     def create_music_provider(provider_name: str) -> AbstractMusicProvider:
-        """Creates a music provider based on the provider name."""
+        """Create a music provider based on the provider name."""
         if provider_name == "spotify":
             return SpotifyClient()
 
         if provider_name == "applemusic":
             return AppleMusicClient()
 
-        raise MusicProvicerException(f"Invalid music provider: '{provider_name}'")
+        raise MusicProvicerError(f"Invalid music provider: '{provider_name}'")

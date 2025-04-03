@@ -6,22 +6,27 @@ from .song import Song
 class User:
     """Represents a user with a name and a list of songs."""
 
-    def __init__(self, name: str):
-        "User has name and song list (release year ascending)."
+    def __init__(self, name: str) -> None:
+        """User has name and song list (release year ascending)."""
         self.name = name
         self.song_list = []  # type: list[Song]
 
     def print_song_list(self) -> None:
-        """Prints the song list of the user."""
+        """Print the song list of the user."""
         for index, song in enumerate(self.song_list):
-            print(f"{index} : {song.release_year} | '{song.title}' by {song.artist}")
+            print(
+                f"{index} : "
+                f"{song.release_year} | '{song.title}' by {song.artist}"
+            )
 
     def add_song(self, index: int, song: Song) -> None:
-        """Adds a song to the song_list of the user."""
-        self.song_list.insert(index if index != -1 else len(self.song_list), song)
+        """Add a song to the song_list of the user."""
+        self.song_list.insert(
+            index if index != -1 else len(self.song_list), song
+        )
 
     def get_index_by_input(self) -> int:
-        """Gets a valid index from the user by input."""
+        """Get a valid index from the user by input."""
         while True:
             raw_input_index = input(
                 "\nEnter the index in front of which the song shall be added. "
@@ -37,12 +42,14 @@ class User:
 
 
 def get_users() -> list[User]:
-    """Asks for input of user names and return a list of User objects."""
+    """Ask for input of user names and return a list of User objects."""
     users = []
     while True:
-        user_name = input("Enter the name of the user (if empty, continue to play): ")
+        user_name = input(
+            "Enter the name of the user (if empty, continue to play): "
+        )
         if user_name.strip() == "":
             break
         users.append(User(user_name))
 
-    return users
+    return users or [User("Anonymous")]

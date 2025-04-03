@@ -10,12 +10,12 @@ class AbstractMusicProvider(ABC):
 
     @abstractmethod
     def current_song(self) -> Song:
-        """Returns the currently playing song."""
+        """Return the currently playing song."""
 
     @abstractmethod
     def start_playback(self) -> None:
-        """Starts playing the music."""
+        """Start playing the music."""
 
     @abstractmethod
     def next_track(self) -> None:
-        """Skips to the next track."""
+        """Skip to the next track."""

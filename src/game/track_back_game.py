@@ -6,7 +6,7 @@ from .song import Song
 from .user import User
 
 
-class TrackBackGameException(Exception):
+class TrackBackGameError(Exception):
     """Base class for exceptions in this module."""
 
 
@@ -15,19 +15,19 @@ class TrackBackGame:
 
     def __init__(
         self,
+        users: list[User],
         target_song_count: int,
         music_provider: AbstractMusicProvider,
-        users: list[User] = [],
-    ):
+    ) -> None:
         self.music_provider = music_provider
         self.target_song_count = target_song_count
 
-        self.users = users or [User("anonymous")]
+        self.users = users
 
         self.round_counter = 0
 
     def run(self) -> None:
-        """Runs the game."""
+        """Run the game."""
         while True:
             self.round_counter += 1
             print(f"Round {self.round_counter}")
@@ -46,15 +46,16 @@ class TrackBackGame:
         input_index = user.get_index_by_input()
         current_song = self.music_provider.current_song()
 
-        if self._correct_choice(user.song_list, input_index, current_song):
+        if self.verify_choice(user.song_list, input_index, current_song):
             print(f"✅ Correct! Song was {current_song}")
             user.add_song(input_index, current_song)
         else:
             print(f"❌ Wrong! Song was {current_song}")
 
-    def _correct_choice(
+    def verify_choice(
         self, song_list: list[Song], index: int, selected_song: Song
     ) -> bool:
+        """Return True if the selected song is valid for the index."""
         if not song_list:  # handle empty list case
             return True
         if index == 0:  # handle first song case
@@ -67,4 +68,6 @@ class TrackBackGame:
                 <= selected_song.release_year
                 <= song_list[index].release_year
             )
-        raise TrackBackGameException("Error in game logic! Invalid index provided!")
+        raise TrackBackGameError(
+            "Error in game logic! Invalid index provided!"
+        )

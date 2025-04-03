@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 def extract_year(date_str: str) -> int:
-    """Extracts the year from a date string and handles different date formats."""
+    """Extract the year from a date and handle different date formats."""
     formats = ["%Y-%m-%d", "%Y-%m", "%Y"]
     for fmt in formats:
         try:

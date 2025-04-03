@@ -1,73 +1,128 @@
 """Tests for the TrackBackGame class."""
 
-import unittest
+import pytest
 
-from src.game.song import Song
-from src.game.track_back_game import TrackBackGame, TrackBackGameException
-from src.game.user import User
+from game.song import Song
+from game.track_back_game import TrackBackGame, TrackBackGameError
+from game.user import User
+
+song_70s = Song("Bohemian Rhapsody", "Queen", 1975)
+song_80s = Song("Hier kommt Alex", "Die Toten Hosen", 1988)
+song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
 
 
-class TestCorrectChoice(unittest.TestCase):
-    """Tests for the _correct_choice method of the TrackBackGame class."""
+@pytest.mark.parametrize(
+    ("song_list", "index", "selected_song", "expected_result"),
+    [
+        (
+            # "empty_song_list",
+            [],
+            0,
+            song_70s,
+            True,
+        ),
+        (
+            # "first_song_correct",
+            [song_80s],
+            0,
+            song_70s,
+            True,
+        ),
+        (
+            # "first_song_incorrect",
+            [song_80s],
+            0,
+            song_90s,
+            False,
+        ),
+        (
+            # "last_song_correct_neg_index",
+            [song_80s],
+            -1,
+            song_90s,
+            True,
+        ),
+        (
+            # "last_song_correct_len_index",
+            [song_80s],
+            1,
+            song_90s,
+            True,
+        ),
+        (
+            # "last_song_incorrect",
+            [song_80s],
+            -1,
+            song_70s,
+            False,
+        ),
+        (
+            # "middle_song_correct",
+            [
+                song_70s,
+                song_90s,
+            ],
+            1,
+            song_80s,
+            True,
+        ),
+        (
+            # "middle_song_incorrect_lower_bound",
+            [
+                song_80s,
+                song_90s,
+            ],
+            1,
+            song_70s,
+            False,
+        ),
+        (
+            # "middle_song_incorrect_upper_bound",
+            [
+                song_70s,
+                song_80s,
+            ],
+            1,
+            song_90s,
+            False,
+        ),
+    ],
+)
+def test_correct_choice(
+    song_list: list[User],
+    index: int,
+    selected_song: Song,
+    expected_result: bool,
+) -> None:
+    """Test _correct_choice with various scenarios."""
+    # Act
+    result = TrackBackGame.verify_choice(None, song_list, index, selected_song)
 
-    def setUp(self):
-        self.game = TrackBackGame(target_song_count=0, music_provider=None)
-        self.song_70s = Song("Bohemian Rhapsody", "Queen", 1975)
-        self.song_80s = Song("Hier kommt Alex", "Die Toten Hosen", 1988)
-        self.song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
+    # Assert
+    assert result == expected_result
 
-    def test_empty_list_returns_true(self):
-        """Test that an empty list always returns True."""
-        self.assertTrue(self.game._correct_choice([], 0, self.song_90s))
 
-    def test_insert_at_start_correct(self):
-        """Test that a song can be inserted at the start of the list."""
-        song_list = [self.song_80s]
-        new_song = self.song_70s
-        self.assertTrue(self.game._correct_choice(song_list, 0, new_song))
-
-    def test_insert_at_start_incorrect(self):
-        """Test that a song cannot be inserted at the start of the list."""
-        song_list = [self.song_80s]
-        new_song = self.song_90s
-        self.assertFalse(self.game._correct_choice(song_list, 0, new_song))
-
-    def test_insert_at_end_correct(self):
-        """Test that a song can be inserted at the end of the list."""
-        song_list = [self.song_80s]
-        new_song = self.song_90s
-        self.assertTrue(self.game._correct_choice(song_list, -1, new_song))
-        self.assertTrue(
-            self.game._correct_choice(song_list, 1, new_song)
-        )  # len(song_list) == 1
-
-    def test_insert_at_end_incorrect(self):
-        """Test that a song cannot be inserted at the end of the list."""
-        song_list = [self.song_80s]
-        new_song = self.song_70s
-        self.assertFalse(self.game._correct_choice(song_list, -1, new_song))
-
-    def test_insert_in_middle_correct(self):
-        """Test that a song can be inserted in the middle of the list."""
-        song_list = [self.song_70s, self.song_90s]
-        new_song = self.song_80s
-        self.assertTrue(self.game._correct_choice(song_list, 1, new_song))
-
-    def test_insert_in_middle_equal_years_correct(self):
-        """Test that a song can be inserted in the middle of the list if a neighboring year is equal."""
-        song_list = [self.song_70s, self.song_90s]
-        new_song = self.song_70s
-        self.assertTrue(self.game._correct_choice(song_list, 1, new_song))
-
-    def test_insert_in_middle_incorrect(self):
-        """Test that a song cannot be inserted in the middle of the list."""
-        song_list = [self.song_70s, self.song_80s]
-        new_song = self.song_90s
-        self.assertFalse(self.game._correct_choice(song_list, 1, new_song))
-
-    def test_invalid_index_raises_exception(self):
-        """Test that an invalid index raises an exception."""
-        song_list = [self.song_70s]
-        new_song = self.song_80s
-        with self.assertRaises(TrackBackGameException):
-            self.game._correct_choice(song_list, 5, new_song)
+@pytest.mark.parametrize(
+    ("song_list", "index", "selected_song"),
+    [
+        (
+            # "invalid_index_negative",
+            [song_80s],
+            -2,
+            song_90s,
+        ),
+        (
+            # "invalid_index_positive",
+            [song_80s],
+            2,
+            song_90s,
+        ),
+    ],
+)
+def test_correct_choice_invalid_index(
+    song_list: list[Song], index: int, selected_song: Song
+) -> None:
+    """Test _correct_choice with invalid index raises TrackBackGameError."""
+    # Act & Assert
+    with pytest.raises(TrackBackGameError):
+        TrackBackGame.verify_choice(None, song_list, index, selected_song)

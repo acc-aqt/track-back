@@ -1,4 +1,4 @@
-"""Contains a class that represents a song with title, artist and release year."""
+"""Contains a class representing a song."""
 
 from dataclasses import dataclass
 
@@ -11,5 +11,6 @@ class Song:
     artist: str
     release_year: int
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a string representation of the song's metadata."""
         return f"'{self.title}' by {self.artist} ({self.release_year})"

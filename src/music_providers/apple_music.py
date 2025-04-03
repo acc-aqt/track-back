@@ -1,5 +1,7 @@
 """Implementation of the AppleMusicClient class."""
 
+# pylint: disable=line-too-long
+
 import subprocess
 import sys
 
@@ -7,17 +9,20 @@ from game.song import Song
 
 from .abstract_music_provider import AbstractMusicProvider
 
+OSA_SCRIPT_PATH = "osascript"
+
 
 class AppleMusicClient(AbstractMusicProvider):
     """Uses AppleScripts to interact with Apple Music."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not self._running_on_macos():
             raise RuntimeError("Apple Music is only supported on macOS!")
         if not self._music_app_is_running():
             raise RuntimeError("Apple Music is not running!")
 
     def current_song(self) -> Song:
+        """Get the currently playing song."""
         if not self._music_is_playing():
             self.start_playback()
 
@@ -34,56 +39,68 @@ class AppleMusicClient(AbstractMusicProvider):
         end if
     end tell
     """
-        result = subprocess.run(
-            ["osascript", "-e", script], capture_output=True, text=True
+        result = subprocess.run(  # noqa: S603
+            [OSA_SCRIPT_PATH, "-e", script],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         try:
-            track_name, artist_name, release_year = result.stdout.strip().split(
-                separator
+            track_name, artist_name, release_year = (
+                result.stdout.strip().split(separator)
             )
-        except ValueError:
+        except ValueError as err:
             raise RuntimeError(
-                "Failed to parse the current song information. Check if a song is playing!"
-            )
+                f"Failed to parse the current song information. "
+                f"Output was '{result.stdout}'. Check if a song is playing!"
+            ) from err
 
-        return Song(title=track_name, artist=artist_name, release_year=release_year)
+        return Song(
+            title=track_name, artist=artist_name, release_year=release_year
+        )
 
     def start_playback(self) -> None:
+        """Start playing music."""
         script = """
     tell application "Music"
         play
     end tell
     """
 
-        subprocess.run(["osascript", "-e", script])
+        subprocess.run([OSA_SCRIPT_PATH, "-e", script], check=False)  # noqa: S603
 
     def _music_is_playing(self) -> bool:
         script = """
     tell application "Music"
-        return player state is playinƒg
+        return player state is playing
     end tell
     """
-        result = subprocess.run(
-            ["osascript", "-e", script], capture_output=True, text=True
+        result = subprocess.run(  # noqa: S603
+            [OSA_SCRIPT_PATH, "-e", script],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         return result.stdout.strip().lower() == "true"
 
     def next_track(self) -> None:
+        """Skip to the next track."""
         script = """
     tell application "Music"
         next track
     end tell
     """
-        subprocess.run(["osascript", "-e", script])
+        subprocess.run([OSA_SCRIPT_PATH, "-e", script], check=False)  # noqa: S603
 
-    def _running_on_macos(self):
+    def _running_on_macos(self) -> bool:
         return sys.platform == "darwin"
 
-    def _music_app_is_running(self):
-        script = (
-            'tell application "System Events" to (name of processes) contains "Music"'
-        )
-        result = subprocess.run(
-            ["osascript", "-e", script], capture_output=True, text=True
+    def _music_app_is_running(self) -> bool:
+        script = 'tell application "System Events" to (name of processes) contains "Music"'
+        result = subprocess.run(  # noqa: S603
+            [OSA_SCRIPT_PATH, "-e", script],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         return result.stdout.strip().lower() == "true"

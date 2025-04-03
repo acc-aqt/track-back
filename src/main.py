@@ -1,6 +1,7 @@
 """Entry point to start the track-back server."""
 
 import tomllib
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -9,13 +10,14 @@ from game.user import get_users
 from music_providers.factory import MusicProviderFactory
 
 
-def load_user_config(path="config.toml"):
-    with open(path, "rb") as f:
+def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
+    """Load user configuration from a TOML file."""
+    with Path(config_path).open("rb") as f:
         return tomllib.load(f)
 
 
-def main():
-    """Main entry point to start the game."""
+def main() -> None:
+    """Execute the entry point to the game."""
     load_dotenv()  # load credentials from .env file
 
     config = load_user_config()
@@ -29,7 +31,9 @@ def main():
     target_song_count = config.get("target_song_count")
 
     game = TrackBackGame(
-        target_song_count=target_song_count, music_provider=music_provider, users=users
+        target_song_count=target_song_count,
+        music_provider=music_provider,
+        users=users,
     )
     game.run()
 
