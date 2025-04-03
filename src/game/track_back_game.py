@@ -19,11 +19,10 @@ class TrackBackGame:
         target_song_count: int,
         music_provider: AbstractMusicProvider,
     ) -> None:
+        
         self.music_provider = music_provider
         self.target_song_count = target_song_count
-
         self.users = users
-
         self.round_counter = 0
 
     def run(self) -> None:
@@ -36,6 +35,7 @@ class TrackBackGame:
                 self.music_provider.next_track()
 
                 if len(user.song_list) == self.target_song_count:
+                    user.print_song_list()
                     print(f"{user.name} wins!")
                     return
 
