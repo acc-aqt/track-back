@@ -43,10 +43,11 @@ class User:
 
 def get_users() -> list[User]:
     """Ask for input of user names and return a list of User objects."""
-    users = []
+    users: list[User] = []
     while True:
         user_name = get_user_input(
-            "Enter the name of the user (if empty, continue to play): "
+            f"Enter the name of user #{len(users)+1} "
+            "(if empty, continue to play): "
         )
         if user_name.strip() == "":
             break
