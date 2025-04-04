@@ -19,7 +19,6 @@ class TrackBackGame:
         target_song_count: int,
         music_provider: AbstractMusicProvider,
     ) -> None:
-        
         self.music_provider = music_provider
         self.target_song_count = target_song_count
         self.users = users

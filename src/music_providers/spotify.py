@@ -52,13 +52,16 @@ class SpotifyClient(AbstractMusicProvider):
 
     def _initialize_spotify_session(self) -> spotipy.Spotify:
         """Initialize a spotify session, including authentication."""
+        read_library = "user-library-read"
+        read_playback = "user-read-playback-state"
+        modify_playback = "user-modify-playback-state"
+        scope_string = f"{read_library},{read_playback},{modify_playback}"
+
         o_authenticator = SpotifyOAuth(
             client_id=os.getenv("SPOTIFY_CLIENT_ID"),
             client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
             redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
-            scope="user-library-read,"
-            "user-read-playback-state,"
-            "user-modify-playback-state",
+            scope=scope_string,
         )
 
         return spotipy.Spotify(auth_manager=o_authenticator)
