@@ -55,7 +55,7 @@ lint:             ## Run linters
 
 .PHONY: test
 test:
-	$(ENV_PREFIX)pytest tests
+	$(ENV_PREFIX)pytest tests --cov=src --cov-report=html
 
 run:              ## Run main.py
 	$(ENV_PREFIX)python src/main.py

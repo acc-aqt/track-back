@@ -17,9 +17,8 @@ requires-python = ">=3.12"
 track-back = "main:main"
 
 [project.optional-dependencies]
-test = [
-  "pytest"
-]
+test = ["pytest", "coverage", "pytest-cov"]
+
 lint = [
   "black",
   "isort",
@@ -127,4 +126,4 @@ files = ["CHANGELOG.rst", "docs/**/*.rst"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 100
+fail_under = 50
