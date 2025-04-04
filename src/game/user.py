@@ -1,6 +1,7 @@
 """Contains the user class."""
 
 from .song import Song
+from .utils import get_user_input
 
 
 class User:
@@ -28,7 +29,7 @@ class User:
     def get_index_by_input(self) -> int:
         """Get a valid index from the user by input."""
         while True:
-            raw_input_index = input(
+            raw_input_index = get_user_input(
                 "\nEnter the index in front of which the song shall be added. "
                 "\n0 -> sort in as first song; -1 -> sort in as last song: "
             )
@@ -45,7 +46,7 @@ def get_users() -> list[User]:
     """Ask for input of user names and return a list of User objects."""
     users = []
     while True:
-        user_name = input(
+        user_name = get_user_input(
             "Enter the name of the user (if empty, continue to play): "
         )
         if user_name.strip() == "":
