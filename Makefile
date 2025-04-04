@@ -53,10 +53,6 @@ lint:             ## Run linters
 	@echo "Running pylint..."
 	$(ENV_PREFIX)pylint src/ tests/
 
-#.PHONY: test
-#test:             ## Run tests
-#	$(ENV_PREFIX)python -m unittest discover -s tests
-
 .PHONY: test
 test:
 	$(ENV_PREFIX)pytest tests
