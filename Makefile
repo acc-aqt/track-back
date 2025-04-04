@@ -40,6 +40,8 @@ install:          ## Install the project in dev mode.
 lint:             ## Run linters
 	@echo "Running isort..."
 	$(ENV_PREFIX)isort .
+	@echo "Running docstrfmt..."
+	$(ENV_PREFIX)docstrfmt .
 	@echo "Running black..."
 	$(ENV_PREFIX)black .
 	@echo "Running ruff format..."

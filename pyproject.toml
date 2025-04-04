@@ -25,7 +25,8 @@ lint = [
   "isort",
   "ruff",
   "mypy",
-  "pylint"
+  "pylint",
+  "docstrfmt"
 ]
 
 [tool.setuptools]
@@ -83,7 +84,6 @@ extend-select = [
   "UP", # pyupgrade
 ]
 ignore = [
-  "TD002", # missing author
   "TD003", # missing issue/link
   "PD011", # Use `.to_numpy()` instead of `.values`
   "PT011", # pytest.raises is too broad
@@ -105,7 +105,6 @@ notes = '''''' # disables listing of todos
  
 [tool.pylint."MESSAGES CONTROL"]
 disable = [
-  "import-error",
   "too-few-public-methods"] 
 max-line-length = 79
  
@@ -113,7 +112,7 @@ max-line-length = 79
 strict = true
 show_error_codes = true
 show_error_context = true
-python_version = "3.12"  # makes code compatible with 3.8 upwards
+python_version = "3.12"  # makes code compatible with 3.12 upwards
 ignore_missing_imports = true
  
 [tool.pydocstringformatter]

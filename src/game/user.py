@@ -46,7 +46,7 @@ def get_users() -> list[User]:
     users: list[User] = []
     while True:
         user_name = get_user_input(
-            f"Enter the name of user #{len(users)+1} "
+            f"Enter the name of user #{len(users) + 1} "
             "(if empty, continue to play): "
         )
         if user_name.strip() == "":
