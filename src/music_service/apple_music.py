@@ -16,9 +16,9 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
     """Uses AppleScripts to interact with Apple Music."""
 
     def __init__(self) -> None:
-        if not self._running_on_macos():
+        if not self.running_on_macos():
             raise RuntimeError("Apple Music is only supported on macOS!")
-        if not self._music_app_is_running():
+        if not self.music_app_is_running():
             raise RuntimeError("Apple Music is not running!")
 
     def current_song(self) -> Song:
@@ -92,10 +92,14 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
     """
         subprocess.run([OSA_SCRIPT_PATH, "-e", script], check=False)  # noqa: S603
 
-    def _running_on_macos(self) -> bool:
+    @staticmethod
+    def running_on_macos() -> bool:
+        """Return True if the OS is macOS."""
         return sys.platform == "darwin"
 
-    def _music_app_is_running(self) -> bool:
+    @staticmethod
+    def music_app_is_running() -> bool:
+        """Return True if the Music app is running."""
         script = 'tell application "System Events" to (name of processes) contains "Music"'
         result = subprocess.run(  # noqa: S603
             [OSA_SCRIPT_PATH, "-e", script],
