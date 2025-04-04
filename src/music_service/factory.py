@@ -13,7 +13,7 @@ class MusicServiceFactory:
     """Creates music service adapters based on the provided name."""
 
     @staticmethod
-    def create_music_provider(
+    def create_music_service(
         provider_name: str,
     ) -> AbstractMusicServiceAdapter:
         """Create a music service adapter based on the provided name."""

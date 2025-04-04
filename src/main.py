@@ -22,9 +22,9 @@ def main() -> None:
 
     config = load_user_config()
 
-    provider = config.get("music_provider")
-    music_provider = MusicServiceFactory.create_music_provider(provider)
-    music_provider.start_playback()
+    provider = config.get("music_service")
+    music_service = MusicServiceFactory.create_music_service(provider)
+    music_service.start_playback()
 
     users = get_users()
 
@@ -32,10 +32,14 @@ def main() -> None:
 
     game = TrackBackGame(
         target_song_count=target_song_count,
-        music_provider=music_provider,
+        music_service=music_service,
         users=users,
     )
     game.run()
+
+    winner = game.winner
+    winner.print_song_list()
+    print(f"\n{winner.name} wins! 🏆")
 
 
 if __name__ == "__main__":
