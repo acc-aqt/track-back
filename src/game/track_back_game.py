@@ -1,5 +1,7 @@
 """Contains the TrackBackGame class that implements the game logic."""
 
+from itertools import pairwise
+
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 from .song import Song
@@ -51,22 +53,19 @@ class TrackBackGame:
         else:
             print(f"❌ Wrong! Song was {current_song}")
 
+    @staticmethod
     def verify_choice(
-        self, song_list: list[Song], index: int, selected_song: Song
+        song_list: list[Song], index: int, selected_song: Song
     ) -> bool:
-        """Return True if the selected song is valid for the index."""
-        if not song_list:  # handle empty list case
-            return True
-        if index == 0:  # handle first song case
-            return selected_song.release_year < song_list[0].release_year
-        if index == -1 or index == len(song_list):  # handle last song case
-            return selected_song.release_year > song_list[-1].release_year
-        if 0 < index < len(song_list):
-            return (
-                song_list[index - 1].release_year
-                <= selected_song.release_year
-                <= song_list[index].release_year
-            )
-        raise TrackBackGameError(
-            "Error in game logic! Invalid index provided!"
+        """Return True if the new song list would be sorted by release year."""
+        potential_list = song_list.copy()
+        potential_list.insert(index, selected_song)
+
+        return TrackBackGame._is_sorted_by_release_year(potential_list)
+
+    @staticmethod
+    def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
+        return all(
+            earlier.release_year <= later.release_year
+            for earlier, later in pairwise(song_list)
         )

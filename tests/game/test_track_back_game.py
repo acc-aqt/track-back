@@ -3,7 +3,7 @@
 import pytest
 
 from game.song import Song
-from game.track_back_game import TrackBackGame, TrackBackGameError
+from game.track_back_game import TrackBackGame
 from game.user import User
 
 song_70s = Song("Bohemian Rhapsody", "Queen", 1975)
@@ -36,23 +36,16 @@ song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
             False,
         ),
         (
-            # "last_song_correct_neg_index",
-            [song_80s],
-            -1,
-            song_90s,
-            True,
-        ),
-        (
             # "last_song_correct_len_index",
-            [song_80s],
-            1,
+            [song_70s, song_80s],
+            2,
             song_90s,
             True,
         ),
         (
             # "last_song_incorrect",
-            [song_80s],
-            -1,
+            [song_80s, song_90s],
+            2,
             song_70s,
             False,
         ),
@@ -88,41 +81,13 @@ song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
         ),
     ],
 )
-def test_correct_choice(
+def test_verify_choice(
     song_list: list[User],
     index: int,
     selected_song: Song,
     expected_result: bool,
 ) -> None:
-    """Test _correct_choice with various scenarios."""
-    # Act
-    result = TrackBackGame.verify_choice(None, song_list, index, selected_song)
+    """Test verify_choice with various scenarios."""
+    result = TrackBackGame.verify_choice(song_list, index, selected_song)
 
-    # Assert
     assert result == expected_result
-
-
-@pytest.mark.parametrize(
-    ("song_list", "index", "selected_song"),
-    [
-        (
-            # "invalid_index_negative",
-            [song_80s],
-            -2,
-            song_90s,
-        ),
-        (
-            # "invalid_index_positive",
-            [song_80s],
-            2,
-            song_90s,
-        ),
-    ],
-)
-def test_correct_choice_invalid_index(
-    song_list: list[Song], index: int, selected_song: Song
-) -> None:
-    """Test _correct_choice with invalid index raises TrackBackGameError."""
-    # Act & Assert
-    with pytest.raises(TrackBackGameError):
-        TrackBackGame.verify_choice(None, song_list, index, selected_song)
