@@ -8,11 +8,11 @@ from spotipy.oauth2 import SpotifyOAuth
 
 from game.song import Song
 
-from .abstract_music_provider import AbstractMusicProvider
+from .abstract_adapter import AbstractMusicServiceAdapter
 from .utils import extract_year
 
 
-class SpotifyClient(AbstractMusicProvider):
+class SpotifyAdapter(AbstractMusicServiceAdapter):
     """Interface to the Spotify API."""
 
     def __init__(self) -> None:

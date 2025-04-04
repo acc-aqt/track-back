@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from game.track_back_game import TrackBackGame
 from game.user import get_users
-from music_providers.factory import MusicProviderFactory
+from music_service.factory import MusicServiceFactory
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
@@ -23,7 +23,7 @@ def main() -> None:
     config = load_user_config()
 
     provider = config.get("music_provider")
-    music_provider = MusicProviderFactory.create_music_provider(provider)
+    music_provider = MusicServiceFactory.create_music_provider(provider)
     music_provider.start_playback()
 
     users = get_users()

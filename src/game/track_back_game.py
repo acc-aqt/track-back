@@ -1,6 +1,6 @@
 """Contains the TrackBackGame class that implements the game logic."""
 
-from music_providers.abstract_music_provider import AbstractMusicProvider
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 from .song import Song
 from .user import User
@@ -17,7 +17,7 @@ class TrackBackGame:
         self,
         users: list[User],
         target_song_count: int,
-        music_provider: AbstractMusicProvider,
+        music_provider: AbstractMusicServiceAdapter,
     ) -> None:
         self.music_provider = music_provider
         self.target_song_count = target_song_count

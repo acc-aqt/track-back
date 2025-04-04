@@ -1,12 +1,12 @@
-"""Defines the interface for AbstractMusicProvider."""
+"""Defines the interface for music services."""
 
 from abc import ABC, abstractmethod
 
 from game.song import Song
 
 
-class AbstractMusicProvider(ABC):
-    """Abstract base class that defines the interface for a music provider."""
+class AbstractMusicServiceAdapter(ABC):
+    """Abstract base class that defines the interface for a music service."""
 
     @abstractmethod
     def current_song(self) -> Song:

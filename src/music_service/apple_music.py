@@ -7,12 +7,12 @@ import sys
 
 from game.song import Song
 
-from .abstract_music_provider import AbstractMusicProvider
+from .abstract_adapter import AbstractMusicServiceAdapter
 
 OSA_SCRIPT_PATH = "osascript"
 
 
-class AppleMusicClient(AbstractMusicProvider):
+class AppleMusicAdapter(AbstractMusicServiceAdapter):
     """Uses AppleScripts to interact with Apple Music."""
 
     def __init__(self) -> None:
