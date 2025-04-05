@@ -3,6 +3,8 @@
 **TrackBack** is a music-based game where players need to sort currently playing songs by their year of release.
 The music can be played via Spotiy or Apple Music.
 
+So far, user input is possible only via the command line.
+A browser-based GUI is under development. 
 -------
 
 # 1 Installation
