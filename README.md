@@ -4,8 +4,8 @@
 
 Trackback lets you play with your own playlists – currently supports Spotify & Apple Music, and is built to easily extend to other music services.
 
-So far, user input is possible only via the command line.
-A browser-based GUI is under development. 
+So far, user input is possible only via the command line. A browser-based GUI is under development. 
+
 -------
 
 # 1 Installation
