@@ -2,7 +2,7 @@
 
 **TrackBack** is a music-based game where players need to sort currently playing songs by their year of release.
 
-Trackback lets you play with your own playlists – currently supports Spotify & Apple Music, and is built to easily extend to other music services.
+Trackback lets you play with your own playlists – it currently supports Spotify & Apple Music, and is built to easily extend to other music services.
 
 So far, user input is possible only via the command line. A browser-based GUI is under development. 
 
@@ -67,7 +67,7 @@ SPOTIFY_REDIRECT_URI=your-redirect-uri
 2.  In the `config.toml` set:
 
 ```toml
-music_provider = "spotify"
+music_service = "spotify"
 ```
 
 ### 2.3 Run the game
@@ -93,7 +93,7 @@ track-back
 - In the `config.toml` set:
 
 ```toml
-music_provider = "applemusic"
+music_service = "applemusic"
 ```
 
 ### 3.3 Run the game
