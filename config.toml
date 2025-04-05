@@ -1,3 +1,3 @@
 # User preferences
-music_provider = "applemusic"  # either "spotify" or "applemusic". E.g. "youtube" not yet implemented
+music_service = "applemusic"  # either "spotify" or "applemusic". E.g. "youtube" not yet implemented
 target_song_count = 10
