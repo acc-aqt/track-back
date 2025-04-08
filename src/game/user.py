@@ -1,10 +1,16 @@
 """Contains the user class."""
 
+from pydantic import BaseModel
+
 from .song import Song
 from .utils import get_user_input
 
 
-class User:
+class UserRegister(BaseModel):
+    name: str
+
+
+class User():
     """Represents a user with a name and a list of songs."""
 
     def __init__(self, name: str) -> None:
