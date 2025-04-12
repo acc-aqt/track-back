@@ -107,8 +107,8 @@ def create_app(target_song_count: int, music_service) -> FastAPI:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target_song_count", type=int, default=5)
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--target_song_count", type=int, default=3)
+    parser.add_argument("--port", type=int, default=4200)
     args = parser.parse_args()
 
     load_dotenv()

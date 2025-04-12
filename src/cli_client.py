@@ -2,17 +2,12 @@ import asyncio
 import websockets
 import json
 
-PORT = "4200"
-
-
-async def play(username: str):
-    uri = f"ws://localhost:{PORT}/ws/{username}"
+async def play(username: str, port):
+    uri = f"ws://localhost:{port}/ws/{username}"
     async with websockets.connect(uri) as websocket:
         welcome = await websocket.recv()
         print(f"🛰️ Server: {welcome}")
-        client_count = 0
         while True:
-            client_count += 1
 
             try:
                 server_msg = await websocket.recv()
@@ -24,8 +19,7 @@ async def play(username: str):
             except json.JSONDecodeError:
                 print(f"Server (raw): {server_msg}")
                 continue
-            # print(f"\n📬 New message:\n{json.dumps(data, indent=2)}")
-            # print(f" Client count: {client_count}")
+            
             msg_type = data.get("type")
 
             # ⬇️ Handle the result of your previous move
@@ -40,9 +34,6 @@ async def play(username: str):
                     print("\n📻 Your current song list:")
                     for i, song in enumerate(data["song_list"]):
                         print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
-
-                # song_title = data.get("next_song", "Unknown")
-                # print(f"\n🎶 Current song: {song_title}")
 
                 try:
                     index = int(input("📍 Where do you want to insert this song? Index: "))
@@ -72,13 +63,16 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str)
+    parser.add_argument("--port", type=int, default=4200)
+
     args = parser.parse_args()
     username = args.name
+    port = args.port
 
     if not username:
         username = input("👤 Enter your username: ")
 
-    asyncio.run(play(username))
+    asyncio.run(play(username, port))
 
 
 if __name__ == "__main__":
