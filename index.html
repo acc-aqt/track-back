@@ -71,56 +71,61 @@
 
         try {
           socket = new WebSocket(wsUrl);
+
+          socket.onopen = () => {
+            console.log("✅ WebSocket connection opened");
+            log(`🛰️ Connected as ${username}`);
+            document.getElementById("game").style.display = "block";
+          };
+
+          socket.onerror = (e) => {
+            console.error("🚨 WebSocket error:", e);
+            log("🚨 WebSocket connection error. Check the server address.");
+          };
+
+          socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("📬 Received:", data);
+
+            const type = data.type;
+
+            if (type === "your_turn" && data.next_player === username) {
+              log(`🎮 It's your turn!`);
+
+              const list = data.song_list || [];
+              const songListHtml = list
+                .map(
+                  (s, i) =>
+                    `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
+                )
+                .join("<br>");
+              document.getElementById(
+                "songList"
+              ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
+
+              document.getElementById(
+                "currentSong"
+              ).innerText = `🎶 Current song: ${data.next_song}`;
+            } else if (type === "guess_result" && data.player === username) {
+              log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
+            } else if (type === "turn_result") {
+              log(`🪄 ${data.player} played: ${data.message}`);
+            } else if (type === "game_over") {
+              log(`🏁 Game Over! Winner: ${data.winner}`);
+            } else {
+              log(`📬 Unhandled message: ${JSON.stringify(data, null, 2)}`);
+            }
+          };
+
+          socket.onclose = (e) => {
+            console.warn("🔌 WebSocket closed:", e);
+            log("🔌 Connection closed.");
+          };
         } catch (err) {
           console.error("❌ Failed to create WebSocket:", err);
           return;
         }
-
-        socket.onerror = (e) => {
-          console.error("🚨 WebSocket error:", e);
-          log("🚨 WebSocket connection error. Check the server address.");
-        };
-
-        socket.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log("📬 Received:", data);
-
-          const type = data.type;
-
-          if (type === "your_turn" && data.next_player === username) {
-            log(`🎮 It's your turn!`);
-
-            const list = data.song_list || [];
-            const songListHtml = list
-              .map(
-                (s, i) =>
-                  `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
-              )
-              .join("<br>");
-            document.getElementById(
-              "songList"
-            ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
-
-            document.getElementById(
-              "currentSong"
-            ).innerText = `🎶 Current song: ${data.next_song}`;
-          } else if (type === "guess_result" && data.player === username) {
-            log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
-          } else if (type === "turn_result") {
-            log(`🪄 ${data.player} played: ${data.message}`);
-          } else if (type === "game_over") {
-            log(`🏁 Game Over! Winner: ${data.winner}`);
-          } else {
-            log(`📬 Unhandled message: ${JSON.stringify(data, null, 2)}`);
-          }
-        };
-
-        socket.onclose = (e) => {
-          console.warn("🔌 WebSocket closed:", e);
-          log("🔌 Connection closed.");
-        };
       };
-
       document.getElementById("sendGuess").onclick = () => {
         const index = parseInt(document.getElementById("indexInput").value);
         if (isNaN(index)) {
