@@ -40,9 +40,10 @@ pip install .
 
 -------
 
-## 2 Connecting with Spotify
+# 2 Connecting with music services
+## 2.1 Spotify
 
-### 2.1 Requirements
+### 2.1.1 Requirements
 - A Spotify Premium account is required
 - The game must be registered in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
    1. Log in and create a new app
@@ -54,7 +55,7 @@ pip install .
       - Go to `Edit Settings`
       - Under `User Management`, add the Spotify accounts of users who should be allowed to play
 
-### 2.2 Setup
+### 2.1.2 Setup
 
 1.  Rename the `.env.example` file in the root directory to `.env` and add your spotify credentials (see 2.1.).
 
@@ -64,46 +65,52 @@ pip install .
 music_provider = "spotify"
 ```
 
-### 2.3 Run the game
+3. Ensure the Spotify app is open on a device and a registered user (see 2.1.1) is logged in
+4. Select a playlist that should be used during the game
 
-1. Ensure the Spotify app is open on a device and a registered user (see 2.1.) is logged in
-2. Select a playlist that should be used during the game
-3. Run the game:
-```bash
-track-back
-```
-4. When prompted, authenticate with the Spotify credentials of the registered user
 
--------
+## 2.2 Apple Music
 
-## 3 Connecting with Apple Music
-
-### 3.1 Requirements
+### 2.2.1 Requirements
 - Only supported on macOS Catalina (10.15+)
 - The built-in `Music` app must be installed and running
 
-### 3.2 Setup
+### 2.2.2 Setup
 
 - In the `config.toml` set:
 
 ```toml
 music_provider = "applemusic"
 ```
+- Open the Music app and select a playlist
 
-### 3.3 Run the game
-
-1. Open the Music app and select a playlist
-
-2. Run the game:
-```bash
-track-back
-```
-
-Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
+- Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
 
 -------
 
-## 4 Development Setup - not necessary to run the game
+# 3 Start the game server
+
+- Start the game server:
+```bash
+track-back-server
+```
+
+-------
+
+# 4 Play the game
+
+You can either play in the browser or via command line
+
+# 4.1 Web UI
+
+ToDo!
+
+# 4.2 Command line
+
+ToDo!
+
+
+## 5 Development Setup - not necessary to run the game
 
 If you are developing or testing and need to use the source code directly:
 
