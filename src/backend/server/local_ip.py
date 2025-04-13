@@ -1,26 +1,33 @@
+"""Contains a function to get the local IPv4 address of the machine running the script."""
+
 import ipaddress
 import os
 import platform
 import subprocess
 
 
-def run_shell_command(command, capture_output=False):
+def _run_shell_command(command: str, capture_output: bool =False) -> None:
     print(f"$ {command}")
     return subprocess.run(
-        command, shell=True, capture_output=capture_output, text=capture_output, check=False
+        command,
+        shell=True,
+        capture_output=capture_output,
+        text=capture_output,
+        check=False,
     )  # 'shell=True' => Use built-in shell, '/bin/sh' on Linux and Mac, 'cmd.exe' on Windows.
 
 
-def get_local_ip():
+def get_local_ip() -> str:
+    """Get the local IPv4 address of the machine running the script."""
     local_ipv4 = None
 
     operating_system_kind = platform.system()
     if operating_system_kind == "Darwin":
-        local_ipv4 = run_shell_command(
+        local_ipv4 = _run_shell_command(
             "ipconfig getifaddr en0", True
         ).stdout.strip()
     elif operating_system_kind == "Windows":
-        for line in run_shell_command(
+        for line in _run_shell_command(
             'netsh ip show address | findstr "IP Address"', True
         ).stdout.split(os.linesep):
             local_ipv4_or_empty = line.removeprefix("IP Address:").strip()
@@ -28,7 +35,7 @@ def get_local_ip():
                 local_ipv4 = local_ipv4_or_empty
                 break
     else:  # Linux
-        local_ipv4 = run_shell_command(
+        local_ipv4 = _run_shell_command(
             "hostname -I | awk '{print $1}'", True
         ).stdout.strip()
 

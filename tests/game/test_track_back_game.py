@@ -2,9 +2,9 @@
 
 import pytest
 
-from game.song import Song
-from game.track_back_game import TrackBackGame
-from game.user import User
+from backend.game.song import Song
+from backend.game.track_back_game import TrackBackGame
+from backend.game.user import User
 
 song_70s = Song("Bohemian Rhapsody", "Queen", 1975)
 song_80s = Song("Hier kommt Alex", "Die Toten Hosen", 1988)

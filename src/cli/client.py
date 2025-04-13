@@ -1,15 +1,18 @@
 import argparse
 import asyncio
 import json
-import websockets
+
 import httpx
+import websockets
 
 
 class CliClient:
-    def __init__(self, username, host, port):
+    def __init__(self, username, host, port, stop_after_turns=None):
         self.username = username
         self.uri = f"ws://{host}:{port}/ws/{username}"
         self.url = f"http://{host}:{port}"
+        self.turn_counter = 0
+        self.stop_after_turns = stop_after_turns
 
     async def start_game(self):
         """Send a POST request to the server to start the game."""
@@ -18,9 +21,9 @@ class CliClient:
                 response = await client.post(f"{self.url}/start")
                 data = response.json()
                 if response.status_code == 200:
-                    print(f"🚀 Game started: {data}")
+                    print("🚀 Game started.")
                 else:
-                    print(f"❌ Failed to start game: {data}")
+                    print(f"❌ Failed to start game. Retrieved following data: {data}")
         except Exception as e:
             print(f"❌ Error starting game: {e}")
 
@@ -103,6 +106,12 @@ class CliClient:
 
         guess = {"type": "guess", "index": index}
         await websocket.send(json.dumps(guess))
+        # ✅ After sending a guess, increase turn counter
+        if self.stop_after_turns is not None:
+            self.turn_counter += 1
+            if self.turn_counter >= self.stop_after_turns:
+                print("✅ Max turns reached, exiting.")
+                await websocket.close()
 
     def _get_valid_index(self, song_list):
         while True:
@@ -148,7 +157,10 @@ def main():
         help="Your username",
     )
     parser.add_argument(
-        "--host", type=str, default="localhost", help="Server host (default: localhost)"
+        "--host",
+        type=str,
+        default="localhost",
+        help="Server host (default: localhost)",
     )
     parser.add_argument("--port", type=int, default=4200, help="Server port (default: 4200)")
 
