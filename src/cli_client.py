@@ -5,10 +5,9 @@ import websockets
 
 
 class CliClient:
-    def __init__(self, username, port):
+    def __init__(self, username, host, port):
         self.username = username
-        self.port = port
-        self.uri = f"ws://localhost:{self.port}/ws/{self.username}"
+        self.uri = f"ws://{host}:{port}/ws/{username}"
 
     async def play(self):
         try:
@@ -49,7 +48,7 @@ class CliClient:
             retry = input("🔁 Retry? (y/n): ")
             if retry.lower() == "y":
                 await self.play()
-                
+
     async def _handle_welcome(self, data: dict):
         print(f"👋 {data['message']}")
 
@@ -89,12 +88,15 @@ class CliClient:
 def main():
     parser = argparse.ArgumentParser(description="CLI client for TrackBack Game")
     parser.add_argument("--name", type=str, help="Your username")
+    parser.add_argument(
+        "--host", type=str, default="localhost", help="Server host (default: localhost)"
+    )
     parser.add_argument("--port", type=int, default=4200, help="Server port (default: 4200)")
 
     args = parser.parse_args()
     username = args.name or input("👤 Enter your username: ")
 
-    client = CliClient(username, args.port)
+    client = CliClient(username, args.host, args.port)
     asyncio.run(client.play())
 
 
