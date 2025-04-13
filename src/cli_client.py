@@ -1,6 +1,8 @@
 import asyncio
-import websockets
 import json
+
+import websockets
+
 
 async def play(username: str, port):
     uri = f"ws://localhost:{port}/ws/{username}"
@@ -8,7 +10,6 @@ async def play(username: str, port):
         welcome = await websocket.recv()
         print(f"🛰️ Server: {welcome}")
         while True:
-
             try:
                 server_msg = await websocket.recv()
             except websockets.exceptions.ConnectionClosed:
@@ -19,7 +20,7 @@ async def play(username: str, port):
             except json.JSONDecodeError:
                 print(f"Server (raw): {server_msg}")
                 continue
-            
+
             msg_type = data.get("type")
 
             # ⬇️ Handle the result of your previous move
@@ -27,16 +28,24 @@ async def play(username: str, port):
                 print(f"🎯 Result: {data['result']} — {data['message']}")
 
             # ⬇️ Handle when it's your turn to play
-            elif msg_type == "your_turn" and data.get("next_player") == username:
+            elif (
+                msg_type == "your_turn" and data.get("next_player") == username
+            ):
                 print(f"\n🎮 It's your turn, {username}!")
 
                 if "song_list" in data:
                     print("\n📻 Your current song list:")
                     for i, song in enumerate(data["song_list"]):
-                        print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
+                        print(
+                            f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}"
+                        )
 
                 try:
-                    index = int(input("📍 Where do you want to insert this song? Index: "))
+                    index = int(
+                        input(
+                            "📍 Where do you want to insert this song? Index: "
+                        )
+                    )
                 except ValueError:
                     print("⚠️ Please enter a valid number.")
                     return

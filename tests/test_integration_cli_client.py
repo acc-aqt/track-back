@@ -1,16 +1,17 @@
 import asyncio
 import json
 import socket
-
-import pytest
 import subprocess
 import time
+
+import pytest
 import requests
 import websockets
 
 PORT = 9000
 BASE_URL = f"http://localhost:{PORT}"
 WS_URL = "ws://localhost:{PORT}/ws"
+
 
 def wait_for_port(host, port, timeout=10.0):
     """Wait for a port to start accepting connections."""
@@ -22,8 +23,11 @@ def wait_for_port(host, port, timeout=10.0):
         except OSError:
             time.sleep(0.1)
         if time.time() - start > timeout:
-            raise TimeoutError(f"Timed out waiting for {host}:{port} to be ready")
-        
+            raise TimeoutError(
+                f"Timed out waiting for {host}:{port} to be ready"
+            )
+
+
 @pytest.fixture(scope="module")
 def fastapi_server():
     """Launch the FastAPI server before the test and kill it after."""
@@ -39,7 +43,7 @@ def fastapi_server():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    
+
     try:
         wait_for_port("localhost", PORT, timeout=10)
     except TimeoutError:
@@ -61,7 +65,7 @@ async def simulate_player(username, guess_index, game_done_event):
         while not game_done_event.is_set():
             try:
                 msg = await asyncio.wait_for(ws.recv(), timeout=10)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 print(f"⏱️ {username} timed out waiting for server message.")
                 break
 
@@ -76,7 +80,9 @@ async def simulate_player(username, guess_index, game_done_event):
             if data.get("next_player") == username:
                 print(f"🎮 {username}'s turn: {data.get('next_song')}")
                 await asyncio.sleep(0.2)
-                await ws.send(json.dumps({"type": "guess", "index": guess_index}))
+                await ws.send(
+                    json.dumps({"type": "guess", "index": guess_index})
+                )
 
 
 @pytest.mark.asyncio

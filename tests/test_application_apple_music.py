@@ -1,7 +1,5 @@
 """Full application/game tests for integration of Apple Music."""
 
-import builtins
-from unittest.mock import patch
 
 import pytest
 
@@ -31,11 +29,11 @@ def test_full_game_one_round() -> None:
     )
     game.start_game()
     # Simulate one user input: "0" to insert at start
-        
+
     game.process_turn("Elton", 0)
-        
+
     assert game.is_game_over() == True
-    
+
     winner = game.winner
 
     assert winner == user_1  # First user instantly wins after first input

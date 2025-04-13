@@ -10,7 +10,7 @@ class UserRegister(BaseModel):
     name: str
 
 
-class User():
+class User:
     """Represents a user with a name and a list of songs."""
 
     def __init__(self, name: str) -> None:
