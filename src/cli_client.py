@@ -46,7 +46,10 @@ class CliClient:
 
         except OSError as e:
             print(f"🚨 Failed to connect to server at {self.uri}: {e}")
-
+            retry = input("🔁 Retry? (y/n): ")
+            if retry.lower() == "y":
+                await self.play()
+                
     async def _handle_welcome(self, data: dict):
         print(f"👋 {data['message']}")
 
@@ -58,10 +61,7 @@ class CliClient:
         print(f"\n🎮 It's your turn, {self.username}!")
 
         song_list = data.get("song_list", [])
-        if song_list:
-            print("\n📻 Your current song list:")
-            for i, song in enumerate(song_list):
-                print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
+        self._print_song_list(song_list)
 
         try:
             index_range = f"[0–{len(song_list)}]"
@@ -72,6 +72,12 @@ class CliClient:
 
         guess = {"type": "guess", "index": index}
         await websocket.send(json.dumps(guess))
+
+    def _print_song_list(self, song_list):
+        if song_list:
+            print("\n📻 Your current song list:")
+            for i, song in enumerate(song_list):
+                print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
 
     async def _handle_turn_result(self, data: dict):
         print(f"🪄 {data['player']} made a move: {data['message']}")
