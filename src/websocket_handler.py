@@ -28,19 +28,16 @@ class WebSocketGameHandler:
                     {
                         "type": "welcome",
                         "message": f"✅ Welcome, {username}! You're connected.",
+                        "first_player": username == self.ctx.first_player,
                     }
                 )
             )
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(
-        self, websocket: WebSocket, username: str, index: int
-    ):
+    async def handle_guess(self, websocket: WebSocket, username: str, index: int):
         if self.ctx.game is None:
             await websocket.send_text(
-                json.dumps(
-                    {"type": "error", "message": "⚠️ Game has not started yet."}
-                )
+                json.dumps({"type": "error", "message": "⚠️ Game has not started yet."})
             )
             return
 
@@ -66,9 +63,7 @@ class WebSocketGameHandler:
             return
 
         # 🔄 Notify others
-        await self.broadcast_turn_result(
-            current_player=username, result=result
-        )
+        await self.broadcast_turn_result(current_player=username, result=result)
 
         # 🎮 Tell next player
         await self.notify_next_player(
@@ -100,9 +95,7 @@ class WebSocketGameHandler:
                         "type": "your_turn",
                         "next_player": next_player,
                         "next_song": next_song,
-                        "song_list": self.ctx.game._serialize_song_list(
-                            player.song_list
-                        ),
+                        "song_list": self.ctx.game._serialize_song_list(player.song_list),
                     }
                 )
             )

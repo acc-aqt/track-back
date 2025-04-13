@@ -9,6 +9,7 @@ dependencies = [
     "fastapi==0.115.12",
     "uvicorn==0.34.0",
     "websockets==15.0.1",
+    "httpx==0.28.1",
 ]
 
 description = "A game where players sort songs played by release date"

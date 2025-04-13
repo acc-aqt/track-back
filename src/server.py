@@ -34,6 +34,7 @@ class GameContext:
         self.game: Optional[TrackBackGame] = None
         self.connected_users: dict[str, WebSocket] = {}
         self.registered_users: dict[str, User] = {}
+        self.first_player: Optional[User] = None
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
@@ -94,6 +95,7 @@ class Server:
         if user.name in self.game_context.registered_users:
             return {"error": f"User '{user.name}' already registered"}
         self.game_context.registered_users[user.name] = User(name=user.name)
+
         return {"message": f"User '{user.name}' registered successfully."}
 
     async def _start_game(self):
@@ -115,9 +117,7 @@ class Server:
 
         ws = self.game_context.connected_users.get(first_player.name)
         if not ws:
-            return {
-                "error": f"{first_player.name} is not connected via WebSocket."
-            }
+            return {"error": f"{first_player.name} is not connected via WebSocket."}
 
         await ws.send_text(
             json.dumps(
@@ -148,6 +148,10 @@ class Server:
 
         await websocket.accept()
         ctx = websocket.app.state.ctx
+        if ctx.first_player is None:
+            ctx.first_player = username
+            logging.info(f"📌 First player: {ctx.first_player}")
+
         handler = WebSocketGameHandler(ctx)
 
         await handler.handle_connection(websocket, username)

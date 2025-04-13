@@ -2,14 +2,29 @@ import argparse
 import asyncio
 import json
 import websockets
+import httpx
 
 
 class CliClient:
     def __init__(self, username, host, port):
         self.username = username
         self.uri = f"ws://{host}:{port}/ws/{username}"
+        self.url = f"http://{host}:{port}"
 
-    async def play(self):
+    async def start_game(self):
+        """Send a POST request to the server to start the game."""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(f"{self.url}/start")
+                data = response.json()
+                if response.status_code == 200:
+                    print(f"🚀 Game started: {data}")
+                else:
+                    print(f"❌ Failed to start game: {data}")
+        except Exception as e:
+            print(f"❌ Error starting game: {e}")
+
+    async def run(self):
         try:
             async with websockets.connect(self.uri) as websocket:
                 await self._handle_messages(websocket)
@@ -18,7 +33,7 @@ class CliClient:
             print(f"🚨 Failed to connect to server at {self.uri}: {e}")
             retry = input("🔁 Retry? (y/n): ")
             if retry.lower() == "y":
-                await self.play()
+                await self.run()
 
     async def _handle_messages(self, websocket):
         while True:
@@ -62,6 +77,17 @@ class CliClient:
 
     async def _handle_welcome(self, data: dict):
         print(f"👋 {data['message']}")
+        await self._start_game_by_user_input(data)
+
+    async def _start_game_by_user_input(self, data):
+        if data.get("first_player"):
+            choice = input("🎮 Start game now? (y/n): ").lower()
+            if choice == "y":
+                await self.start_game()
+            else:
+                await self._start_game_by_user_input(data)
+        else:
+            print("🕐 Waiting for game to start...")
 
     async def _handle_guess_result(self, data: dict):
         if data.get("player") == self.username:
@@ -108,20 +134,31 @@ class CliClient:
         print(f"🏁 Game Over! Winner: {data['winner']}")
 
 
+async def play_on_cli(username, host, port):
+    client = CliClient(username, host, port)
+    await client.run()
+
+
 def main():
     parser = argparse.ArgumentParser(description="CLI client for TrackBack Game")
-    parser.add_argument("--name", type=str, help="Your username")
+    parser.add_argument(
+        "--name",
+        type=str,
+        default=None,
+        help="Your username",
+    )
     parser.add_argument(
         "--host", type=str, default="localhost", help="Server host (default: localhost)"
     )
     parser.add_argument("--port", type=int, default=4200, help="Server port (default: 4200)")
 
     args = parser.parse_args()
+
     username = args.name or input("👤 Enter your username: ")
 
-    client = CliClient(username, args.host, args.port)
-    asyncio.run(client.play())
+    asyncio.run(play_on_cli(username, args.host, args.port))
 
 
 if __name__ == "__main__":
     main()
+    # asyncio.run(main())
