@@ -4,80 +4,80 @@ import json
 import websockets
 
 
-async def handle_welcome(data: dict):
-    print(f"👋 {data['message']}")
+class CliClient:
+    def __init__(self, username, port):
+        self.username = username
+        self.port = port
+        self.uri = f"ws://localhost:{self.port}/ws/{self.username}"
 
+    async def play(self):
+        try:
+            async with websockets.connect(self.uri) as websocket:
+                while True:
+                    try:
+                        message = await websocket.recv()
+                        data = json.loads(message)
+                    except websockets.exceptions.ConnectionClosed:
+                        print("🔌 Connection to server closed. Goodbye!")
+                        break
+                    except json.JSONDecodeError:
+                        print(f"⚠️ Invalid JSON from server:\n{message}")
+                        continue
 
-async def handle_guess_result(data: dict, username: str):
-    if data.get("player") == username:
-        print(f"🎯 Result: {data['result']} — {data['message']}")
+                    msg_type = data.get("type")
+                    if not msg_type:
+                        print(f"⚠️ Malformed message:\n{data}")
+                        continue
 
+                    # Dispatch based on message type
+                    if msg_type == "welcome":
+                        await self._handle_welcome(data)
+                    elif msg_type == "guess_result":
+                        await self._handle_guess_result(data)
+                    elif msg_type == "your_turn" and data.get("next_player") == self.username:
+                        await self._handle_your_turn(data, websocket)
+                    elif msg_type == "turn_result":
+                        await self._handle_turn_result(data)
+                    elif msg_type == "game_over":
+                        await self._handle_game_over(data)
+                        break
+                    else:
+                        print(f"\n📬 Unhandled message:\n{json.dumps(data, indent=2)}")
 
-async def handle_your_turn(data: dict, websocket, username: str):
-    print(f"\n🎮 It's your turn, {username}!")
+        except OSError as e:
+            print(f"🚨 Failed to connect to server at {self.uri}: {e}")
 
-    song_list = data.get("song_list", [])
-    if song_list:
-        print("\n📻 Your current song list:")
-        for i, song in enumerate(song_list):
-            print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
+    async def _handle_welcome(self, data: dict):
+        print(f"👋 {data['message']}")
 
-    try:
-        index_range = f"[0–{len(song_list)}]"
-        index = int(input(f"📍 Where do you want to insert this song? Index {index_range}: "))
-    except ValueError:
-        print("⚠️ Please enter a valid number.")
-        return
+    async def _handle_guess_result(self, data: dict):
+        if data.get("player") == self.username:
+            print(f"🎯 Result: {data['result']} — {data['message']}")
 
-    guess = {"type": "guess", "index": index}
-    await websocket.send(json.dumps(guess))
+    async def _handle_your_turn(self, data: dict, websocket):
+        print(f"\n🎮 It's your turn, {self.username}!")
 
+        song_list = data.get("song_list", [])
+        if song_list:
+            print("\n📻 Your current song list:")
+            for i, song in enumerate(song_list):
+                print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
 
-async def handle_turn_result(data: dict):
-    print(f"🪄 {data['player']} made a move: {data['message']}")
+        try:
+            index_range = f"[0–{len(song_list)}]"
+            index = int(input(f"📍 Where do you want to insert this song? Index {index_range}: "))
+        except ValueError:
+            print("⚠️ Please enter a valid number.")
+            return
 
+        guess = {"type": "guess", "index": index}
+        await websocket.send(json.dumps(guess))
 
-async def handle_game_over(data: dict):
-    print(f"🏁 Game Over! Winner: {data['winner']}")
+    async def _handle_turn_result(self, data: dict):
+        print(f"🪄 {data['player']} made a move: {data['message']}")
 
-
-async def play(username: str, port: int):
-    uri = f"ws://localhost:{port}/ws/{username}"
-    try:
-        async with websockets.connect(uri) as websocket:
-            while True:
-                try:
-                    message = await websocket.recv()
-                    data = json.loads(message)
-                except websockets.exceptions.ConnectionClosed:
-                    print("🔌 Connection to server closed. Goodbye!")
-                    break
-                except json.JSONDecodeError:
-                    print(f"⚠️ Invalid JSON from server:\n{message}")
-                    continue
-
-                msg_type = data.get("type")
-                if not msg_type:
-                    print(f"⚠️ Malformed message:\n{data}")
-                    continue
-
-                # Dispatch based on message type
-                if msg_type == "welcome":
-                    await handle_welcome(data)
-                elif msg_type == "guess_result":
-                    await handle_guess_result(data, username)
-                elif msg_type == "your_turn" and data.get("next_player") == username:
-                    await handle_your_turn(data, websocket, username)
-                elif msg_type == "turn_result":
-                    await handle_turn_result(data)
-                elif msg_type == "game_over":
-                    await handle_game_over(data)
-                    break
-                else:
-                    print(f"\n📬 Unhandled message:\n{json.dumps(data, indent=2)}")
-
-    except OSError as e:
-        print(f"🚨 Failed to connect to server at {uri}: {e}")
+    async def _handle_game_over(self, data: dict):
+        print(f"🏁 Game Over! Winner: {data['winner']}")
 
 
 def main():
@@ -87,9 +87,10 @@ def main():
 
     args = parser.parse_args()
     username = args.name or input("👤 Enter your username: ")
-    asyncio.run(play(username, args.port))
+
+    client = CliClient(username, args.port)
+    asyncio.run(client.play())
 
 
 if __name__ == "__main__":
     main()
-    
