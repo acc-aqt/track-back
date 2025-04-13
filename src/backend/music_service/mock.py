@@ -1,10 +1,13 @@
+"""Contains a mock music service for testing purposes."""
+
 from backend.game.song import Song
 
 from .abstract_adapter import AbstractMusicServiceAdapter
 
 
 class DummyMusicService(AbstractMusicServiceAdapter):
-    def __init__(self):
+    """Mock music service for testing purposes."""
+    def __init__(self) -> None:
         self.playlist: list[Song] = [
             Song(title="Yesterday", artist="The Beatles", release_year=1965),
             Song(title="Bohemian Rhapsody", artist="Queen", release_year=1975),
@@ -23,15 +26,18 @@ class DummyMusicService(AbstractMusicServiceAdapter):
                 release_year=2021,
             ),
         ]
-        self.current_index = 0
+        self.playlist_index = 0
 
     def current_song(self) -> Song:
-        return self.playlist[self.current_index]
+        """Return the currently playing song."""
+        return self.playlist[self.playlist_index]
 
     def start_playback(self) -> None:
-        self.current_index = 0
+        """Reset the playlist index to start playback."""
+        self.playlist_index = 0
 
     def next_track(self) -> None:
-        self.current_index += 1
-        if self.current_index >= len(self.playlist):
-            self.current_index = 0  # Loop back around
+        """Increment the playlist index to skip to the next track."""
+        self.playlist_index += 1
+        if self.playlist_index >= len(self.playlist):
+            self.playlist_index = 0  # Loop back around

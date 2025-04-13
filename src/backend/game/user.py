@@ -7,6 +7,7 @@ from .utils import get_user_input
 
 
 class UserRegister(BaseModel):
+    """Represents a user with a name."""
     name: str
 
 

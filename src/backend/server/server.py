@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User, UserRegister
 from backend.music_service.factory import MusicServiceFactory
+from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from backend.server.local_ip import get_local_ip
 from backend.server.websocket_handler import WebSocketGameHandler
 
@@ -28,7 +29,7 @@ from backend.server.websocket_handler import WebSocketGameHandler
 class GameContext:
     """Holds the shared game state across requests and WebSocket sessions."""
 
-    def __init__(self, target_song_count: int, music_service):
+    def __init__(self, target_song_count: int, music_service: AbstractMusicServiceAdapter) -> None:
         self.target_song_count = target_song_count
         self.music_service = music_service
         self.game: TrackBackGame | None = None
@@ -46,7 +47,7 @@ def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
 class Server:
     """Encapsulates the FastAPI application, route setup, and game lifecycle management."""
 
-    def __init__(self, game_context: GameContext, port: int):
+    def __init__(self, game_context: GameContext, port: int) -> None:
         self.game_context = game_context
         self.port = port
         self.app = self.create_app()
@@ -54,7 +55,7 @@ class Server:
         self.url = f"http://{self.ip}:{self.port}"
         logging.info(f"\n🌍 Game server running at: {self.url}\n")
 
-    def run(self):
+    def run(self) -> None:
         """Start the Uvicorn server."""
         uvicorn.run(self.app, host="0.0.0.0", port=self.port)
 
@@ -80,7 +81,7 @@ class Server:
 
         return app
 
-    async def _shutdown(self, request: Request):
+    async def _shutdown(self, request: Request) -> dict[str, str]:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
@@ -94,7 +95,7 @@ class Server:
 
         return {"message": f"User '{user.name}' registered successfully."}
 
-    async def _start_game(self):
+    async def _start_game(self) -> dict[str, str]:
         """Start the game and notify the first player via WebSocket."""
         if len(self.game_context.registered_users) < 1:
             return {"error": "Not enough players to start the game."}
@@ -112,9 +113,7 @@ class Server:
 
         ws = self.game_context.connected_users.get(first_player.name)
         if not ws:
-            return {
-                "error": f"{first_player.name} is not connected via WebSocket."
-            }
+            return {"error": f"{first_player.name} is not connected via WebSocket."}
 
         await ws.send_text(
             json.dumps(
@@ -135,7 +134,7 @@ class Server:
             "first_player": first_player.name,
         }
 
-    async def _default_ip(self):
+    async def _default_ip(self) -> dict[str, str]:
         """Return the default server URL."""
         # TODO:  Could be used for frontend auto-fill?
         return {"default_url": self.url}
@@ -178,9 +177,7 @@ def main():
 
     load_dotenv()
     config = load_user_config()
-    music_service = MusicServiceFactory.create_music_service(
-        config["music_service"]
-    )
+    music_service = MusicServiceFactory.create_music_service(config["music_service"])
 
     game_context = GameContext(
         target_song_count=args.target_song_count,
