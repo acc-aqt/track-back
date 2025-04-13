@@ -27,7 +27,9 @@ class WebSocketGameHandler:
 
     async def handle_guess(self, websocket: WebSocket, username: str, index: int):
         if self.ctx.game is None:
-            await websocket.send_text("⚠️ Game has not started yet.")
+            await websocket.send_text(
+                json.dumps({"type": "error", "message": "⚠️ Game has not started yet."})
+            )
             return
 
         result = self.ctx.game.process_turn(username, index)
