@@ -132,6 +132,8 @@
               document.getElementById(
                 "songList"
               ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
+            } else if (type === "welcome") {
+              log(`👋 ${data.message}`);
             } else if (type === "turn_result") {
               log(`🪄 ${data.player} played: ${data.message}`);
             } else if (type === "game_over") {
