@@ -104,6 +104,18 @@
               ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
             } else if (type === "guess_result" && data.player === username) {
               log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
+
+              // ⬇️ Immediately update song list
+              const list = data.song_list || [];
+              const songListHtml = list
+                .map(
+                  (s, i) =>
+                    `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
+                )
+                .join("<br>");
+              document.getElementById(
+                "songList"
+              ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
             } else if (type === "turn_result") {
               log(`🪄 ${data.player} played: ${data.message}`);
             } else if (type === "game_over") {
