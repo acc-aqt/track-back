@@ -12,7 +12,7 @@ So far, user input is possible only via the command line. A browser-based GUI is
 
 ## 1.1 Requirements
 
-The game is implemented in python. You need
+The game server is implemented in python. To run the server you need
 
 - `Python 3.12` or higher
 - `pip` for package management
@@ -90,7 +90,7 @@ music_provider = "applemusic"
 
 # 3 Start the game server
 
-- Start the game server:
+To start the game server run
 ```bash
 track-back-server
 ```
@@ -124,5 +124,4 @@ make test         # Runs tests
 
 ## 5 To-Dos
 
-- Implement Web-based GUI
 - Implement further music services (e.g. youtube, deezer, soundcloud)
