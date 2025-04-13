@@ -4,7 +4,7 @@
 
 Trackback lets you play with your own playlists – it currently supports Spotify & Apple Music, and is built to easily extend to other music services.
 
-The game consists of a game server (written in python). As frontend there is either a command line interface (written in python) or a web ui that can be used in any browser.
+The game consists of a game server (written in python). As frontend there is either a command line interface (written in python) or a web ui that can be used in any web browser.
 
 -------
 
@@ -101,15 +101,13 @@ track-back-server
 
 # 4 Play the game
 
-You can either play in the browser or via command line
+Players can play (interact with the game server) via web browser or command line.
 
 # 4.1 Web UI
 
-
-
-Open the file `web_ui/index.html` in any web-browser. 
+Open the file `web_ui/index.html` in any web browser. 
 Enter the server url and the user name. Then click `Connect` to register as a player. 
-As soon as a player clicks “Start Game” the game will start.
+As soon as a player clicks `Start Game` the game will start.
 
 # 4.2 Command line
 
