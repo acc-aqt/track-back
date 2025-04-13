@@ -40,7 +40,6 @@
 
     <div id="game" style="display: none">
       <div id="songList"></div>
-      <div id="currentSong"></div>
       <div id="guess-area">
         <label>📍 Insert index: <input id="indexInput" type="number" /></label>
         <button id="sendGuess">Send Guess</button>
@@ -103,10 +102,6 @@
               document.getElementById(
                 "songList"
               ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
-
-              document.getElementById(
-                "currentSong"
-              ).innerText = `🎶 Current song: ${data.next_song}`;
             } else if (type === "guess_result" && data.player === username) {
               log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
             } else if (type === "turn_result") {
