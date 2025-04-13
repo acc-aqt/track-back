@@ -5,7 +5,11 @@ authors = [
 ]
 dependencies = [
     "spotipy==2.25.1",
-    "python-dotenv==1.1.0"
+    "python-dotenv==1.1.0",
+    "fastapi==0.115.12",
+    "uvicorn==0.34.0",
+    "websockets==15.0.1",
+    "httpx==0.28.1",
 ]
 
 description = "A game where players sort songs played by release date"
@@ -14,10 +18,12 @@ version = "0.1.0"
 requires-python = ">=3.12"
 
 [project.scripts]
-track-back = "main:main"
+track-back-server = "backend.server.server:main"
+track-back-cli = "cli.client:main"
+
 
 [project.optional-dependencies]
-test = ["pytest", "coverage", "pytest-cov"]
+test = ["pytest", "pytest-asyncio", "coverage", "pytest-cov"]
 
 lint = [
   "black",

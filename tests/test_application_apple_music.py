@@ -1,7 +1,5 @@
 """Full application/game tests for integration of Apple Music."""
 
-import builtins
-from unittest.mock import patch
 
 import pytest
 
@@ -19,7 +17,9 @@ from music_service.apple_music import AppleMusicAdapter
 )
 def test_full_game_one_round() -> None:
     """Test a full game with one round."""
-    users = [User("Elton"), User("John")]
+    user_1 = User("Elton")
+    user_2 = User("John")
+    users = [user_1, user_2]
 
     music_service = AppleMusicAdapter()
     game = TrackBackGame(
@@ -27,11 +27,14 @@ def test_full_game_one_round() -> None:
         music_service=music_service,
         users=users,
     )
+    game.start_game()
     # Simulate one user input: "0" to insert at start
-    with patch.object(builtins, "input", side_effect=["0"]):
-        game.run()
+
+    game.process_turn("Elton", 0)
+
+    assert game.is_game_over() == True
 
     winner = game.winner
 
-    assert winner == users[0]  # First user instantly wins after first input
+    assert winner == user_1  # First user instantly wins after first input
     assert len(winner.song_list) == 1

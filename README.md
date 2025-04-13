@@ -4,7 +4,7 @@
 
 Trackback lets you play with your own playlists – it currently supports Spotify & Apple Music, and is built to easily extend to other music services.
 
-So far, user input is possible only via the command line. A browser-based GUI is under development. 
+The game consists of a game server (written in python). As frontend there is either a command line interface (written in python) or a web ui that can be used in any browser.
 
 -------
 
@@ -12,7 +12,7 @@ So far, user input is possible only via the command line. A browser-based GUI is
 
 ## 1.1 Requirements
 
-The game is implemented in python. You need
+The game server is implemented in python. To run the server you need
 
 - `Python 3.12` or higher
 - `pip` for package management
@@ -40,9 +40,10 @@ pip install .
 
 -------
 
-## 2 Connecting with Spotify
+# 2 Connecting with music services
+## 2.1 Spotify
 
-### 2.1 Requirements
+### 2.1.1 Requirements
 - A Spotify Premium account is required
 - The game must be registered in the [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard/) 
    1. Log in and create a new app
@@ -54,15 +55,9 @@ pip install .
       - Go to `Edit Settings`
       - Under `User Management`, add the Spotify accounts of users who should be allowed to play
 
-### 2.2 Setup
+### 2.1.2 Setup
 
-1.  Add your Spotify app credentials (see 2.1.) to the `.env` file in the root directory.
-
-```env
-SPOTIFY_CLIENT_ID=your-client-id
-SPOTIFY_CLIENT_SECRET=your-client-secret
-SPOTIFY_REDIRECT_URI=your-redirect-uri
-```
+1.  Rename the `.env.example` file in the root directory to `.env` and add your spotify credentials (see 2.1.).
 
 2.  In the `config.toml` set:
 
@@ -70,46 +65,52 @@ SPOTIFY_REDIRECT_URI=your-redirect-uri
 music_service = "spotify"
 ```
 
-### 2.3 Run the game
+3. Ensure the Spotify app is open on a device and a registered user (see 2.1.1) is logged in
+4. Select a playlist that should be used during the game
 
-1. Ensure the Spotify app is open on a device and a registered user (see 2.1.) is logged in
-2. Select a playlist that should be used during the game
-3. Run the game:
-```bash
-track-back
-```
-4. When prompted, authenticate with the Spotify credentials of the registered user
 
--------
+## 2.2 Apple Music
 
-## 3 Connecting with Apple Music
-
-### 3.1 Requirements
+### 2.2.1 Requirements
 - Only supported on macOS Catalina (10.15+)
 - The built-in `Music` app must be installed and running
 
-### 3.2 Setup
+### 2.2.2 Setup
 
 - In the `config.toml` set:
 
 ```toml
 music_service = "applemusic"
 ```
+- Open the Music app and select a playlist
 
-### 3.3 Run the game
-
-1. Open the Music app and select a playlist
-
-2. Run the game:
-```bash
-track-back
-```
-
-Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
+- Note: Apple Music control is only available on macOS and uses AppleScript under the hood.
 
 -------
 
-## 4 Development Setup - not necessary to run the game
+# 3 Start the game server
+
+To start the game server run
+```bash
+track-back-server
+```
+
+-------
+
+# 4 Play the game
+
+You can either play in the browser or via command line
+
+# 4.1 Web UI
+
+ToDo!
+
+# 4.2 Command line
+
+ToDo!
+
+
+## 5 Development Setup - not necessary to run the game
 
 If you are developing or testing and need to use the source code directly:
 
@@ -123,5 +124,4 @@ make test         # Runs tests
 
 ## 5 To-Dos
 
-- Implement Web-based GUI
 - Implement further music services (e.g. youtube, deezer, soundcloud)

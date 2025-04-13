@@ -1,7 +1,13 @@
 """Contains the user class."""
 
+from pydantic import BaseModel
+
 from .song import Song
 from .utils import get_user_input
+
+
+class UserRegister(BaseModel):
+    name: str
 
 
 class User:
