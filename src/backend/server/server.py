@@ -1,17 +1,17 @@
 """Entry point to start the TrackBack game server with WebSocket + REST support.
 
-Players connect via WebSocket, and REST endpoints
-are used for registration and game management.
+Players connect via WebSocket, and REST endpoints are used for registration and
+game management.
+
 """
 
 import argparse
 import json
+import logging
 import os
 import signal
-import logging
 import tomllib
 from pathlib import Path
-from typing import Optional
 
 import uvicorn
 from dotenv import load_dotenv
@@ -20,8 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User, UserRegister
-from backend.server.local_ip import get_local_ip
 from backend.music_service.factory import MusicServiceFactory
+from backend.server.local_ip import get_local_ip
 from backend.server.websocket_handler import WebSocketGameHandler
 
 
@@ -31,15 +31,14 @@ class GameContext:
     def __init__(self, target_song_count: int, music_service):
         self.target_song_count = target_song_count
         self.music_service = music_service
-        self.game: Optional[TrackBackGame] = None
+        self.game: TrackBackGame | None = None
         self.connected_users: dict[str, WebSocket] = {}
         self.registered_users: dict[str, User] = {}
-        self.first_player: Optional[User] = None
+        self.first_player: User | None = None
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
     """Load configuration values (e.g. music service provider) from TOML file."""
-
     with Path(config_path).open("rb") as f:
         return tomllib.load(f)
 
@@ -61,7 +60,6 @@ class Server:
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
-
         app = FastAPI()
 
         app.add_middleware(
@@ -84,14 +82,12 @@ class Server:
 
     async def _shutdown(self, request: Request):
         """Gracefully shut down the server process."""
-
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
         return {"message": "Server is shutting down..."}
 
     async def _register(self, user: UserRegister):
         """Register a new user for the game via REST POST."""
-
         if user.name in self.game_context.registered_users:
             return {"error": f"User '{user.name}' already registered"}
         self.game_context.registered_users[user.name] = User(name=user.name)
@@ -100,7 +96,6 @@ class Server:
 
     async def _start_game(self):
         """Start the game and notify the first player via WebSocket."""
-
         if len(self.game_context.registered_users) < 1:
             return {"error": "Not enough players to start the game."}
 
@@ -117,7 +112,9 @@ class Server:
 
         ws = self.game_context.connected_users.get(first_player.name)
         if not ws:
-            return {"error": f"{first_player.name} is not connected via WebSocket."}
+            return {
+                "error": f"{first_player.name} is not connected via WebSocket."
+            }
 
         await ws.send_text(
             json.dumps(
@@ -140,12 +137,11 @@ class Server:
 
     async def _default_ip(self):
         """Return the default server URL."""
-        # ToDo:  Could be used for frontend auto-fill?
+        # TODO:  Could be used for frontend auto-fill?
         return {"default_url": self.url}
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str):
         """Handle incoming WebSocket connection for a player."""
-
         await websocket.accept()
         ctx = websocket.app.state.ctx
         if ctx.first_player is None:
@@ -173,7 +169,6 @@ class Server:
 
 def main():
     """Command-line entry point for launching the server."""
-
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
@@ -183,7 +178,9 @@ def main():
 
     load_dotenv()
     config = load_user_config()
-    music_service = MusicServiceFactory.create_music_service(config["music_service"])
+    music_service = MusicServiceFactory.create_music_service(
+        config["music_service"]
+    )
 
     game_context = GameContext(
         target_song_count=args.target_song_count,

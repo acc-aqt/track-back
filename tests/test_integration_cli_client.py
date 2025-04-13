@@ -1,11 +1,12 @@
 import asyncio
-import threading
-import pytest
-from cli.client import CliClient
-from backend.server.server import Server, GameContext
-from backend.music_service.mock import DummyMusicService
 import time
 from multiprocessing import Process, Queue
+
+import pytest
+
+from backend.music_service.mock import DummyMusicService
+from backend.server.server import GameContext, Server
+from cli.client import CliClient
 
 
 def run_server_with_queue(port, result_queue):
@@ -40,7 +41,9 @@ async def test_single_player_game_flow(monkeypatch):
 
     result_queue = Queue()
 
-    server_process = Process(target=run_server_with_queue, args=(port, result_queue))
+    server_process = Process(
+        target=run_server_with_queue, args=(port, result_queue)
+    )
     server_process.start()
     await asyncio.sleep(2)  # Wait for server to start
 

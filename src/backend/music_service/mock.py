@@ -1,4 +1,3 @@
-
 from backend.game.song import Song
 
 from .abstract_adapter import AbstractMusicServiceAdapter

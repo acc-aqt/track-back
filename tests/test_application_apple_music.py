@@ -1,6 +1,5 @@
 """Full application/game tests for integration of Apple Music."""
 
-
 import pytest
 
 from backend.game.track_back_game import TrackBackGame
