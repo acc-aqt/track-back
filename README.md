@@ -56,13 +56,7 @@ pip install .
 
 ### 2.2 Setup
 
-1.  Add your Spotify app credentials (see 2.1.) to the `.env` file in the root directory.
-
-```env
-SPOTIFY_CLIENT_ID=your-client-id
-SPOTIFY_CLIENT_SECRET=your-client-secret
-SPOTIFY_REDIRECT_URI=your-redirect-uri
-```
+1.  Rename the `.env.example` file in the root directory to `.env` and add your spotify credentials (see 2.1.).
 
 2.  In the `config.toml` set:
 
