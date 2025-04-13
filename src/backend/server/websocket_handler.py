@@ -4,7 +4,7 @@ import signal
 
 from fastapi import WebSocket
 
-from game.user import User
+from backend.game.user import User
 
 
 class WebSocketGameHandler:

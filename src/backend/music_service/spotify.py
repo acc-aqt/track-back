@@ -6,7 +6,7 @@ import sys
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-from game.song import Song
+from backend.game.song import Song
 
 from .abstract_adapter import AbstractMusicServiceAdapter
 from .utils import extract_year

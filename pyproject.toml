@@ -18,8 +18,8 @@ version = "0.1.0"
 requires-python = ">=3.12"
 
 [project.scripts]
-track-back-server = "server:main"
-track-back-cli = "cli_client:main"
+track-back-server = "backend.server.server:main"
+track-back-cli = "cli.client:main"
 
 
 [project.optional-dependencies]

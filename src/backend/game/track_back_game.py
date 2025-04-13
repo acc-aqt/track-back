@@ -2,7 +2,7 @@
 
 from itertools import pairwise
 
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
+from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 from .song import Song
 from .user import User

@@ -18,11 +18,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from game.track_back_game import TrackBackGame
-from game.user import User, UserRegister
-from local_ip import get_local_ip
-from music_service.factory import MusicServiceFactory
-from websocket_handler import WebSocketGameHandler
+from backend.game.track_back_game import TrackBackGame
+from backend.game.user import User, UserRegister
+from backend.server.local_ip import get_local_ip
+from backend.music_service.factory import MusicServiceFactory
+from backend.server.websocket_handler import WebSocketGameHandler
 
 
 class GameContext:
