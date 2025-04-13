@@ -90,9 +90,8 @@ class CliClient:
                 continue
             if 0 <= index <= len(song_list):
                 return index
-            else:
-                print(f"⚠️ Invalid index. Please enter a number between 0 and {len(song_list)}.")
-                continue
+
+            print(f"⚠️ Invalid index. Please enter a number between 0 and {len(song_list)}.")
 
     def _print_song_list(self, song_list):
         if song_list:
