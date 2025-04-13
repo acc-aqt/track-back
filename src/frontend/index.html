@@ -42,7 +42,8 @@
     <div id="game" style="display: none">
       <div id="songList"></div>
       <div id="guess-area">
-        <label>📍 Insert index: <input id="indexInput" type="number" /></label>
+        <label for="indexInput">📍 Insert index:</label>
+        <input id="indexInput" type="number" />
         <button id="sendGuess">Send Guess</button>
       </div>
       <div id="log"></div>
@@ -109,6 +110,10 @@
               log(`🎮 It's your turn!`);
 
               const list = data.song_list || [];
+              const validRange = `(0–${list.length})`;
+              document.querySelector(
+                "label[for='indexInput']"
+              ).innerText = `📍 Enter the index of the song before which you want to insert ${validRange}:`;
               const songListHtml = list
                 .map(
                   (s, i) =>
