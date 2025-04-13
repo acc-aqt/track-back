@@ -1,105 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>TrackBack Game</title>
-  <style>
-    body { font-family: sans-serif; padding: 1rem; max-width: 600px; margin: auto; }
-    #log { white-space: pre-wrap; background: #f9f9f9; padding: 1rem; border: 1px solid #ccc; height: 300px; overflow-y: auto; margin-top: 1rem; }
-    input, button { padding: 0.5rem; font-size: 1rem; }
-    #guess-area { margin-top: 1rem; }
-  </style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TrackBack Game</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 1rem;
+        max-width: 600px;
+        margin: auto;
+      }
+      #log {
+        white-space: pre-wrap;
+        background: #f9f9f9;
+        padding: 1rem;
+        border: 1px solid #ccc;
+        height: 300px;
+        overflow-y: auto;
+        margin-top: 1rem;
+      }
+      input,
+      button {
+        padding: 0.5rem;
+        font-size: 1rem;
+      }
+      #guess-area {
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎵 TrackBack Game</h1>
+    <label
+      >Server: <input id="server" placeholder="e.g. 192.168.1.45:4200" /></label
+    ><br />
+    <label>Username: <input id="username" placeholder="e.g. Alex" /></label>
+    <button id="connectBtn">Connect</button>
 
-  <h1>🎵 TrackBack Game</h1>
-  <label>Username: <input id="username" placeholder="e.g. Alex" /></label>
-  <button id="connectBtn">Connect</button>
-
-  <div id="game" style="display: none;">
-    <div id="songList"></div>
-    <div id="currentSong"></div>
-    <div id="guess-area">
-      <label>📍 Insert index: <input id="indexInput" type="number" /></label>
-      <button id="sendGuess">Send Guess</button>
+    <div id="game" style="display: none">
+      <div id="songList"></div>
+      <div id="currentSong"></div>
+      <div id="guess-area">
+        <label>📍 Insert index: <input id="indexInput" type="number" /></label>
+        <button id="sendGuess">Send Guess</button>
+      </div>
+      <div id="log"></div>
     </div>
-    <div id="log"></div>
-  </div>
 
-  <script>
-    let socket;
-    let username;
+    <script>
+      let socket;
+      let username;
 
-    const log = (msg) => {
-      const logBox = document.getElementById("log");
-      logBox.textContent += msg + "\n";
-      logBox.scrollTop = logBox.scrollHeight;
-    };
-
-    document.getElementById("connectBtn").onclick = async () => {
-      username = document.getElementById("username").value;
-      if (!username) {
-        alert("Enter a username");
-        return;
-      }
-
-      socket = new WebSocket(`ws://localhost:4200/ws/${username}`);
-
-      socket.onopen = () => {
-        log(`🛰️ Connected as ${username}`);
-        document.getElementById("game").style.display = "block";
+      const log = (msg) => {
+        const logBox = document.getElementById("log");
+        logBox.textContent += msg + "\n";
+        logBox.scrollTop = logBox.scrollHeight;
       };
 
-      socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log("📬 Received:", data);
+      document.getElementById("connectBtn").onclick = async () => {
+        username = document.getElementById("username").value;
+        const server = document.getElementById("server").value;
 
-        const type = data.type;
-
-        if (type === "your_turn" && data.next_player === username) {
-          log(`🎮 It's your turn!`);
-
-          const list = data.song_list || [];
-          const songListHtml = list.map((s, i) =>
-            `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
-          ).join("<br>");
-          document.getElementById("songList").innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
-
-          document.getElementById("currentSong").innerText = `🎶 Current song: ${data.next_song}`;
-
-        } else if (type === "guess_result" && data.player === username) {
-          log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
-
-        } else if (type === "turn_result") {
-          log(`🪄 ${data.player} played: ${data.message}`);
-
-        } else if (type === "game_over") {
-          log(`🏁 Game Over! Winner: ${data.winner}`);
-        } else {
-          log(`📬 Unhandled message: ${JSON.stringify(data, null, 2)}`);
+        if (!username || !server) {
+          alert("Please enter both server address and username.");
+          return;
         }
+
+        const wsUrl = `ws://${server}/ws/${username}`;
+        console.log(`🌐 Connecting to ${wsUrl} as ${username}`);
+
+        try {
+          socket = new WebSocket(wsUrl);
+        } catch (err) {
+          console.error("❌ Failed to create WebSocket:", err);
+          return;
+        }
+
+        socket.onerror = (e) => {
+          console.error("🚨 WebSocket error:", e);
+          log("🚨 WebSocket connection error. Check the server address.");
+        };
+
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log("📬 Received:", data);
+
+          const type = data.type;
+
+          if (type === "your_turn" && data.next_player === username) {
+            log(`🎮 It's your turn!`);
+
+            const list = data.song_list || [];
+            const songListHtml = list
+              .map(
+                (s, i) =>
+                  `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
+              )
+              .join("<br>");
+            document.getElementById(
+              "songList"
+            ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
+
+            document.getElementById(
+              "currentSong"
+            ).innerText = `🎶 Current song: ${data.next_song}`;
+          } else if (type === "guess_result" && data.player === username) {
+            log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
+          } else if (type === "turn_result") {
+            log(`🪄 ${data.player} played: ${data.message}`);
+          } else if (type === "game_over") {
+            log(`🏁 Game Over! Winner: ${data.winner}`);
+          } else {
+            log(`📬 Unhandled message: ${JSON.stringify(data, null, 2)}`);
+          }
+        };
+
+        socket.onclose = (e) => {
+          console.warn("🔌 WebSocket closed:", e);
+          log("🔌 Connection closed.");
+        };
       };
 
-      socket.onclose = () => {
-        log("🔌 Connection closed.");
+      document.getElementById("sendGuess").onclick = () => {
+        const index = parseInt(document.getElementById("indexInput").value);
+        if (isNaN(index)) {
+          alert("Please enter a valid number.");
+          return;
+        }
+
+        socket.send(
+          JSON.stringify({
+            type: "guess",
+            index: index,
+          })
+        );
+
+        log(`📤 Sent guess at index ${index}`);
+        document.getElementById("indexInput").value = "";
       };
-    };
-
-    document.getElementById("sendGuess").onclick = () => {
-      const index = parseInt(document.getElementById("indexInput").value);
-      if (isNaN(index)) {
-        alert("Please enter a valid number.");
-        return;
-      }
-
-      socket.send(JSON.stringify({
-        type: "guess",
-        index: index
-      }));
-
-      log(`📤 Sent guess at index ${index}`);
-      document.getElementById("indexInput").value = "";
-    };
-  </script>
-</body>
+    </script>
+  </body>
 </html>
