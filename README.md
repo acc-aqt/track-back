@@ -4,7 +4,7 @@
 
 Trackback lets you play with your own playlists – currently supports Spotify & Apple Music, and is built to easily extend to other music services.
 
-So far, user input is possible only via the command line. A browser-based GUI is under development. 
+The game consists of a game server (written in python). As frontend there is either a command line interface (written in python) or a web ui that can be used in any browser.
 
 -------
 
