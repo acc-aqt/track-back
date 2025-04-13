@@ -21,9 +21,9 @@ class CliClient:
                 response = await client.post(f"{self.url}/start")
                 data = response.json()
                 if response.status_code == 200:
-                    print(f"🚀 Game started: {data}")
+                    print("🚀 Game started.")
                 else:
-                    print(f"❌ Failed to start game: {data}")
+                    print(f"❌ Failed to start game. Retrieved following data: {data}")
         except Exception as e:
             print(f"❌ Error starting game: {e}")
 
@@ -57,10 +57,7 @@ class CliClient:
             await self._handle_welcome(data)
         elif msg_type == "guess_result":
             await self._handle_guess_result(data)
-        elif (
-            msg_type == "your_turn"
-            and data.get("next_player") == self.username
-        ):
+        elif msg_type == "your_turn" and data.get("next_player") == self.username:
             await self._handle_your_turn(data, websocket)
         elif msg_type == "turn_result":
             await self._handle_turn_result(data)
@@ -121,9 +118,7 @@ class CliClient:
             try:
                 index_range = f"[0–{len(song_list)}]"
                 index = int(
-                    input(
-                        f"📍 Where do you want to insert this song? Index {index_range}: "
-                    )
+                    input(f"📍 Where do you want to insert this song? Index {index_range}: ")
                 )
             except ValueError:
                 print("⚠️ Please enter a valid number.")
@@ -131,9 +126,7 @@ class CliClient:
             if 0 <= index <= len(song_list):
                 return index
 
-            print(
-                f"⚠️ Invalid index. Please enter a number between 0 and {len(song_list)}."
-            )
+            print(f"⚠️ Invalid index. Please enter a number between 0 and {len(song_list)}.")
 
     def _print_song_list(self, song_list):
         if not song_list:
@@ -141,9 +134,7 @@ class CliClient:
 
         print("\n📻 Your current song list:")
         for i, song in enumerate(song_list):
-            print(
-                f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}"
-            )
+            print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
 
     async def _handle_turn_result(self, data: dict):
         print(f"🪄 {data['player']} made a move: {data['message']}")
@@ -158,9 +149,7 @@ async def play_on_cli(username, host, port):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="CLI client for TrackBack Game"
-    )
+    parser = argparse.ArgumentParser(description="CLI client for TrackBack Game")
     parser.add_argument(
         "--name",
         type=str,
@@ -173,9 +162,7 @@ def main():
         default="localhost",
         help="Server host (default: localhost)",
     )
-    parser.add_argument(
-        "--port", type=int, default=4200, help="Server port (default: 4200)"
-    )
+    parser.add_argument("--port", type=int, default=4200, help="Server port (default: 4200)")
 
     args = parser.parse_args()
 
