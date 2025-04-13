@@ -95,7 +95,7 @@ To start the game server run
 track-back-server
 ```
 
-- ToDo: optional arguments, -h dokumentieren
+Note: Call `track-back-server -h` to display help and information about optional arguments.
 
 -------
 
@@ -117,7 +117,7 @@ To run the command line frontend call
 track-back-cli
 ```
 
-- ToDo: optional arguments, -h dokumentieren
+Note: Call `track-back-cli -h` to display help and information about optional arguments.
 
 -------
 

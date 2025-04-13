@@ -149,7 +149,7 @@ async def play_on_cli(username, host, port):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="CLI client for TrackBack Game")
+    parser = argparse.ArgumentParser(description="Call command line client for the TrackBack game")
     parser.add_argument(
         "--name",
         type=str,

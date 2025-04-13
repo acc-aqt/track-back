@@ -170,8 +170,8 @@ def main():
     """Command-line entry point for launching the server."""
     logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--target_song_count", type=int, default=3)
+    parser = argparse.ArgumentParser(description="Start the TrackBack game server.")
+    parser.add_argument("--target_song_count", type=int, default=10)
     parser.add_argument("--port", type=int, default=4200)
     args = parser.parse_args()
 
