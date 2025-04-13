@@ -1,4 +1,8 @@
-"""Entry point to start the track-back server."""
+"""Entry point to start the TrackBack game server with WebSocket + REST support.
+
+Players connect via WebSocket, and REST endpoints
+are used for registration and game management.
+"""
 
 import argparse
 import json
@@ -22,6 +26,8 @@ from websocket_handler import WebSocketGameHandler
 
 
 class GameContext:
+    """Holds the shared game state across requests and WebSocket sessions."""
+
     def __init__(self, target_song_count: int, music_service):
         self.target_song_count = target_song_count
         self.music_service = music_service
@@ -31,11 +37,15 @@ class GameContext:
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
+    """Load configuration values (e.g. music service provider) from TOML file."""
+
     with Path(config_path).open("rb") as f:
         return tomllib.load(f)
 
 
 class Server:
+    """Encapsulates the FastAPI application, route setup, and game lifecycle management."""
+
     def __init__(self, game_context: GameContext, port: int):
         self.game_context = game_context
         self.port = port
@@ -45,9 +55,12 @@ class Server:
         logging.info(f"\n🌍 Game server running at: {self.url}\n")
 
     def run(self):
+        """Start the Uvicorn server."""
         uvicorn.run(self.app, host="0.0.0.0", port=self.port)
 
     def create_app(self) -> FastAPI:
+        """Initialize and configure the FastAPI app with middleware and routes."""
+
         app = FastAPI()
 
         app.add_middleware(
@@ -69,17 +82,23 @@ class Server:
         return app
 
     async def _shutdown(self, request: Request):
+        """Gracefully shut down the server process."""
+
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
         return {"message": "Server is shutting down..."}
 
     async def _register(self, user: UserRegister):
+        """Register a new user for the game via REST POST."""
+
         if user.name in self.game_context.registered_users:
             return {"error": f"User '{user.name}' already registered"}
         self.game_context.registered_users[user.name] = User(name=user.name)
         return {"message": f"User '{user.name}' registered successfully."}
 
     async def _start_game(self):
+        """Start the game and notify the first player via WebSocket."""
+
         if len(self.game_context.registered_users) < 1:
             return {"error": "Not enough players to start the game."}
 
@@ -120,9 +139,13 @@ class Server:
         }
 
     async def _default_ip(self):
+        """Return the default server URL."""
+        # ToDo:  Could be used for frontend auto-fill?
         return {"default_url": self.url}
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str):
+        """Handle incoming WebSocket connection for a player."""
+
         await websocket.accept()
         ctx = websocket.app.state.ctx
         handler = WebSocketGameHandler(ctx)
@@ -145,6 +168,8 @@ class Server:
 
 
 def main():
+    """Command-line entry point for launching the server."""
+
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
