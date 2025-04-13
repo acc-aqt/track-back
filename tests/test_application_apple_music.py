@@ -3,9 +3,9 @@
 
 import pytest
 
-from game.track_back_game import TrackBackGame
-from game.user import User
-from music_service.apple_music import AppleMusicAdapter
+from backend.game.track_back_game import TrackBackGame
+from backend.game.user import User
+from backend.music_service.apple_music import AppleMusicAdapter
 
 
 @pytest.mark.skipif(
