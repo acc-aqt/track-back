@@ -95,6 +95,8 @@ To start the game server run
 track-back-server
 ```
 
+- ToDo: optional arguments, -h dokumentieren
+
 -------
 
 # 4 Play the game
@@ -103,12 +105,23 @@ You can either play in the browser or via command line
 
 # 4.1 Web UI
 
-ToDo!
+
+
+Open the file `web_ui/index.html` in any web-browser. 
+Enter the server url and the user name. Then click `Connect` to register as a player. 
+As soon as a player clicks “Start Game” the game will start.
 
 # 4.2 Command line
 
-ToDo!
+To run the command line frontend call
 
+```bash
+track-back-cli
+```
+
+- ToDo: optional arguments, -h dokumentieren
+
+-------
 
 ## 5 Development Setup - not necessary to run the game
 
@@ -119,9 +132,3 @@ make setup-venv   # Sets up virtual environment (.venv/)
 make install      # Installs in develop mode
 make test         # Runs tests
 ```
-
--------
-
-## 5 To-Dos
-
-- Implement further music services (e.g. youtube, deezer, soundcloud)
