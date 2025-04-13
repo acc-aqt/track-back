@@ -94,10 +94,12 @@ class CliClient:
             print(f"⚠️ Invalid index. Please enter a number between 0 and {len(song_list)}.")
 
     def _print_song_list(self, song_list):
-        if song_list:
-            print("\n📻 Your current song list:")
-            for i, song in enumerate(song_list):
-                print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
+        if not song_list:
+            return
+
+        print("\n📻 Your current song list:")
+        for i, song in enumerate(song_list):
+            print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
 
     async def _handle_turn_result(self, data: dict):
         print(f"🪄 {data['player']} made a move: {data['message']}")
