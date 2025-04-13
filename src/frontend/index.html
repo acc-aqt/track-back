@@ -58,16 +58,31 @@
       };
 
       document.getElementById("connectBtn").onclick = async () => {
-        username = document.getElementById("username").value;
-        const server = document.getElementById("server").value;
+        const username = document.getElementById("username").value;
+        const serverInput = document
+          .getElementById("server")
+          .value.trim()
+          .replace(/\/+$/, "");
 
-        if (!username || !server) {
+        if (!username || !serverInput) {
           alert("Please enter both server address and username.");
           return;
         }
 
-        const wsUrl = `ws://${server}/ws/${username}`;
-        console.log(`🌐 Connecting to ${wsUrl} as ${username}`);
+        let urlObj;
+        try {
+          urlObj = new URL(serverInput);
+        } catch (e) {
+          alert(
+            "⚠️ Invalid server address. Please use something like http://192.168.x.x:4200"
+          );
+          return;
+        }
+
+        const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
+
+        console.log("🌐 Connecting to", wsUrl); // ✅ Now it's after declaration!
 
         try {
           socket = new WebSocket(wsUrl);
@@ -134,25 +149,26 @@
           return;
         }
       };
-
       document.getElementById("startGameBtn").onclick = async () => {
-        const server = document
+        const serverInput = document
           .getElementById("server")
           .value.trim()
           .replace(/\/+$/, "");
 
-        if (!server) {
-          alert("Please enter the server address first.");
+        let urlObj;
+        try {
+          urlObj = new URL(serverInput);
+        } catch (e) {
+          alert(
+            "⚠️ Invalid server address. Please enter a valid URL like http://192.168.x.x:4200"
+          );
           return;
         }
 
-        const startUrl = `http://${server}/start`;
+        const startUrl = `${urlObj.origin}/start`;
 
         try {
-          const res = await fetch(startUrl, {
-            method: "POST",
-          });
-
+          const res = await fetch(startUrl, { method: "POST" });
           const data = await res.json();
           console.log("🎮 Game start response:", data);
           log(`🎮 ${data.message || "Game started!"}`);
@@ -161,7 +177,6 @@
           log("❌ Failed to start the game. Check the server and try again.");
         }
       };
-
       document.getElementById("sendGuess").onclick = () => {
         const index = parseInt(document.getElementById("indexInput").value);
         if (isNaN(index)) {
