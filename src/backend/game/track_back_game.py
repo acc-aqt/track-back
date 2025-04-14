@@ -39,10 +39,6 @@ class TrackBackGame:
         """Get the current player."""
         return self.users[self.current_turn_index]
 
-    def get_current_song(self) -> Song:
-        """Get the currently playing song."""
-        return self.music_service.current_song()
-
     def handle_player_turn(
         self, username: str, insert_index: int
     ) -> dict[str, str | list[dict[str, str]]]:
@@ -54,7 +50,7 @@ class TrackBackGame:
         if player.name != username:
             return {"error": f"It is not {username}'s turn."}
 
-        current_song = self.get_current_song()
+        current_song = self.music_service.current_song()
 
         result: dict[str, str | list[dict[str, str]]]
         if self.verify_choice(player.song_list, insert_index, current_song):
@@ -92,7 +88,6 @@ class TrackBackGame:
         result["player"] = player.name
         self._advance_turn()
         self.music_service.next_track()
-        current_song = self.get_current_song()
 
         result["next_player"] = self.get_current_player().name
 

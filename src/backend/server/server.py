@@ -109,7 +109,6 @@ class Server:
         self.game_context.game.start_game()
 
         first_player = self.game_context.game.get_current_player()
-        first_song = self.game_context.game.get_current_song()
 
         ws = self.game_context.connected_users.get(first_player.name)
         if not ws:
