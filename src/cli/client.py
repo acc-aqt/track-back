@@ -3,20 +3,24 @@
 import argparse
 import asyncio
 import json
-from fastapi import WebSocket
+
 import httpx
 import websockets
+from websockets.asyncio.client import ClientConnection
 
 
 class CliClient:
     """CLI client for the TrackBack game."""
 
-    def __init__(self, username, host, port, stop_after_turns=None):
+    def __init__(
+        self, username: str, host: str, port: int, stop_after_turns: int = None
+    ):
         self.username = username
         self.uri = f"ws://{host}:{port}/ws/{username}"
         self.url = f"http://{host}:{port}"
         self.turn_counter = 0
         self.stop_after_turns = stop_after_turns
+        self.websocket: ClientConnection | None = None
 
     async def start_game(self) -> None:
         """Send a POST request to the server to start the game."""
@@ -35,7 +39,8 @@ class CliClient:
         """Run the CLI client."""
         try:
             async with websockets.connect(self.uri) as websocket:
-                await self._handle_messages(websocket)
+                self.websocket = websocket
+                await self._handle_messages()
 
         except OSError as e:
             print(f"🚨 Failed to connect to server at {self.uri}: {e}")
@@ -43,9 +48,9 @@ class CliClient:
             if retry.lower() == "y":
                 await self.run()
 
-    async def _handle_messages(self, websocket: WebSocket) -> None:
+    async def _handle_messages(self) -> None:
         while True:
-            data = await self._receive_json(websocket)
+            data = await self._receive_json()
             if not data:
                 break
 
@@ -54,16 +59,16 @@ class CliClient:
                 print(f"⚠️ Malformed message:\n{data}")
                 continue
 
-            await self._dispatch_message(msg_type, data, websocket)
+            await self._dispatch_message(msg_type, data)
 
-    async def _dispatch_message(self, msg_type: str, data: dict, websocket: WebSocket) -> None:
+    async def _dispatch_message(self, msg_type: str, data: dict[str, str]) -> None:
         """Dispatch incoming messages to the appropriate handler."""
         if msg_type == "welcome":
             await self._handle_welcome(data)
         elif msg_type == "guess_result":
             await self._handle_guess_result(data)
         elif msg_type == "your_turn" and data.get("next_player") == self.username:
-            await self._handle_your_turn(data, websocket)
+            await self._handle_your_turn(data)
         elif msg_type == "turn_result":
             await self._handle_turn_result(data)
         elif msg_type == "game_over":
@@ -71,10 +76,10 @@ class CliClient:
         else:
             print(f"\n📬 Unhandled message:\n{json.dumps(data, indent=2)}")
 
-    async def _receive_json(self, websocket: WebSocket) -> dict:
+    async def _receive_json(self) -> dict[str, str]:
         """Receive and parse a JSON message from the server."""
         try:
-            message = await websocket.recv()
+            message = await self.websocket.recv()
             return json.loads(message)
         except websockets.exceptions.ConnectionClosed:
             print("🔌 Connection to server closed. Goodbye!")
@@ -83,11 +88,11 @@ class CliClient:
             print("⚠️ Received invalid JSON.")
             return {}
 
-    async def _handle_welcome(self, data: dict) -> None:
+    async def _handle_welcome(self, data: dict[str, str]) -> None:
         print(f"👋 {data['message']}")
         await self._start_game_by_user_input(data)
 
-    async def _start_game_by_user_input(self, data: dict) -> None:
+    async def _start_game_by_user_input(self, data: dict[str, str]) -> None:
         if data.get("first_player"):
             choice = input("🎮 Start game now? (y/n): ").lower()
             if choice == "y":
@@ -97,11 +102,11 @@ class CliClient:
         else:
             print("🕐 Waiting for game to start...")
 
-    async def _handle_guess_result(self, data: dict) -> None:
+    async def _handle_guess_result(self, data: dict[str, str]) -> None:
         if data.get("player") == self.username:
             print(f"🎯 Result: {data['result']} — {data['message']}")
 
-    async def _handle_your_turn(self, data: dict, websocket: WebSocket) -> None:
+    async def _handle_your_turn(self, data: dict[str, str]) -> None:
         print(f"\n🎮 It's your turn, {self.username}!")
 
         song_list = data.get("song_list", [])
@@ -110,13 +115,13 @@ class CliClient:
         index = self._get_valid_index(song_list)
 
         guess = {"type": "guess", "index": index}
-        await websocket.send(json.dumps(guess))
+        await self.websocket.send(json.dumps(guess))
         # ✅ After sending a guess, increase turn counter
         if self.stop_after_turns is not None:
             self.turn_counter += 1
             if self.turn_counter >= self.stop_after_turns:
                 print("✅ Max turns reached, exiting.")
-                await websocket.close()
+                await self.websocket.close()
 
     def _get_valid_index(self, song_list) -> int:
         while True:
@@ -150,20 +155,20 @@ class CliClient:
                 f"| '{song['title']}' by {song['artist']}"
             )
 
-    async def _handle_turn_result(self, data: dict) -> None:
+    async def _handle_turn_result(self, data: dict[str, str]) -> None:
         print(f"🪄 {data['player']} made a move: {data['message']}")
 
-    async def _handle_game_over(self, data: dict) -> None:
+    async def _handle_game_over(self, data: dict[str, str]) -> None:
         print(f"🏁 Game Over! Winner: {data['winner']}")
 
 
-async def play_on_cli(username, host, port):
+async def play_on_cli(username: str, host: str, port: int) -> None:
     """Run the CLI client."""
     client = CliClient(username, host, port)
     await client.run()
 
 
-def main():
+def main() -> None:
     """Parse command line arguments and start the client."""
     parser = argparse.ArgumentParser(
         description="Call command line client for the TrackBack game"
