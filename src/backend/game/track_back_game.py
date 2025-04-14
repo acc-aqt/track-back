@@ -55,54 +55,46 @@ class TrackBackGame:
             return {"error": f"It is not {username}'s turn."}
 
         current_song = self.get_current_song()
-        print(
-            f"Current song (bfore verify): {current_song.title} ({current_song.release_year})"
-        )
 
+        result: dict[str, str | list[dict[str, str]]]
         if self.verify_choice(player.song_list, insert_index, current_song):
             player.add_song(insert_index, current_song)
-            print(f"Added song to {player.name} list")
             player.print_song_list()
-            print(
-                f"serialized song list: {self._serialize_song_list(player.song_list)}"
-            )
+
             result = {
                 "result": "correct",
                 "message": (
-                    f"✅ Correct! Song was {current_song.title} ({current_song.release_year})"
+                    "✅ Correct! Song was "
+                    "{current_song.title} ({current_song.release_year})"
                 ),
             }
         else:
             result = {
                 "result": "wrong",
-                "message": f"❌ Wrong! Song was {current_song.title} ({current_song.release_year})",
+                "message": (
+                    "❌ Wrong! Song was "
+                    "{current_song.title} ({current_song.release_year})"
+                ),
             }
+
         result["round_counter"] = str(self.round_counter)
         result["current_turn_index"] = str(self.current_turn_index)
+        result["song_list"] = self._serialize_song_list(player.song_list)
+
         if len(player.song_list) >= self.target_song_count:
             self.running = False
             self.winner = player
             result["game_over"] = str(True)
             result["winner"] = player.name
-            result["song_list"] = self._serialize_song_list(player.song_list)
             return result
-
-        result["song_list"] = self._serialize_song_list(player.song_list)
 
         # Freeze current player before advancing
         result["player"] = player.name
-
         self._advance_turn()
         self.music_service.next_track()
         current_song = self.get_current_song()
-        print(
-            f"Current song (after verify): {current_song.title} ({current_song.release_year})"
-        )
 
         result["next_player"] = self.get_current_player().name
-        result["next_song"] = (
-            f"{self.get_current_song().title} - {self.get_current_song().release_year}"
-        )
 
         return result
 

@@ -121,7 +121,6 @@ class Server:
                     "type": "your_turn",
                     "message": "🎮 It's your turn!",
                     "next_player": first_player.name,
-                    "next_song": first_song.title,
                     "song_list": self.game_context.game._serialize_song_list(
                         first_player.song_list
                     ),

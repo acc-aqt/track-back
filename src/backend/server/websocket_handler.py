@@ -34,14 +34,10 @@ class WebSocketGameHandler:
             )
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(
-        self, websocket: WebSocket, username: str, index: int
-    ):
+    async def handle_guess(self, websocket: WebSocket, username: str, index: int):
         if self.ctx.game is None:
             await websocket.send_text(
-                json.dumps(
-                    {"type": "error", "message": "⚠️ Game has not started yet."}
-                )
+                json.dumps({"type": "error", "message": "⚠️ Game has not started yet."})
             )
             return
 
@@ -67,14 +63,10 @@ class WebSocketGameHandler:
             return
 
         # 🔄 Notify others
-        await self.broadcast_turn_result(
-            current_player=username, result=result
-        )
+        await self.broadcast_turn_result(current_player=username, result=result)
 
         # 🎮 Tell next player
-        await self.notify_next_player(
-            next_player=result["next_player"], next_song=result["next_song"]
-        )
+        await self.notify_next_player(next_player=result["next_player"])
 
     async def broadcast_turn_result(self, current_player: str, result: dict):
         for name, ws in self.ctx.connected_users.items():
@@ -91,7 +83,7 @@ class WebSocketGameHandler:
                     )
                 )
 
-    async def notify_next_player(self, next_player: str, next_song: str):
+    async def notify_next_player(self, next_player: str):
         if next_player in self.ctx.connected_users:
             next_ws = self.ctx.connected_users[next_player]
             player = self.ctx.registered_users[next_player]
@@ -100,10 +92,7 @@ class WebSocketGameHandler:
                     {
                         "type": "your_turn",
                         "next_player": next_player,
-                        "next_song": next_song,
-                        "song_list": self.ctx.game._serialize_song_list(
-                            player.song_list
-                        ),
+                        "song_list": self.ctx.game._serialize_song_list(player.song_list),
                     }
                 )
             )
