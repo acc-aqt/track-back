@@ -1,6 +1,5 @@
 """Contains the user class."""
 
-
 from .song import Song
 from .utils import get_user_input
 
