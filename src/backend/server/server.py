@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.game.track_back_game import TrackBackGame
-from backend.game.user import User, UserRegister
+from backend.game.user import User
 from backend.music_service.factory import MusicServiceFactory
 from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from backend.server.local_ip import get_local_ip
@@ -87,7 +87,7 @@ class Server:
         os.kill(os.getpid(), signal.SIGINT)
         return {"message": "Server is shutting down..."}
 
-    async def _register(self, user: UserRegister):
+    async def _register(self, user: str):
         """Register a new user for the game via REST POST."""
         if user.name in self.game_context.registered_users:
             return {"error": f"User '{user.name}' already registered"}

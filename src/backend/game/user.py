@@ -6,11 +6,6 @@ from .song import Song
 from .utils import get_user_input
 
 
-class UserRegister(BaseModel):
-    """Represents a user with a name."""
-
-    name: str
-
 
 class User:
     """Represents a user with a name and a list of songs."""
