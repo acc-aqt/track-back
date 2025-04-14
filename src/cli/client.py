@@ -3,7 +3,7 @@
 import argparse
 import asyncio
 import json
-from typing import Any
+from typing import Any, cast
 
 import httpx
 import websockets
@@ -89,7 +89,7 @@ class CliClient:
 
         try:
             message = await self.websocket.recv()
-            return json.loads(message)
+            return cast(dict[str, Any], json.loads(message))
         except websockets.exceptions.ConnectionClosed:
             print("🔌 Connection to server closed. Goodbye!")
             return {}
