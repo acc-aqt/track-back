@@ -14,3 +14,11 @@ class Song:
     def __str__(self) -> str:
         """Return a string representation of the song's metadata."""
         return f"'{self.title}' by {self.artist} ({self.release_year})"
+
+    def serialize(self) -> dict[str, str]:
+        """Serialize the song to a dictionary."""
+        return {
+            "title": self.title,
+            "artist": self.artist,
+            "release_year": str(self.release_year),
+        }

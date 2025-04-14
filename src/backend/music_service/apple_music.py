@@ -46,8 +46,8 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
             check=False,
         )
         try:
-            track_name, artist_name, release_year = (
-                result.stdout.strip().split(separator)
+            track_name, artist_name, release_year = result.stdout.strip().split(
+                separator
             )
         except ValueError as err:
             raise RuntimeError(
@@ -55,9 +55,7 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
                 f"Output was '{result.stdout}'. Check if a song is playing!"
             ) from err
 
-        return Song(
-            title=track_name, artist=artist_name, release_year=release_year
-        )
+        return Song(title=track_name, artist=artist_name, release_year=release_year)
 
     def start_playback(self) -> None:
         """Start playing music."""
@@ -100,7 +98,9 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
     @staticmethod
     def music_app_is_running() -> bool:
         """Return True if the Music app is running."""
-        script = 'tell application "System Events" to (name of processes) contains "Music"'
+        script = (
+            'tell application "System Events" to (name of processes) contains "Music"'
+        )
         result = subprocess.run(  # noqa: S603
             [OSA_SCRIPT_PATH, "-e", script],
             capture_output=True,

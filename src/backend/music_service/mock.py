@@ -17,9 +17,7 @@ class DummyMusicService(AbstractMusicServiceAdapter):
                 artist="Nirvana",
                 release_year=1991,
             ),
-            Song(
-                title="Rolling in the Deep", artist="Adele", release_year=2010
-            ),
+            Song(title="Rolling in the Deep", artist="Adele", release_year=2010),
             Song(title="Bad Guy", artist="Billie Eilish", release_year=2019),
             Song(
                 title="Drivers License",

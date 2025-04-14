@@ -1,7 +1,7 @@
 """Entry point to start the TrackBack game server with WebSocket + REST support.
 
-Players connect via WebSocket, and REST endpoints are used for registration and
-game management.
+Players connect via WebSocket, and REST endpoints are used for registration and game
+management.
 
 """
 
@@ -21,12 +21,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User
 from backend.music_service.factory import MusicServiceFactory
-from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from backend.server.local_ip import get_local_ip
 from backend.server.websocket_handler import WebSocketGameHandler
+
 from .game_context import GameContext
-
-
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
@@ -111,9 +109,7 @@ class Server:
                     "type": "your_turn",
                     "message": "🎮 It's your turn!",
                     "next_player": first_player.name,
-                    "song_list": self.game_context.game._serialize_song_list(
-                        first_player.song_list
-                    ),
+                    "song_list": [song.serialize() for song in first_player.song_list],
                 }
             )
         )

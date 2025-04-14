@@ -1,10 +1,8 @@
 """Contains the user class."""
 
-from pydantic import BaseModel
 
 from .song import Song
 from .utils import get_user_input
-
 
 
 class User:
@@ -18,10 +16,7 @@ class User:
     def print_song_list(self) -> None:
         """Print the song list of the user."""
         for index, song in enumerate(self.song_list):
-            print(
-                f"{index} : "
-                f"{song.release_year} | '{song.title}' by {song.artist}"
-            )
+            print(f"{index} : {song.release_year} | '{song.title}' by {song.artist}")
 
     def add_song(self, index: int, song: Song) -> None:
         """Add a song to the song_list of the user."""
@@ -49,8 +44,7 @@ def get_users() -> list[User]:
     users: list[User] = []
     while True:
         user_name = get_user_input(
-            f"Enter the name of user #{len(users) + 1} "
-            "(if empty, continue to play): "
+            f"Enter the name of user #{len(users) + 1} (if empty, continue to play): "
         )
         if user_name.strip() == "":
             break

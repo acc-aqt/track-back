@@ -75,7 +75,7 @@ class TrackBackGame:
 
         result["round_counter"] = str(self.round_counter)
         result["current_turn_index"] = str(self.current_turn_index)
-        result["song_list"] = self._serialize_song_list(player.song_list)
+        result["song_list"] = [song.serialize() for song in player.song_list]
 
         if len(player.song_list) >= self.target_song_count:
             self.running = False
@@ -95,23 +95,15 @@ class TrackBackGame:
 
     def _advance_turn(self) -> None:
         self.round_counter += 1
-        self.current_turn_index = (self.current_turn_index + 1) % len(
-            self.users
-        )
+        self.current_turn_index = (self.current_turn_index + 1) % len(self.users)
 
     @staticmethod
-    def verify_choice(
-        song_list: list[Song], index: int, selected_song: Song
-    ) -> bool:
+    def verify_choice(song_list: list[Song], index: int, selected_song: Song) -> bool:
         """Return True if the new song list would be sorted by release year."""
         potential_list = song_list.copy()
         potential_list.insert(index, selected_song)
 
         return TrackBackGame._is_sorted_by_release_year(potential_list)
-
-    @staticmethod
-    def _serialize_song_list(song_list: list[Song]) -> list[dict[str, str]]:
-        return [TrackBackGame._serialize_song(song) for song in song_list]
 
     @staticmethod
     def _serialize_song(song: Song) -> dict[str, str]:

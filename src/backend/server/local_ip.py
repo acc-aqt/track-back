@@ -16,9 +16,7 @@ def get_local_ip() -> str:
     local_ipv4 = ""
     operating_system_kind = platform.system()
     if operating_system_kind == "Darwin":  # macOS
-        local_ipv4 = _run_shell_command(
-            "ipconfig getifaddr en0", True
-        ).stdout.strip()
+        local_ipv4 = _run_shell_command("ipconfig getifaddr en0", True).stdout.strip()
     elif operating_system_kind == "Windows":
         for line in _run_shell_command(
             'netsh ip show address | findstr "IP Address"', True

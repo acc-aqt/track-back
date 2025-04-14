@@ -28,9 +28,7 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         )
         release_year = extract_year(playback["item"]["album"]["release_date"])
 
-        return Song(
-            title=song_name, artist=artist_names, release_year=release_year
-        )
+        return Song(title=song_name, artist=artist_names, release_year=release_year)
 
     def start_playback(self) -> None:
         """Start playing music."""
@@ -41,9 +39,7 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             try:
                 self.session.next_track()
             except spotipy.exceptions.SpotifyException:
-                print(
-                    "Could not start playback. Please start a song manually."
-                )
+                print("Could not start playback. Please start a song manually.")
                 sys.exit(1)
 
     def next_track(self) -> None:

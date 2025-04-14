@@ -37,23 +37,27 @@ lint = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 
 [tool.isort]
 profile = "black"
-line_length = 79
+line_length = 88
  
 [tool.black]
-line-length = 79
+line-length = 88
 preview = true
 target-version = ["py312"]
  
 [tool.ruff]
-line-length = 79
+line-length = 88
 fix = true
 target-version = "py312"
+
+[tool.pylint.format]
+max-line-length = 79
  
 [tool.ruff.format]
 docstring-code-format = true
@@ -111,7 +115,7 @@ notes = '''''' # disables listing of todos
 [tool.pylint."MESSAGES CONTROL"]
 disable = [
   "too-few-public-methods"] 
-max-line-length = 79
+max-line-length = 88
  
 [tool.mypy]
 strict = true
