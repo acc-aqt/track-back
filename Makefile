@@ -36,22 +36,25 @@ install:          ## Install the project in dev mode.
 	@echo "Don't forget to run 'make setup-venv' if you got errors."
 	$(ENV_PREFIX)pip install -e .[test]
 
+
 .PHONY: lint
-lint:             ## Run linters
-	@echo "Running isort..."
-	$(ENV_PREFIX)isort .
-	@echo "Running docstrfmt..."
-	$(ENV_PREFIX)docstrfmt .
-	@echo "Running black..."
-	$(ENV_PREFIX)black .
-	@echo "Running ruff format..."
-	$(ENV_PREFIX)ruff format .
-	@echo "Running ruff check..."
-	$(ENV_PREFIX)ruff check .
-	@echo "Running mypy..."
-	$(ENV_PREFIX)mypy .
-	@echo "Running pylint..."
-	$(ENV_PREFIX)pylint src/ tests/
+lint: ## Run linters (optionally specify PATH=<path>)
+	@PATH_TO_LINT=$(PATH); \
+	if [ -z "$$PATH_TO_LINT" ]; then PATH_TO_LINT=.; fi; \
+	echo "Running isort..."; \
+	$(ENV_PREFIX)isort $$PATH_TO_LINT; \
+	echo "Running docstrfmt..."; \
+	$(ENV_PREFIX)docstrfmt $$PATH_TO_LINT; \
+	echo "Running black..."; \
+	$(ENV_PREFIX)black $$PATH_TO_LINT; \
+	echo "Running ruff format..."; \
+	$(ENV_PREFIX)ruff format $$PATH_TO_LINT; \
+	echo "Running ruff check..."; \
+	$(ENV_PREFIX)ruff check $$PATH_TO_LINT; \
+	echo "Running mypy..."; \
+	$(ENV_PREFIX)mypy $$PATH_TO_LINT; \
+	echo "Running pylint..."; \
+	$(ENV_PREFIX)pylint $$PATH_TO_LINT
 
 .PHONY: test
 test:

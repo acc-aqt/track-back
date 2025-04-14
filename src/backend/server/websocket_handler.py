@@ -45,7 +45,7 @@ class WebSocketGameHandler:
             )
             return
 
-        result = self.ctx.game.process_turn(username, index)
+        result = self.ctx.game.handle_player_turn(username, index)
 
         # 🎯 Send result to the player who guessed
         await websocket.send_text(

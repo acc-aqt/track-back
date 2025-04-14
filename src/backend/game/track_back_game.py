@@ -30,17 +30,23 @@ class TrackBackGame:
         self.current_turn_index = 0
         self.running = False
 
-    def start_game(self):
+    def start_game(self) -> None:
+        """Start the game."""
         self.round_counter = 1
         self.running = True
 
     def get_current_player(self) -> User:
+        """Get the current player."""
         return self.users[self.current_turn_index]
 
     def get_current_song(self) -> Song:
+        """Get the currently playing song."""
         return self.music_service.current_song()
 
-    def process_turn(self, username: str, insert_index: int) -> dict:
+    def handle_player_turn(
+        self, username: str, insert_index: int
+    ) -> dict[str, str | list[dict[str, str]]]:
+        """Handle a player's turn."""
         if not self.running:
             return {"error": "Game not running."}
 
@@ -62,19 +68,21 @@ class TrackBackGame:
             )
             result = {
                 "result": "correct",
-                "message": f"✅ Correct! Song was {current_song.title} ({current_song.release_year})",
+                "message": (
+                    f"✅ Correct! Song was {current_song.title} ({current_song.release_year})"
+                ),
             }
         else:
             result = {
                 "result": "wrong",
                 "message": f"❌ Wrong! Song was {current_song.title} ({current_song.release_year})",
             }
-        result["round_counter"] = self.round_counter
-        result["current_turn_index"] = self.current_turn_index
+        result["round_counter"] = str(self.round_counter)
+        result["current_turn_index"] = str(self.current_turn_index)
         if len(player.song_list) >= self.target_song_count:
             self.running = False
             self.winner = player
-            result["game_over"] = True
+            result["game_over"] = str(True)
             result["winner"] = player.name
             result["song_list"] = self._serialize_song_list(player.song_list)
             return result
@@ -98,7 +106,7 @@ class TrackBackGame:
 
         return result
 
-    def _advance_turn(self):
+    def _advance_turn(self) -> None:
         self.round_counter += 1
         self.current_turn_index = (self.current_turn_index + 1) % len(
             self.users
@@ -115,15 +123,15 @@ class TrackBackGame:
         return TrackBackGame._is_sorted_by_release_year(potential_list)
 
     @staticmethod
-    def _serialize_song_list(song_list: list[Song]) -> list[dict]:
+    def _serialize_song_list(song_list: list[Song]) -> list[dict[str, str]]:
         return [TrackBackGame._serialize_song(song) for song in song_list]
 
     @staticmethod
-    def _serialize_song(song: Song) -> dict:
+    def _serialize_song(song: Song) -> dict[str, str]:
         return {
             "title": song.title,
             "artist": song.artist,
-            "release_year": song.release_year,
+            "release_year": str(song.release_year),
         }
 
     @staticmethod
@@ -134,4 +142,5 @@ class TrackBackGame:
         )
 
     def is_game_over(self) -> bool:
+        """Return True if the game is over."""
         return not self.running
