@@ -68,11 +68,15 @@ class WebSocketGameHandler:
 
         if result.get("game_over"):
             await self._broadcast_game_over(result["winner"])
-            os.kill(os.getpid(), signal.SIGINT)
+            self.terminate_process()
             return
         await self._broadcast_turn_result(current_player=username, result=result)
 
-        await self._notify_next_player(next_player=result["next_player"])
+        await self._notify_next_player(user_name=result["next_player"])
+
+    def terminate_process(self) -> None:
+        """Terminate the process gracefully."""
+        os.kill(os.getpid(), signal.SIGINT)
 
     async def _broadcast_turn_result(
         self, current_player: str, result: dict[str, str]
@@ -91,20 +95,33 @@ class WebSocketGameHandler:
                     )
                 )
 
-    async def _notify_next_player(self, next_player: str) -> None:
-        if next_player in self.ctx.connected_users:
-            next_ws = self.ctx.connected_users[next_player]
-            player = self.ctx.registered_users[next_player]
-            serialized_song_list = [song.serialize() for song in player.song_list]
-            await next_ws.send_text(
-                json.dumps(
-                    {
-                        "type": "your_turn",
-                        "next_player": next_player,
-                        "song_list": serialized_song_list,
-                    }
+    async def _notify_next_player(self, user_name: str) -> None:
+        if user_name not in self.ctx.connected_users:
+            for ws in self.ctx.connected_users.values():
+                await ws.send_text(
+                    json.dumps(
+                        {
+                            "type": "error",
+                            "message": "Player {user_name} has disconnected.",
+                        }
+                    )
                 )
+            print("💥 Game over, shutting down server...")
+            self.terminate_process()
+            return
+
+        next_ws = self.ctx.connected_users[user_name]
+        player = self.ctx.registered_users[user_name]
+        serialized_song_list = [song.serialize() for song in player.song_list]
+        await next_ws.send_text(
+            json.dumps(
+                {
+                    "type": "your_turn",
+                    "next_player": user_name,
+                    "song_list": serialized_song_list,
+                }
             )
+        )
 
     async def _broadcast_game_over(self, winner: str) -> None:
         for ws in self.ctx.connected_users.values():
