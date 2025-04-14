@@ -3,18 +3,23 @@
 import argparse
 import asyncio
 import json
+from typing import Any
 
 import httpx
 import websockets
 from websockets.asyncio.client import ClientConnection
+
+from backend.game.song import Song, deserialize_song
+
+HTTP_OK = 200
 
 
 class CliClient:
     """CLI client for the TrackBack game."""
 
     def __init__(
-        self, username: str, host: str, port: int, stop_after_turns: int = None
-    ):
+        self, username: str, host: str, port: int, stop_after_turns: int | None = None
+    ) -> None:
         self.username = username
         self.uri = f"ws://{host}:{port}/ws/{username}"
         self.url = f"http://{host}:{port}"
@@ -28,7 +33,7 @@ class CliClient:
             async with httpx.AsyncClient() as client:
                 response = await client.post(f"{self.url}/start")
                 data = response.json()
-                if response.status_code == 200:
+                if response.status_code == HTTP_OK:
                     print("🚀 Game started.")
                 else:
                     print(f"❌ Failed to start game. Retrieved following data: {data}")
@@ -76,9 +81,10 @@ class CliClient:
         else:
             print(f"\n📬 Unhandled message:\n{json.dumps(data, indent=2)}")
 
-    async def _receive_json(self) -> dict[str, str]:
+    async def _receive_json(self) -> dict[str, str] | dict[Any, Any]:
         """Receive and parse a JSON message from the server."""
         try:
+            assert self.websocket is not None
             message = await self.websocket.recv()
             return json.loads(message)
         except websockets.exceptions.ConnectionClosed:
@@ -109,10 +115,10 @@ class CliClient:
     async def _handle_your_turn(self, data: dict[str, str]) -> None:
         print(f"\n🎮 It's your turn, {self.username}!")
 
-        song_list = data.get("song_list", [])
+        song_list = [deserialize_song(song) for song in data.get("song_list", [])]
         self._print_song_list(song_list)
 
-        index = self._get_valid_index(song_list)
+        index = self._get_valid_index(max_index=len(song_list))
 
         guess = {"type": "guess", "index": index}
         await self.websocket.send(json.dumps(guess))
@@ -123,10 +129,10 @@ class CliClient:
                 print("✅ Max turns reached, exiting.")
                 await self.websocket.close()
 
-    def _get_valid_index(self, song_list) -> int:
+    def _get_valid_index(self, max_index: int) -> int:
         while True:
             try:
-                index_range = f"[0–{len(song_list)}]"
+                index_range = f"[0-{max_index}]"
                 index = int(
                     input(
                         "📍 Where do you want to insert this song?"
@@ -136,24 +142,18 @@ class CliClient:
             except ValueError:
                 print("⚠️ Please enter a valid number.")
                 continue
-            if 0 <= index <= len(song_list):
+            if 0 <= index <= max_index:
                 return index
 
-            print(
-                "⚠️ Invalid index. "
-                f"Please enter a number between 0 and {len(song_list)}."
-            )
+            print(f"⚠️ Invalid index. Please enter a number between 0 and {max_index}.")
 
-    def _print_song_list(self, song_list) -> None:
+    def _print_song_list(self, song_list: list[Song]) -> None:
         if not song_list:
             return
 
         print("\n📻 Your current song list:")
         for i, song in enumerate(song_list):
-            print(
-                f"  [{i}] {song['release_year']} "
-                f"| '{song['title']}' by {song['artist']}"
-            )
+            print(f"  [{i}] {song.release_year} | '{song.title}' by {song.artist}")
 
     async def _handle_turn_result(self, data: dict[str, str]) -> None:
         print(f"🪄 {data['player']} made a move: {data['message']}")
@@ -198,4 +198,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    # asyncio.run(main())
