@@ -1,12 +1,16 @@
+"""Command line client for the TrackBack game."""
+
 import argparse
 import asyncio
 import json
-
+from fastapi import WebSocket
 import httpx
 import websockets
 
 
 class CliClient:
+    """CLI client for the TrackBack game."""
+
     def __init__(self, username, host, port, stop_after_turns=None):
         self.username = username
         self.uri = f"ws://{host}:{port}/ws/{username}"
@@ -14,7 +18,7 @@ class CliClient:
         self.turn_counter = 0
         self.stop_after_turns = stop_after_turns
 
-    async def start_game(self):
+    async def start_game(self) -> None:
         """Send a POST request to the server to start the game."""
         try:
             async with httpx.AsyncClient() as client:
@@ -24,10 +28,11 @@ class CliClient:
                     print("🚀 Game started.")
                 else:
                     print(f"❌ Failed to start game. Retrieved following data: {data}")
-        except Exception as e:
+        except httpx.RequestError as e:
             print(f"❌ Error starting game: {e}")
 
-    async def run(self):
+    async def run(self) -> None:
+        """Run the CLI client."""
         try:
             async with websockets.connect(self.uri) as websocket:
                 await self._handle_messages(websocket)
@@ -38,7 +43,7 @@ class CliClient:
             if retry.lower() == "y":
                 await self.run()
 
-    async def _handle_messages(self, websocket):
+    async def _handle_messages(self, websocket: WebSocket) -> None:
         while True:
             data = await self._receive_json(websocket)
             if not data:
@@ -51,7 +56,7 @@ class CliClient:
 
             await self._dispatch_message(msg_type, data, websocket)
 
-    async def _dispatch_message(self, msg_type: str, data: dict, websocket):
+    async def _dispatch_message(self, msg_type: str, data: dict, websocket: WebSocket) -> None:
         """Dispatch incoming messages to the appropriate handler."""
         if msg_type == "welcome":
             await self._handle_welcome(data)
@@ -66,23 +71,23 @@ class CliClient:
         else:
             print(f"\n📬 Unhandled message:\n{json.dumps(data, indent=2)}")
 
-    async def _receive_json(self, websocket) -> dict | None:
+    async def _receive_json(self, websocket: WebSocket) -> dict:
         """Receive and parse a JSON message from the server."""
         try:
             message = await websocket.recv()
             return json.loads(message)
         except websockets.exceptions.ConnectionClosed:
             print("🔌 Connection to server closed. Goodbye!")
-            return None
+            return {}
         except json.JSONDecodeError:
             print("⚠️ Received invalid JSON.")
             return {}
 
-    async def _handle_welcome(self, data: dict):
+    async def _handle_welcome(self, data: dict) -> None:
         print(f"👋 {data['message']}")
         await self._start_game_by_user_input(data)
 
-    async def _start_game_by_user_input(self, data):
+    async def _start_game_by_user_input(self, data: dict) -> None:
         if data.get("first_player"):
             choice = input("🎮 Start game now? (y/n): ").lower()
             if choice == "y":
@@ -92,11 +97,11 @@ class CliClient:
         else:
             print("🕐 Waiting for game to start...")
 
-    async def _handle_guess_result(self, data: dict):
+    async def _handle_guess_result(self, data: dict) -> None:
         if data.get("player") == self.username:
             print(f"🎯 Result: {data['result']} — {data['message']}")
 
-    async def _handle_your_turn(self, data: dict, websocket):
+    async def _handle_your_turn(self, data: dict, websocket: WebSocket) -> None:
         print(f"\n🎮 It's your turn, {self.username}!")
 
         song_list = data.get("song_list", [])
@@ -113,12 +118,15 @@ class CliClient:
                 print("✅ Max turns reached, exiting.")
                 await websocket.close()
 
-    def _get_valid_index(self, song_list):
+    def _get_valid_index(self, song_list) -> int:
         while True:
             try:
                 index_range = f"[0–{len(song_list)}]"
                 index = int(
-                    input(f"📍 Where do you want to insert this song? Index {index_range}: ")
+                    input(
+                        "📍 Where do you want to insert this song?"
+                        f"Index {index_range}: "
+                    )
                 )
             except ValueError:
                 print("⚠️ Please enter a valid number.")
@@ -126,30 +134,40 @@ class CliClient:
             if 0 <= index <= len(song_list):
                 return index
 
-            print(f"⚠️ Invalid index. Please enter a number between 0 and {len(song_list)}.")
+            print(
+                "⚠️ Invalid index. "
+                f"Please enter a number between 0 and {len(song_list)}."
+            )
 
-    def _print_song_list(self, song_list):
+    def _print_song_list(self, song_list) -> None:
         if not song_list:
             return
 
         print("\n📻 Your current song list:")
         for i, song in enumerate(song_list):
-            print(f"  [{i}] {song['release_year']} | '{song['title']}' by {song['artist']}")
+            print(
+                f"  [{i}] {song['release_year']} "
+                f"| '{song['title']}' by {song['artist']}"
+            )
 
-    async def _handle_turn_result(self, data: dict):
+    async def _handle_turn_result(self, data: dict) -> None:
         print(f"🪄 {data['player']} made a move: {data['message']}")
 
-    async def _handle_game_over(self, data: dict):
+    async def _handle_game_over(self, data: dict) -> None:
         print(f"🏁 Game Over! Winner: {data['winner']}")
 
 
 async def play_on_cli(username, host, port):
+    """Run the CLI client."""
     client = CliClient(username, host, port)
     await client.run()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Call command line client for the TrackBack game")
+    """Parse command line arguments and start the client."""
+    parser = argparse.ArgumentParser(
+        description="Call command line client for the TrackBack game"
+    )
     parser.add_argument(
         "--name",
         type=str,
@@ -162,7 +180,9 @@ def main():
         default="localhost",
         help="Server host (default: localhost)",
     )
-    parser.add_argument("--port", type=int, default=4200, help="Server port (default: 4200)")
+    parser.add_argument(
+        "--port", type=int, default=4200, help="Server port (default: 4200)"
+    )
 
     args = parser.parse_args()
 
