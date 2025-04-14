@@ -61,7 +61,7 @@ class TrackBackGame:
                 "result": "correct",
                 "message": (
                     "✅ Correct! Song was "
-                    "{current_song.title} ({current_song.release_year})"
+                    f"{current_song.title} ({current_song.release_year})"
                 ),
             }
         else:
@@ -69,7 +69,7 @@ class TrackBackGame:
                 "result": "wrong",
                 "message": (
                     "❌ Wrong! Song was "
-                    "{current_song.title} ({current_song.release_year})"
+                    f"{current_song.title} ({current_song.release_year})"
                 ),
             }
 

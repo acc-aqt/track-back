@@ -15,7 +15,7 @@ from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.game.track_back_game import TrackBackGame
@@ -34,7 +34,7 @@ def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
 
 
 class Server:
-    """Encapsulates the FastAPI application, route setup, and game lifecycle management."""
+    """Encapsulates the FastAPI application and game lifecycle management."""
 
     def __init__(self, game_context: GameContext, port: int) -> None:
         self.game_context = game_context
@@ -42,11 +42,11 @@ class Server:
         self.app = self.create_app()
         self.ip = get_local_ip()
         self.url = f"http://{self.ip}:{self.port}"
-        logging.info(f"\n🌍 Game server running at: {self.url}\n")
+        logging.info("\n🌍 Game server running at: %s\n", self.url)
 
     def run(self) -> None:
         """Start the Uvicorn server."""
-        uvicorn.run(self.app, host="0.0.0.0", port=self.port)
+        uvicorn.run(self.app, host="0.0.0.0", port=self.port)  # noqa: S104
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
@@ -65,24 +65,23 @@ class Server:
         app.post("/shutdown")(self._shutdown)
         app.post("/register")(self._register)
         app.post("/start")(self._start_game)
-        app.get("/default-ip")(self._default_ip)
         app.websocket("/ws/{username}")(self._websocket_endpoint)
 
         return app
 
-    async def _shutdown(self, request: Request) -> dict[str, str]:
+    async def _shutdown(self) -> dict[str, str]:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
         return {"message": "Server is shutting down..."}
 
-    async def _register(self, user: str):
+    async def _register(self, user_name: str) -> dict[str, str]:
         """Register a new user for the game via REST POST."""
-        if user.name in self.game_context.registered_users:
-            return {"error": f"User '{user.name}' already registered"}
-        self.game_context.registered_users[user.name] = User(name=user.name)
+        if user_name in self.game_context.registered_users:
+            return {"error": f"User '{user_name}' already registered"}
+        self.game_context.registered_users[user_name] = User(name=user_name)
 
-        return {"message": f"User '{user.name}' registered successfully."}
+        return {"message": f"User '{user_name}' registered successfully."}
 
     async def _start_game(self) -> dict[str, str]:
         """Start the game and notify the first player via WebSocket."""
@@ -119,18 +118,13 @@ class Server:
             "first_player": first_player.name,
         }
 
-    async def _default_ip(self) -> dict[str, str]:
-        """Return the default server URL."""
-        # TODO:  Could be used for frontend auto-fill?
-        return {"default_url": self.url}
-
-    async def _websocket_endpoint(self, websocket: WebSocket, username: str):
+    async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
         """Handle incoming WebSocket connection for a player."""
         await websocket.accept()
         ctx = websocket.app.state.ctx
         if ctx.first_player is None:
             ctx.first_player = username
-            logging.info(f"📌 First player: {ctx.first_player}")
+            logging.info("📌 First player: %s", ctx.first_player)
 
         handler = WebSocketGameHandler(ctx)
 
@@ -147,11 +141,11 @@ class Server:
                 else:
                     await websocket.send_text("❓ Unknown message type.")
         except WebSocketDisconnect:
-            logging.info(f"User {username} disconnected")
+            logging.info("User %s disconnected", username)
             ctx.connected_users.pop(username, None)
 
 
-def main():
+def main() -> None:
     """Command-line entry point for launching the server."""
     logging.basicConfig(level=logging.INFO)
 
