@@ -7,6 +7,7 @@ from .abstract_adapter import AbstractMusicServiceAdapter
 
 class DummyMusicService(AbstractMusicServiceAdapter):
     """Mock music service for testing purposes."""
+
     def __init__(self) -> None:
         self.playlist: list[Song] = [
             Song(title="Yesterday", artist="The Beatles", release_year=1965),
