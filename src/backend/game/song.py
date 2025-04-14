@@ -22,10 +22,12 @@ class Song:
             "artist": self.artist,
             "release_year": str(self.release_year),
         }
+
+
 def deserialize_song(data: dict[str, str]) -> Song:
     """Deserialize the song from a dictionary."""
     return Song(
         title=data["title"],
         artist=data["artist"],
         release_year=int(data["release_year"]),
-        )
+    )

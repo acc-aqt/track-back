@@ -1,40 +1,28 @@
-"""Entry point to start the TrackBack game server with WebSocket + REST support.
+"""Contains the game server class."""
 
-Players connect via WebSocket, and REST endpoints are used for registration and game
-management.
-
-"""
-
-import argparse
 import json
 import logging
 import os
 import signal
-import tomllib
-from pathlib import Path
 
 import uvicorn
-from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User
-from backend.music_service.factory import MusicServiceFactory
 from backend.server.local_ip import get_local_ip
 from backend.server.websocket_handler import WebSocketGameHandler
 
 from .game_context import GameContext
 
 
-def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
-    """Load configuration values (e.g. music service provider) from TOML file."""
-    with Path(config_path).open("rb") as f:
-        return tomllib.load(f)
-
-
 class Server:
-    """Encapsulates the FastAPI application and game lifecycle management."""
+    """
+    Encapsulates the FastAPI application and game lifecycle management.
+    The server handles WebSocket connections.
+    REST endpoints are used for registration and game management.
+    """
 
     def __init__(self, game_context: GameContext, port: int) -> None:
         self.game_context = game_context
@@ -143,29 +131,3 @@ class Server:
         except WebSocketDisconnect:
             logging.info("User %s disconnected", username)
             ctx.connected_users.pop(username, None)
-
-
-def main() -> None:
-    """Command-line entry point for launching the server."""
-    logging.basicConfig(level=logging.INFO)
-
-    parser = argparse.ArgumentParser(description="Start the TrackBack game server.")
-    parser.add_argument("--target_song_count", type=int, default=10)
-    parser.add_argument("--port", type=int, default=4200)
-    args = parser.parse_args()
-
-    load_dotenv()
-    config = load_user_config()
-    music_service = MusicServiceFactory.create_music_service(config["music_service"])
-
-    game_context = GameContext(
-        target_song_count=args.target_song_count,
-        music_service=music_service,
-    )
-
-    server = Server(game_context=game_context, port=args.port)
-    server.run()
-
-
-if __name__ == "__main__":
-    main()

@@ -41,9 +41,7 @@ async def test_single_player_game_flow(monkeypatch):
 
     result_queue = Queue()
 
-    server_process = Process(
-        target=run_server_with_queue, args=(port, result_queue)
-    )
+    server_process = Process(target=run_server_with_queue, args=(port, result_queue))
     server_process.start()
     await asyncio.sleep(2)  # Wait for server to start
 

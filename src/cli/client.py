@@ -1,7 +1,5 @@
 """Command line client for the TrackBack game."""
 
-import argparse
-import asyncio
 import json
 from typing import Any, cast
 
@@ -173,35 +171,3 @@ async def play_on_cli(username: str, host: str, port: int) -> None:
     """Run the CLI client."""
     client = CliClient(username, host, port)
     await client.run()
-
-
-def main() -> None:
-    """Parse command line arguments and start the client."""
-    parser = argparse.ArgumentParser(
-        description="Call command line client for the TrackBack game"
-    )
-    parser.add_argument(
-        "--name",
-        type=str,
-        default=None,
-        help="Your username",
-    )
-    parser.add_argument(
-        "--host",
-        type=str,
-        default="localhost",
-        help="Server host (default: localhost)",
-    )
-    parser.add_argument(
-        "--port", type=int, default=4200, help="Server port (default: 4200)"
-    )
-
-    args = parser.parse_args()
-
-    username = args.name or input("👤 Enter your username: ")
-
-    asyncio.run(play_on_cli(username, args.host, args.port))
-
-
-if __name__ == "__main__":
-    main()
