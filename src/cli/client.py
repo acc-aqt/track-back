@@ -81,10 +81,13 @@ class CliClient:
         else:
             print(f"\n📬 Unhandled message:\n{json.dumps(data, indent=2)}")
 
-    async def _receive_json(self) -> dict[str, str] | dict[Any, Any]:
+    async def _receive_json(self) -> dict[str, Any]:
         """Receive and parse a JSON message from the server."""
+        if self.websocket is None:
+            print("⚠️ WebSocket connection not established.")
+            return {}
+
         try:
-            assert self.websocket is not None
             message = await self.websocket.recv()
             return json.loads(message)
         except websockets.exceptions.ConnectionClosed:
@@ -121,6 +124,10 @@ class CliClient:
         index = self._get_valid_index(max_index=len(song_list))
 
         guess = {"type": "guess", "index": index}
+        if not self.websocket:
+            print("⚠️ WebSocket connection not established.")
+            return
+
         await self.websocket.send(json.dumps(guess))
         # ✅ After sending a guess, increase turn counter
         if self.stop_after_turns is not None:
