@@ -8,9 +8,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from backend.music_service.factory import MusicServiceFactory
-
-from .server.game_context import GameContext
-from .server.server import Server
+from backend.server.game_context import GameContext
+from backend.server.server import Server
 
 
 def parse_args() -> tuple[int, int]:
