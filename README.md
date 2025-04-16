@@ -5,8 +5,10 @@
 You can play using your own playlists — it currently supports **Spotify** and **Apple Music**, and is built for easy extension to other music services.
 
 The game consists of a **Python-based server** and two frontend options:
-- a **command-line interface** (Python)
+
 - a [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html)
+- a command-line interface (Python)
+
 
 ---
 
