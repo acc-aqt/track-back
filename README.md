@@ -6,7 +6,7 @@ You can play using your own playlists — it currently supports **Spotify** and 
 
 The game consists of a **Python-based server** and two frontend options:
 
-- a [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html)
+- a (still basic) [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html)
 - a command-line interface (Python)
 
 
