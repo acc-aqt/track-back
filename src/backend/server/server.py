@@ -11,10 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User
-from backend.server.local_ip import get_local_ip
-from backend.server.websocket_handler import WebSocketGameHandler
 
 from .game_context import GameContext
+from .local_ip import get_local_ip
+from .websocket_handler import WebSocketGameHandler
 
 
 class Server:
