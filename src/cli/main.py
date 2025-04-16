@@ -3,7 +3,7 @@
 import argparse
 import asyncio
 
-from .client import play_on_cli
+from cli.client import play_on_cli
 
 
 def parse_args() -> tuple[str, str, int]:
