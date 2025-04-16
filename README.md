@@ -109,7 +109,7 @@ Players can connect via web browser or command line.
 
 ### 4.1 Web UI
 
-Open `web_ui/index.html` in your browser.
+Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) (or launch it locally by opening `web_ui/index.html`).
 
 1. Enter the **server URL** and a **username**
 2. Click **Connect** to join
