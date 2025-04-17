@@ -3,53 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <title>TrackBack Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body {
         font-family: sans-serif;
         padding: 1rem;
-        max-width: 600px;
+        max-width: 700px;
         margin: auto;
+        background-color: #ffffff;
+        color: #333;
       }
-      #log {
-        white-space: pre-wrap;
-        background: #f9f9f9;
+
+      h1 {
+        text-align: center;
+        margin-bottom: 1rem;
+      }
+
+      #controls {
+        background: #f1f1f1;
         padding: 1rem;
-        border: 1px solid #ccc;
-        height: 300px;
-        overflow-y: auto;
-        margin-top: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
       }
-      input,
-      button {
-        padding: 0.5rem;
+
+      #controls input {
+        padding: 0.4rem;
         font-size: 1rem;
       }
+
+      button {
+        padding: 0.5rem 0.75rem;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+
+      #songList {
+        margin-top: 1rem;
+      }
+
+      .song-entry {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 1rem;
+      }
+
+      .song-cover {
+        width: 80px;
+        border-radius: 6px;
+      }
+
+      .song-details {
+        flex: 1;
+      }
+
       #guess-area {
         margin-top: 1rem;
+      }
+
+      #log {
+        white-space: pre-wrap;
+        background: #fafafa;
+        padding: 1rem;
+        border: 1px solid #ccc;
+        height: 250px;
+        overflow-y: auto;
+        margin-top: 1.5rem;
+        font-family: monospace;
+        font-size: 0.9rem;
       }
     </style>
   </head>
   <body>
     <h1>🎵 TrackBack Game</h1>
-    <label
-      >Server:
-      <input
-        id="server"
-        placeholder="e.g. http://192.168.178.55:4200"
-        size="30" /></label
-    ><br />
-    <label>Username: <input id="username" /></label>
-    <button id="connectBtn">Connect</button>
-    <button id="startGameBtn">Start Game</button>
-    <button id="stopServerBtn">🛑 Stop Server</button>
+
+    <div id="controls">
+      <label
+        >Server:
+        <input
+          id="server"
+          placeholder="e.g. http://192.168.178.55:4200"
+          size="30"
+        />
+      </label>
+      <label
+        >Username:
+        <input id="username" />
+      </label>
+      <button id="connectBtn">Connect</button>
+      <button id="startGameBtn">Start Game</button>
+      <button id="stopServerBtn">🛑 Stop Server</button>
+    </div>
 
     <div id="game" style="display: none">
+      <div id="songListHeader"><strong>📻 Your song list:</strong></div>
       <div id="songList"></div>
+
       <div id="guess-area">
-        <label for="indexInput">📍 Insert index:</label>
+        <label for="indexInput" id="guessLabel">📍 Insert index:</label>
         <input id="indexInput" type="number" />
         <button id="sendGuess">Send Guess</button>
       </div>
+
       <div id="log"></div>
     </div>
 
@@ -63,8 +125,23 @@
         logBox.scrollTop = logBox.scrollHeight;
       };
 
+      const buildSongListHtml = (list) => {
+        return list
+          .map(
+            (s, i) => `
+          <div class="song-entry">
+            <img src="${s.album_cover_url}" alt="cover" class="song-cover">
+            <div class="song-details">
+              <strong>[${i}] ${s.release_year} - "${s.title}"</strong><br>
+              by ${s.artist}
+            </div>
+          </div>`
+          )
+          .join("");
+      };
+
       document.getElementById("connectBtn").onclick = async () => {
-        const username = document.getElementById("username").value;
+        username = document.getElementById("username").value;
         const serverInput = document
           .getElementById("server")
           .value.trim()
@@ -79,16 +156,13 @@
         try {
           urlObj = new URL(serverInput);
         } catch (e) {
-          alert(
-            "⚠️ Invalid server address. Please use something like http://192.168.x.x:4200"
-          );
+          alert("⚠️ Invalid server address. Use http://192.168.x.x:4200");
           return;
         }
 
         const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
-
-        console.log("🌐 Connecting to", wsUrl); // ✅ Now it's after declaration!
+        console.log("🌐 Connecting to", wsUrl);
 
         try {
           socket = new WebSocket(wsUrl);
@@ -107,40 +181,22 @@
           socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
             console.log("📬 Received:", data);
-
             const type = data.type;
 
             if (type === "your_turn" && data.next_player === username) {
               log(`🎮 It's your turn!`);
-
               const list = data.song_list || [];
               const validRange = `(0–${list.length})`;
-              document.querySelector(
-                "label[for='indexInput']"
-              ).innerText = `📍 Enter the index of the song before which you want to insert ${validRange}:`;
-              const songListHtml = list
-                .map(
-                  (s, i) =>
-                    `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
-                )
-                .join("<br>");
               document.getElementById(
-                "songList"
-              ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
+                "guessLabel"
+              ).innerText = `📍 Enter the index of the song before which you want to insert ${validRange}:`;
+              document.getElementById("songList").innerHTML =
+                buildSongListHtml(list);
             } else if (type === "guess_result" && data.player === username) {
               log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
-
-              // ⬇️ Immediately update song list
               const list = data.song_list || [];
-              const songListHtml = list
-                .map(
-                  (s, i) =>
-                    `[${i}] ${s.release_year} - "${s.title}" by ${s.artist}`
-                )
-                .join("<br>");
-              document.getElementById(
-                "songList"
-              ).innerHTML = `<strong>📻 Your song list:</strong><br>${songListHtml}`;
+              document.getElementById("songList").innerHTML =
+                buildSongListHtml(list);
             } else if (type === "welcome") {
               log(`👋 ${data.message}`);
             } else if (type === "error") {
@@ -160,9 +216,9 @@
           };
         } catch (err) {
           console.error("❌ Failed to create WebSocket:", err);
-          return;
         }
       };
+
       document.getElementById("startGameBtn").onclick = async () => {
         const serverInput = document
           .getElementById("server")
@@ -173,9 +229,7 @@
         try {
           urlObj = new URL(serverInput);
         } catch (e) {
-          alert(
-            "⚠️ Invalid server address. Please enter a valid URL like http://192.168.x.x:4200"
-          );
+          alert("⚠️ Invalid server address.");
           return;
         }
 
@@ -184,13 +238,13 @@
         try {
           const res = await fetch(startUrl, { method: "POST" });
           const data = await res.json();
-          console.log("🎮 Game start response:", data);
           log(`🎮 ${data.message || "Game started!"}`);
         } catch (err) {
           console.error("❌ Failed to start game:", err);
-          log("❌ Failed to start the game. Check the server and try again.");
+          log("❌ Failed to start the game.");
         }
       };
+
       document.getElementById("sendGuess").onclick = () => {
         const index = parseInt(document.getElementById("indexInput").value);
         if (isNaN(index)) {
@@ -198,13 +252,7 @@
           return;
         }
 
-        socket.send(
-          JSON.stringify({
-            type: "guess",
-            index: index,
-          })
-        );
-
+        socket.send(JSON.stringify({ type: "guess", index }));
         log(`📤 Sent guess at index ${index}`);
         document.getElementById("indexInput").value = "";
       };
@@ -214,6 +262,7 @@
           .getElementById("server")
           .value.trim()
           .replace(/\/+$/, "");
+
         let urlObj;
         try {
           urlObj = new URL(serverUrl);
@@ -229,7 +278,7 @@
           log(`🛑 ${data.message}`);
         } catch (err) {
           console.error("❌ Failed to stop server:", err);
-          log("❌ Failed to stop the server. Is it still running?");
+          log("❌ Failed to stop the server.");
         }
       };
     </script>
