@@ -1,6 +1,5 @@
 """Implementation of the SpotifyClient class."""
 
-import os
 import sys
 
 import spotipy
@@ -59,7 +58,5 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         )
 
         sp = spotipy.Spotify(auth_manager=o_authenticator)
-        print("current playback")
-        print(sp.current_playback())
-        
+
         return sp
