@@ -19,9 +19,18 @@ def parse_args() -> tuple[int, int]:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Start the TrackBack game server.")
     parser.add_argument("--target_song_count", type=int, default=10)
-    parser.add_argument("--port", type=int, default=4200)
+    parser.add_argument("--port", type=int)
+    
     args = parser.parse_args()
-    return args.target_song_count, args.port
+    
+    target_song_count = args.target_song_count
+    
+    if args.port:
+        port = args.port
+    else:
+        port = int(os.environ.get("PORT", 4200))
+         
+    return target_song_count, port
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
