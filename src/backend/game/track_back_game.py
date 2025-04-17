@@ -60,14 +60,14 @@ class TrackBackGame:
             result = {
                 "result": "correct",
                 "message": (
-                    "✅ Correct! Song was {current_song}."
+                    f"✅ Correct! Song was {current_song}."
                 ),
             }
         else:
             result = {
                 "result": "wrong",
                 "message": (
-                    "❌ Wrong! Song was {current_song}."
+                    f"❌ Wrong! Song was {current_song}."
                 ),
             }
 
