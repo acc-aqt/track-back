@@ -1,5 +1,6 @@
 """Entry point to start the TrackBack game server with WebSocket + REST support."""
 
+import os
 import argparse
 import logging
 import tomllib
@@ -10,6 +11,8 @@ from dotenv import load_dotenv
 from backend.music_service.factory import MusicServiceFactory
 from backend.server.game_context import GameContext
 from backend.server.server import Server
+from backend.server.local_ip import get_local_ip
+
 
 
 def parse_args() -> tuple[int, int]:
@@ -44,6 +47,15 @@ def main() -> None:
 
     server = Server(game_context=game_context, port=port)
     server.run()
+    
+    if os.getenv("RENDER") == "true":
+        print("Running on Render 🚀")
+        print("\n🌍 Game server running at", os.getenv("RENDER_EXTERNAL_URL", "Check your Render dashboard"))
+    else:
+        print("Running locally 💻")
+        ip = get_local_ip()
+        url = f"http://{ip}:{port}"
+        logging.info("\n🌍 Game server running at: %s\n", url)
 
 
 if __name__ == "__main__":
