@@ -1,5 +1,6 @@
 """Implementation of the SpotifyClient class."""
 
+import os
 import sys
 
 import spotipy
@@ -52,11 +53,11 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         modify_playback = "user-modify-playback-state"
         scope_string = f"{read_library},{read_playback},{modify_playback}"
 
+        cache_path = ".cache-spotify" if os.getenv("RENDER") == "true" else None
+
         o_authenticator = SpotifyOAuth(
             scope=scope_string,
-            cache_path=".cache-spotify",
+            cache_path=cache_path,
         )
 
-        sp = spotipy.Spotify(auth_manager=o_authenticator)
-
-        return sp
+        return spotipy.Spotify(auth_manager=o_authenticator)
