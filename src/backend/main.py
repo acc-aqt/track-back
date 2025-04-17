@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import tomllib
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 
 from backend.music_service.factory import MusicServiceFactory
 from backend.server.game_context import GameContext
+from backend.server.local_ip import get_local_ip
 from backend.server.server import Server
 
 
@@ -16,9 +18,15 @@ def parse_args() -> tuple[int, int]:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Start the TrackBack game server.")
     parser.add_argument("--target_song_count", type=int, default=10)
-    parser.add_argument("--port", type=int, default=4200)
+    parser.add_argument("--port", type=int)
+
     args = parser.parse_args()
-    return args.target_song_count, args.port
+
+    target_song_count = args.target_song_count
+
+    port = args.port or int(os.environ.get("PORT", "4200"))
+
+    return target_song_count, port
 
 
 def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
@@ -44,6 +52,14 @@ def main() -> None:
 
     server = Server(game_context=game_context, port=port)
     server.run()
+
+    if os.getenv("RENDER") == "true":
+        print("Running on Render 🚀")
+    else:
+        print("Running locally 💻")
+        ip = get_local_ip()
+        url = f"http://{ip}:{port}"
+        logging.info("\n🌍 Game server running at: %s\n", url)
 
 
 if __name__ == "__main__":

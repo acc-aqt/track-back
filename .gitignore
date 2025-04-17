@@ -127,6 +127,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.cache-spotify
 
 # Pycharm project settings
 .idea

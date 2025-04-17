@@ -13,7 +13,6 @@ from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User
 
 from .game_context import GameContext
-from .local_ip import get_local_ip
 from .websocket_handler import WebSocketGameHandler
 
 
@@ -28,9 +27,6 @@ class Server:
         self.game_context = game_context
         self.port = port
         self.app = self.create_app()
-        self.ip = get_local_ip()
-        self.url = f"http://{self.ip}:{self.port}"
-        logging.info("\n🌍 Game server running at: %s\n", self.url)
 
     def run(self) -> None:
         """Start the Uvicorn server."""
