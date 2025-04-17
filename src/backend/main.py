@@ -25,10 +25,7 @@ def parse_args() -> tuple[int, int]:
     
     target_song_count = args.target_song_count
     
-    if args.port:
-        port = args.port
-    else:
-        port = int(os.environ.get("PORT", 4200))
+    port = args.port or int(os.environ.get("PORT", 4200))    
          
     return target_song_count, port
 

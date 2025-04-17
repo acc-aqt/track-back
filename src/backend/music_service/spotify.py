@@ -54,10 +54,12 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         scope_string = f"{read_library},{read_playback},{modify_playback}"
 
         o_authenticator = SpotifyOAuth(
-            client_id=os.getenv("SPOTIFY_CLIENT_ID"),
-            client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
-            redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
             scope=scope_string,
+            cache_path=".cache-spotify",
         )
 
-        return spotipy.Spotify(auth_manager=o_authenticator)
+        sp = spotipy.Spotify(auth_manager=o_authenticator)
+        print("current playback")
+        print(sp.current_playback())
+        
+        return sp
