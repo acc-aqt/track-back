@@ -149,7 +149,7 @@
       const buildSongListHtml = (list, newSong) => {
         let entries = list.map((s, i) => {
           return `
-          <div class="song-entry" data-index="${i}">
+          <div class="song-entry" draggable="false" data-index="${i}">
             <img src="${s.album_cover_url}" alt="cover" class="song-cover" />
             <div class="song-details">
               <strong>${s.title}</strong> (${s.release_year})<br />
@@ -262,16 +262,23 @@
         const timeline = document.getElementById("songTimeline");
         const newSongContainer = document.getElementById("newSongContainer");
 
-        // Timeline – where songs are dropped
+        // ✅ Enable sorting in timeline ONLY for new-song
         new Sortable(timeline, {
           group: "songs",
           animation: 150,
-          ghostClass: "drag-ghost",
+          sort: true, // ✅ allow reordering so new-song can be dropped anywhere
+          draggable: ".song-entry", // all items technically draggable
+          filter: ":not(#new-song)", // 👈 block dragging any item except #new-song
+          preventOnFilter: true, // 👈 cancel drag on filtered items
           onAdd: (evt) => {
             if (evt.item.id === "new-song") {
               const newIndex = evt.newIndex;
               log(`📤 Guess submitted: insert at index ${newIndex}`);
               socket.send(JSON.stringify({ type: "guess", index: newIndex }));
+
+              // Optional: disable dragging after drop
+              Sortable.get(timeline).option("disabled", true);
+              Sortable.get(newSongContainer).option("disabled", true);
             }
           },
           onStart: () => {
@@ -282,10 +289,10 @@
           },
         });
 
-        // New song container – where drag starts
+        // ✅ New song drag source
         new Sortable(newSongContainer, {
-          group: "songs", // must match
-          sort: false, // can't rearrange in this container
+          group: "songs",
+          sort: false,
         });
       };
 
