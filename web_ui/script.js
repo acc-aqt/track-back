@@ -1,6 +1,11 @@
 let socket;
 let username;
 let currentGuessSong = null;
+let pauseAfterGuess = false;
+let queuedTurn = null;
+
+const WRONG_GUESS_DISPLAY_TIME = 3000;  // How long the wrong guess stays visible
+const FADE_DURATION = 1000;             // Duration of fade-out animation
 
 const log = (msg) => {
   const logBox = document.getElementById("log");
@@ -61,7 +66,41 @@ document.getElementById("connectBtn").onclick = async () => {
   }
 
   const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
+  const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
+  
+  function handleYourTurn(data) {
+    if (pauseAfterGuess) {
+      queuedTurn = data;
+      return;
+    }
+    log(`🎮 It's your turn! Drag the new song into the right place.`);
+    document.getElementById("songListHeader").style.display = "block";
+    document.getElementById("songTimeline").style.display = "block";
+
+    const list = data.song_list || [];
+    const dummyCovers = [
+      "dummy-cover/cover1.png",
+      "dummy-cover/cover2.png",
+      "dummy-cover/cover3.png"
+    ];
+    const randomCover = dummyCovers[Math.floor(Math.random() * dummyCovers.length)];
+
+    document.getElementById("newSongContainer").innerHTML = `
+      <div class="song-entry highlight" id="new-song">
+        <img src="${randomCover}" alt="cover" class="song-cover" />
+        <div class="song-details">
+          <strong>Drag the song to the right place in the timeline.</strong>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("newSongContainer").style.display = "block";
+
+    document.getElementById("songTimeline").innerHTML = list
+      .map((s) => buildSongEntry(s))
+      .join("");
+
+    setupDragDrop(list.length);}
     
     function handleGuessResult(data) {
         log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
@@ -79,7 +118,6 @@ document.getElementById("connectBtn").onclick = async () => {
         if (data.result === "wrong") {
           const wrongSong = data.last_song || {};
             const guessedIndex = data.last_index ?? 0;
-            log(`Wrong song album cover URL: ${data.message}`);
 
       
           const wrongSongHTML = `
@@ -110,10 +148,28 @@ document.getElementById("connectBtn").onclick = async () => {
             wrongSongEl.classList.add("fade-out");
             setTimeout(() => {
               wrongSongEl.remove();
-            }, 1000);
-          }, 5000);
-        }
+            }, FADE_DURATION);
+          }, WRONG_GUESS_DISPLAY_TIME);
+            
+            log(`DATA ${data}`);
+
+            
+
+          
+
+            pauseAfterGuess = true;
+            setTimeout(() => {
+      pauseAfterGuess = false;
+  
+      // If a turn came in while we were paused, now we handle it
+      if (queuedTurn) {
+        handleYourTurn(queuedTurn);
+        queuedTurn = null;
       }
+    }, WRONG_GUESS_DISPLAY_TIME + FADE_DURATION);
+  }
+        }
+      
     
 
   try {
@@ -135,34 +191,7 @@ document.getElementById("connectBtn").onclick = async () => {
       const type = data.type;
 
       if (type === "your_turn" && data.next_player === username) {
-        log(`🎮 It's your turn! Drag the new song into the right place.`);
-        document.getElementById("songListHeader").style.display = "block";
-        document.getElementById("songTimeline").style.display = "block";
-
-        const list = data.song_list || [];
-        const dummyCovers = [
-          "dummy-cover/cover1.png",
-          "dummy-cover/cover2.png",
-          "dummy-cover/cover3.png"
-        ];
-        const randomCover = dummyCovers[Math.floor(Math.random() * dummyCovers.length)];
-
-        document.getElementById("newSongContainer").innerHTML = `
-          <div class="song-entry highlight" id="new-song">
-            <img src="${randomCover}" alt="cover" class="song-cover" />
-            <div class="song-details">
-              <strong>Drag the song to the right place in the timeline.</strong>
-            </div>
-          </div>
-        `;
-
-        document.getElementById("newSongContainer").style.display = "block";
-
-        document.getElementById("songTimeline").innerHTML = list
-          .map((s) => buildSongEntry(s))
-          .join("");
-
-        setupDragDrop(list.length);
+        handleYourTurn(data);
 
       } else if (type === "guess_result" && data.player === username) {
           handleGuessResult(data);
