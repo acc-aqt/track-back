@@ -6,7 +6,8 @@ import os
 import signal
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.game.track_back_game import TrackBackGame
@@ -57,21 +58,27 @@ class Server:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
-        return {"message": "Server is shutting down..."}
+        return JSONResponse(status_code=200, content={"message": "Server shutdown initiated."})
 
     async def _register(self, user_name: str) -> dict[str, str]:
         """Register a new user for the game via REST POST."""
         if user_name in self.game_context.registered_users:
-            return {"error": f"User '{user_name}' already registered"}
+            raise HTTPException(status_code=409, detail=f"User '{user_name}' already registered")
+
         self.game_context.registered_users[user_name] = User(name=user_name)
 
-        return {"message": f"User '{user_name}' registered successfully."}
+        return JSONResponse(
+            status_code=201,
+            content={"message": "User '{user_name}' registered successfully.", "user": user_name},
+        )
 
     async def _start_game(self) -> dict[str, str]:
         """Start the game and notify the first player via WebSocket."""
         if len(self.game_context.registered_users) < 1:
-            return {"error": "Not enough players to start the game."}
-
+            raise HTTPException(
+                status_code=400,
+                detail="Not enough players to start the game."
+            )
         users = list(self.game_context.registered_users.values())
         self.game_context.game = TrackBackGame(
             users,
@@ -97,10 +104,13 @@ class Server:
             )
         )
 
-        return {
-            "message": "Game started!",
-            "first_player": first_player.name,
-        }
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Game started!",
+                "first_player": first_player.name,
+            },
+        )
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
         """Handle incoming WebSocket connection for a player."""
