@@ -10,6 +10,7 @@ class Song:
     title: str
     artist: str
     release_year: int
+    album_cover_url: str = ""
 
     def __str__(self) -> str:
         """Return a string representation of the song's metadata."""
@@ -21,6 +22,7 @@ class Song:
             "title": self.title,
             "artist": self.artist,
             "release_year": str(self.release_year),
+            "album_cover_url": self.album_cover_url,
         }
 
 
@@ -30,4 +32,5 @@ def deserialize_song(data: dict[str, str]) -> Song:
         title=data["title"],
         artist=data["artist"],
         release_year=int(data["release_year"]),
+        album_cover_url=data.get("album_cover_url", ""),
     )

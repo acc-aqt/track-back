@@ -27,8 +27,9 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             [artist["name"] for artist in playback["item"]["artists"]]
         )
         release_year = extract_year(playback["item"]["album"]["release_date"])
+        album_cover_url = playback["item"]["album"]["images"][0]["url"]
 
-        return Song(title=song_name, artist=artist_names, release_year=release_year)
+        return Song(title=song_name, artist=artist_names, release_year=release_year, album_cover_url=album_cover_url)
 
     def start_playback(self) -> None:
         """Start playing music."""

@@ -49,10 +49,7 @@ def main() -> None:
         target_song_count=target_song_count,
         music_service=music_service,
     )
-
-    server = Server(game_context=game_context, port=port)
-    server.run()
-
+    
     if os.getenv("RENDER") == "true":
         print("Running on Render 🚀")
     else:
@@ -60,6 +57,14 @@ def main() -> None:
         ip = get_local_ip()
         url = f"http://{ip}:{port}"
         logging.info("\n🌍 Game server running at: %s\n", url)
+        
+    server = Server(game_context=game_context, port=port)
+    
+    
+    
+    server.run()
+
+
 
 
 if __name__ == "__main__":
