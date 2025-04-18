@@ -43,17 +43,3 @@ class User:
             "name": self.name,
             "song_list": [song.serialize() for song in self.song_list],
         }
-
-
-def get_users() -> list[User]:
-    """Ask for input of user names and return a list of User objects."""
-    users: list[User] = []
-    while True:
-        user_name = get_user_input(
-            f"Enter the name of user #{len(users) + 1} (if empty, continue to play): "
-        )
-        if user_name.strip() == "":
-            break
-        users.append(User(user_name))
-
-    return users or [User("Anonymous")]
