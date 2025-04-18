@@ -68,6 +68,18 @@
         background-color: #fff;
       }
 
+      .new-song-box {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 2px solid #00aaff;
+        border-radius: 8px;
+        background-color: #e6f7ff;
+        font-weight: bold;
+        text-align: center;
+        cursor: grab;
+        user-select: none;
+      }
+
       .song-cover {
         width: 80px;
         border-radius: 6px;
@@ -214,17 +226,13 @@
             if (type === "your_turn" && data.next_player === username) {
               log(`🎮 It's your turn! Drag the new song into the right place.`);
               const list = data.song_list || [];
-              const newSong = data.new_song || {
-                title: "New Song",
-                artist: "Unknown",
-                release_year: "????",
-                album_cover_url: "https://via.placeholder.com/80",
-              };
 
               const newSongSection =
                 document.getElementById("newSongContainer");
               newSongSection.innerHTML = `
-  ${buildSongEntry(newSong, "new-song", "highlight")}
+  <div class="new-song-box" id="new-song">
+    🎯 Move this song into the timeline
+  </div>
 `;
               newSongSection.style.display = "block";
 
