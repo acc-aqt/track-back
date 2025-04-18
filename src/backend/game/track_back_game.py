@@ -71,7 +71,7 @@ class TrackBackGame:
                 ),
             }
         result["last_index"] = str(insert_index)
-        result["last_song"] = self._serialize_song(current_song)
+        result["last_song"] = current_song.serialize()
         result["round_counter"] = str(self.round_counter)
         result["current_turn_index"] = str(self.current_turn_index)
         result["song_list"] = [song.serialize() for song in player.song_list]
@@ -104,13 +104,6 @@ class TrackBackGame:
 
         return TrackBackGame._is_sorted_by_release_year(potential_list)
 
-    @staticmethod
-    def _serialize_song(song: Song) -> dict[str, str]:
-        return {
-            "title": song.title,
-            "artist": song.artist,
-            "release_year": str(song.release_year),
-        }
 
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:

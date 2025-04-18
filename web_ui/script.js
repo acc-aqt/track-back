@@ -1,6 +1,6 @@
 let socket;
 let username;
-let currentGuessSong = null; // store the current song being guessed
+let currentGuessSong = null;
 
 const log = (msg) => {
   const logBox = document.getElementById("log");
@@ -33,7 +33,7 @@ const buildSongListHtml = (list, newSong) => {
 
   const newEntry = `
     <div class="song-entry highlight" id="new-song">
-      <img src="${newSong.album_cover_url}" alt="cover" class="song-cover" />
+      <img src="${newSong.album_cover_url}" alt="cover" class="song-cover"  onerror="this.src='dummy-cover/cover1.png'" />
       <div class="song-details">
         <strong>Drag the song to the right place in the timeline.</strong>
       </div>
@@ -61,7 +61,60 @@ document.getElementById("connectBtn").onclick = async () => {
   }
 
   const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
+    const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
+    
+    function handleGuessResult(data) {
+        log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
+        const list = data.song_list || [];
+      
+        const timeline = document.getElementById("songTimeline");
+      
+        // Always clear the new song container
+        document.getElementById("newSongContainer").style.display = "none";
+      
+        // Update the timeline first (without the guess)
+        timeline.innerHTML = list.map((s) => buildSongEntry(s)).join("");
+      
+        // If the guess was wrong, insert the incorrect guess at the user's chosen position
+        if (data.result === "wrong") {
+          const wrongSong = data.last_song || {};
+            const guessedIndex = data.last_index ?? 0;
+            log(`Wrong song album cover URL: ${data.message}`);
+
+      
+          const wrongSongHTML = `
+            <div class="song-entry wrong-guess">
+              <span class="wrong-label"></span>
+              <img src="${wrongSong.album_cover_url}" alt="cover" class="song-cover" onerror="this.src='dummy-cover/cover1.png'" />
+              <div class="song-details">
+                <strong>${wrongSong.title}</strong> (${wrongSong.release_year})<br />
+                by ${wrongSong.artist}
+              </div>
+            </div>
+          `;
+      
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = wrongSongHTML;
+          const wrongSongEl = tempDiv.firstElementChild;
+      
+          const children = timeline.children;
+      
+          if (guessedIndex >= 0 && guessedIndex < children.length) {
+            timeline.insertBefore(wrongSongEl, children[guessedIndex]);
+          } else {
+            timeline.appendChild(wrongSongEl);
+          }
+      
+          // Fade out and remove after 5 seconds
+          setTimeout(() => {
+            wrongSongEl.classList.add("fade-out");
+            setTimeout(() => {
+              wrongSongEl.remove();
+            }, 1000);
+          }, 5000);
+        }
+      }
+    
 
   try {
     socket = new WebSocket(wsUrl);
@@ -112,40 +165,9 @@ document.getElementById("connectBtn").onclick = async () => {
         setupDragDrop(list.length);
 
       } else if (type === "guess_result" && data.player === username) {
-        log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
-        const list = data.song_list || [];
-        const timeline = document.getElementById("songTimeline");
-
-        if (data.result === "wrong") {
-            const wrongSong = data.last_song || {};
-            const guessedIndex = data.last_index ?? 0;
-            const wrongSongHTML = buildSongEntry(wrongSong, "", "wrong-guess");
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = wrongSongHTML;
-          const wrongSongEl = tempDiv.firstElementChild;
-
-          const children = timeline.children;
-          if (guessedIndex >= 0 && guessedIndex < children.length) {
-            timeline.insertBefore(wrongSongEl, children[guessedIndex]);
-          } else {
-            timeline.appendChild(wrongSongEl);
-          }
-
-          setTimeout(() => {
-            wrongSongEl.classList.add("fade-out");
-            setTimeout(() => {
-              wrongSongEl.remove();
-              timeline.innerHTML = list.map((s) => buildSongEntry(s)).join("");
-            }, 1000);
-          }, 5000);
-
-        } else {
-          // Correct guess – update immediately
-          timeline.innerHTML = list.map((s) => buildSongEntry(s)).join("");
-        }
-
-        document.getElementById("newSongContainer").style.display = "none";
+          handleGuessResult(data);
       }
+        
 
       else if (type === "welcome") {
         log(`👋 ${data.message}`);
