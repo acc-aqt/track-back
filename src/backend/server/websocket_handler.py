@@ -62,6 +62,7 @@ class WebSocketGameHandler:
                     "result": result["result"],
                     "message": result["message"],
                     "song_list": result["song_list"],
+                    "other_players": result["other_players"],
                     "last_song": result["last_song"],
                     "last_index": result["last_index"]
                 }

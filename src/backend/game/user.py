@@ -36,6 +36,13 @@ class User:
                 print("Please enter a valid index.")
             except ValueError:
                 print("Please enter a valid index.")
+    
+    def serialize(self) -> dict[str, str]:
+        """Serialize the user object to a dictionary."""
+        return {
+            "name": self.name,
+            "song_list": [song.serialize() for song in self.song_list],
+        }
 
 
 def get_users() -> list[User]:
