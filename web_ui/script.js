@@ -117,12 +117,11 @@ document.getElementById("connectBtn").onclick = async () => {
         const timeline = document.getElementById("songTimeline");
 
         if (data.result === "wrong") {
-          const wrongSong = data.last_song || {};
-          const guessedIndex = data.last_index ?? 0;
-
-          const wrongSongHTML = buildSongEntry(wrongSong, "", "wrong-guess");
-          const tempDiv = document.createElement("div");
-          tempDiv.innerHTML = wrongSongHTML;
+            const wrongSong = data.last_song || {};
+            const guessedIndex = data.last_index ?? 0;
+            const wrongSongHTML = buildSongEntry(wrongSong, "", "wrong-guess");
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = wrongSongHTML;
           const wrongSongEl = tempDiv.firstElementChild;
 
           const children = timeline.children;
@@ -224,15 +223,21 @@ const setupDragDrop = () => {
     filter: ":not(#new-song)",
     preventOnFilter: true,
     onAdd: (evt) => {
-      if (evt.item.id === "new-song") {
-        const newIndex = evt.newIndex;
-        log(`📤 Guess submitted: insert at index ${newIndex}`);
-        socket.send(JSON.stringify({ type: "guess", index: newIndex }));
-
-        Sortable.get(timeline).option("disabled", true);
-        Sortable.get(newSongContainer).option("disabled", true);
-      }
-    },
+        if (evt.item.id === "new-song") {
+          const newIndex = evt.newIndex;
+          log(`📤 Guess submitted: insert at index ${newIndex}`);
+      
+          // Remove the dragged song from the timeline immediately
+          evt.item.remove();
+      
+          // Send the guess to the server
+          socket.send(JSON.stringify({ type: "guess", index: newIndex }));
+      
+          // Disable dragging
+          Sortable.get(timeline).option("disabled", true);
+          Sortable.get(newSongContainer).option("disabled", true);
+        }
+      },
     onStart: () => {
       timeline.classList.add("drag-active");
     },
