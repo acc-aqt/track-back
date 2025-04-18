@@ -116,8 +116,7 @@
     </div>
 
     <div id="game" style="display: none">
-      <div id="newSongContainer"></div>
-
+      <div id="newSongContainer" style="display: none"></div>
       <div id="songListHeader"><strong>📦 Song Timeline:</strong></div>
       <div id="songTimeline" class="drop-box"></div>
 
@@ -222,10 +221,12 @@
                 album_cover_url: "https://via.placeholder.com/80",
               };
 
-              document.getElementById("newSongContainer").innerHTML = `
-  <strong>🎯 Drag this song into the timeline below:</strong>
+              const newSongSection =
+                document.getElementById("newSongContainer");
+              newSongSection.innerHTML = `
   ${buildSongEntry(newSong, "new-song", "highlight")}
 `;
+              newSongSection.style.display = "block";
 
               document.getElementById("songTimeline").innerHTML = list
                 .map((s) => buildSongEntry(s))
@@ -239,6 +240,8 @@
                 list,
                 {}
               );
+              document.getElementById("newSongContainer").style.display =
+                "none";
             } else if (type === "welcome") {
               log(`👋 ${data.message}`);
             } else if (type === "error") {
@@ -247,6 +250,8 @@
               log(`🪄 ${data.player} played: ${data.message}`);
             } else if (type === "game_over") {
               log(`🏁 Game Over! Winner: ${data.winner}`);
+              document.getElementById("newSongContainer").style.display =
+                "none";
             }
           };
 
