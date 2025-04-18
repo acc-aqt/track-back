@@ -67,7 +67,7 @@ class TrackBackGame:
             result = {
                 "result": "wrong",
                 "message": (
-                    f"❌ Wrong! Song was {current_song}."
+                    "❌ Wrong! Song was {current_song}."
                 ),
             }
 
