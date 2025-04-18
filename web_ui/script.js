@@ -1,6 +1,6 @@
-// script.js
 let socket;
 let username;
+let currentGuessSong = null; // store the current song being guessed
 
 const log = (msg) => {
   const logBox = document.getElementById("log");
@@ -68,8 +68,8 @@ document.getElementById("connectBtn").onclick = async () => {
 
     socket.onopen = () => {
       log(`🛰️ Connected as ${username}`);
-        document.getElementById("game").style.display = "block";
-        document.getElementById("startGameBtn").style.display = "inline-block";
+      document.getElementById("game").style.display = "block";
+      document.getElementById("startGameBtn").style.display = "inline-block";
     };
 
     socket.onerror = (e) => {
@@ -82,22 +82,19 @@ document.getElementById("connectBtn").onclick = async () => {
       const type = data.type;
 
       if (type === "your_turn" && data.next_player === username) {
-          log(`🎮 It's your turn! Drag the new song into the right place.`);
-          currentGuessSong = data.new_song || {};
-          document.getElementById("songListHeader").style.display = "block";
-          document.getElementById("songTimeline").style.display = "block";
-        const list = data.song_list || [];
+        log(`🎮 It's your turn! Drag the new song into the right place.`);
+        document.getElementById("songListHeader").style.display = "block";
+        document.getElementById("songTimeline").style.display = "block";
 
+        const list = data.song_list || [];
         const dummyCovers = [
           "dummy-cover/cover1.png",
           "dummy-cover/cover2.png",
-          "dummy-cover/cover3.png",
+          "dummy-cover/cover3.png"
         ];
-
         const randomCover = dummyCovers[Math.floor(Math.random() * dummyCovers.length)];
 
-        const newSongSection = document.getElementById("newSongContainer");
-        newSongSection.innerHTML = `
+        document.getElementById("newSongContainer").innerHTML = `
           <div class="song-entry highlight" id="new-song">
             <img src="${randomCover}" alt="cover" class="song-cover" />
             <div class="song-details">
@@ -106,36 +103,52 @@ document.getElementById("connectBtn").onclick = async () => {
           </div>
         `;
 
-        newSongSection.style.display = "block";
+        document.getElementById("newSongContainer").style.display = "block";
 
         document.getElementById("songTimeline").innerHTML = list
           .map((s) => buildSongEntry(s))
           .join("");
 
         setupDragDrop(list.length);
+
       } else if (type === "guess_result" && data.player === username) {
-          log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
-          if (data.result === "wrong") {
-            const wrongGuessContainer = document.getElementById("wrongGuessContainer");
-          
-            const wrongSong = data.last_song || {};
-            const wrongSongHTML = buildSongEntry(wrongSong, "", "wrong-guess");
-          
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = wrongSongHTML;
-            const wrongSongEl = tempDiv.firstElementChild;
-          
-            wrongGuessContainer.appendChild(wrongSongEl);
-          
-            setTimeout(() => {
-              wrongSongEl.classList.add("fade-out");
-              setTimeout(() => wrongSongEl.remove(), 1000);
-            }, 5000);
-          }
+        log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
         const list = data.song_list || [];
-        document.getElementById("songList").innerHTML = buildSongListHtml(list, {});
+        const timeline = document.getElementById("songTimeline");
+
+        if (data.result === "wrong") {
+          const wrongSong = data.last_song || {};
+          const guessedIndex = data.last_index ?? 0;
+
+          const wrongSongHTML = buildSongEntry(wrongSong, "", "wrong-guess");
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = wrongSongHTML;
+          const wrongSongEl = tempDiv.firstElementChild;
+
+          const children = timeline.children;
+          if (guessedIndex >= 0 && guessedIndex < children.length) {
+            timeline.insertBefore(wrongSongEl, children[guessedIndex]);
+          } else {
+            timeline.appendChild(wrongSongEl);
+          }
+
+          setTimeout(() => {
+            wrongSongEl.classList.add("fade-out");
+            setTimeout(() => {
+              wrongSongEl.remove();
+              timeline.innerHTML = list.map((s) => buildSongEntry(s)).join("");
+            }, 1000);
+          }, 5000);
+
+        } else {
+          // Correct guess – update immediately
+          timeline.innerHTML = list.map((s) => buildSongEntry(s)).join("");
+        }
+
         document.getElementById("newSongContainer").style.display = "none";
-      } else if (type === "welcome") {
+      }
+
+      else if (type === "welcome") {
         log(`👋 ${data.message}`);
       } else if (type === "error") {
         log(`🚨 Error: ${data.message}`);
@@ -174,6 +187,7 @@ document.getElementById("startGameBtn").onclick = async () => {
   } catch (err) {
     log("❌ Failed to start the game.");
   }
+
   document.getElementById("songListHeader").style.display = "block";
   document.getElementById("songTimeline").style.display = "block";
 };

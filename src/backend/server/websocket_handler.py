@@ -63,6 +63,7 @@ class WebSocketGameHandler:
                     "message": result["message"],
                     "song_list": result["song_list"],
                     "last_song": result["last_song"],
+                    "last_index": result["last_index"]
                 }
             )
         )
