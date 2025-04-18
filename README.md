@@ -4,11 +4,7 @@
 
 You can play using your own playlists — it currently supports **Spotify** and **Apple Music**, and is built for easy extension to other music services.
 
-The game consists of a **Python-based server** and two frontend options:
-
-- a (still quite basic) [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html)
-- a command-line interface (Python)
-
+The game consists of a **Python-based server** and a [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) as frontend.
 
 ---
 
@@ -105,31 +101,15 @@ track-back-server
 
 ---
 
-## 4. Play the game
-
-Players can connect via web browser or command line.
-
-### 4.1 Web UI
+## 4. Play the game in the browser
 
 Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) (or launch it locally by opening `web_ui/index.html`).
 
-1. Enter the **server URL** and a **username**
+1. Enter the **Server URL** and a **username**
 2. Click **Connect** to join
 3. Click **Start Game** to begin once all players are connected
 
 > Note: The server URL should look like `http://localhost:4200` or your network IP.
-
-### 4.2 Command line
-
-To run the CLI frontend call:
-
-```bash
-track-back-cli
-```
-
-> Note: Call `track-back-cli -h` to display help and information about optional arguments.
-
----
 
 ## 5. Development setup (not necessary to run the game)
 
