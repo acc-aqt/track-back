@@ -1,0 +1,139 @@
+body {
+    font-family: sans-serif;
+    padding: 1rem;
+    max-width: 700px;
+    margin: auto;
+  }
+  
+  h1 {
+    text-align: center;
+  }
+  
+  #controls {
+    background: #f1f1f1;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column; /* ⬅️ stack items vertically */
+    gap: 0.75rem;
+    align-items: center;
+    text-align: center;
+  }
+  
+  #controls input {
+    padding: 0.4rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 300px;
+    text-align: center;
+
+  }
+
+  #controls label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  #controls button {
+    padding: 0.4rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  #newSongContainer {
+    margin-bottom: 1.5rem;
+  }
+  
+  #songTimeline.drop-box {
+    border: 2px dashed #bbb;
+    padding: 1rem;
+    min-height: 100px;
+    border-radius: 8px;
+    background-color: #fdfdfd;
+    transition: background 0.3s;
+  }
+  
+  #songTimeline.drop-box.drag-active {
+    background-color: #e6f7ff;
+  }
+  
+  button {
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  
+  .song-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.5rem;
+    background-color: #fff;
+  }
+  
+  .new-song-box {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 2px solid #00aaff;
+    border-radius: 8px;
+    background-color: #e6f7ff;
+    font-weight: bold;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+  }
+  
+  .song-cover {
+    width: 80px;
+    border-radius: 6px;
+  }
+  
+  .timeline-header {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .song-details {
+    flex: 1;
+  }
+  
+  .highlight {
+    background-color: #e6f7ff;
+  }
+  
+  #log {
+    white-space: pre-wrap;
+    background: #fafafa;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+
+  #serverControls {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
+  
+  #serverControls button {
+    /* background-color: #ff4d4d;
+    color: white; */
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
