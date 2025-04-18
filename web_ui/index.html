@@ -4,19 +4,17 @@
     <meta charset="UTF-8" />
     <title>TrackBack Game</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
       body {
         font-family: sans-serif;
         padding: 1rem;
         max-width: 700px;
         margin: auto;
-        background-color: #ffffff;
-        color: #333;
       }
 
       h1 {
         text-align: center;
-        margin-bottom: 1rem;
       }
 
       #controls {
@@ -42,29 +40,15 @@
         cursor: pointer;
       }
 
-      #songList {
-        margin-top: 1rem;
-      }
-
-      .song-index-label {
-        font-weight: bold;
-        margin-bottom: 0.25rem;
-        font-family: monospace;
-        font-size: 1.1rem;
-      }
-
-      .arrow {
-        display: inline-block;
-        margin-left: 0.5rem;
-        color: #888;
-      }
-
       .song-entry {
         display: flex;
         align-items: flex-start;
         gap: 1rem;
-        margin-bottom: 1.5rem;
-        padding-left: 2rem;
+        margin-bottom: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 0.5rem;
+        background-color: #fff;
       }
 
       .song-cover {
@@ -76,8 +60,8 @@
         flex: 1;
       }
 
-      #guess-area {
-        margin-top: 1rem;
+      .highlight {
+        background-color: #e6f7ff;
       }
 
       #log {
@@ -85,11 +69,11 @@
         background: #fafafa;
         padding: 1rem;
         border: 1px solid #ccc;
-        height: 250px;
+        height: 200px;
         overflow-y: auto;
-        margin-top: 1.5rem;
         font-family: monospace;
         font-size: 0.9rem;
+        margin-top: 1rem;
       }
     </style>
   </head>
@@ -101,7 +85,7 @@
         >Server:
         <input
           id="server"
-          placeholder="e.g. http://192.168.178.55:4200"
+          placeholder="https://your-app.onrender.com"
           size="30"
         />
       </label>
@@ -115,15 +99,10 @@
     </div>
 
     <div id="game" style="display: none">
-      <div id="songListHeader"><strong>📻 Your song list:</strong></div>
-      <div id="songList"></div>
-
-      <div id="guess-area">
-        <label for="indexInput" id="guessLabel">📍 Insert index:</label>
-        <input id="indexInput" type="number" />
-        <button id="sendGuess">Send Guess</button>
+      <div id="songListHeader">
+        <strong>📻 Drag to insert your song:</strong>
       </div>
-
+      <div id="songList"></div>
       <div id="log"></div>
     </div>
 
@@ -137,23 +116,30 @@
         logBox.scrollTop = logBox.scrollHeight;
       };
 
-      const buildSongListHtml = (list) => {
-        return list
-          .map(
-            (s, i) => `
-      <div class="song-index-label">
-        ${i} <span class="arrow">⟶</span>
-      </div>
-      <div class="song-entry">
-        <img src="${s.album_cover_url}" alt="cover" class="song-cover" />
-        <div class="song-details">
-          <strong>${s.title}</strong> (${s.release_year})<br />
-          by ${s.artist}
-        </div>
-      </div>
-    `
-          )
-          .join("");
+      const buildSongListHtml = (list, newSong) => {
+        let entries = list.map((s, i) => {
+          return `
+          <div class="song-entry" data-index="${i}">
+            <img src="${s.album_cover_url}" alt="cover" class="song-cover" />
+            <div class="song-details">
+              <strong>${s.title}</strong> (${s.release_year})<br />
+              by ${s.artist}
+            </div>
+          </div>`;
+        });
+
+        // Prepend the draggable guess song
+        const newEntry = `
+        <div class="song-entry highlight" id="new-song">
+          <img src="${newSong.album_cover_url}" alt="cover" class="song-cover" />
+          <div class="song-details">
+            <strong>${newSong.title}</strong> (${newSong.release_year})<br />
+            by ${newSong.artist}<br />
+            <em>⬆️ Drag this song to the correct spot</em>
+          </div>
+        </div>`;
+
+        return newEntry + entries.join("");
       };
 
       document.getElementById("connectBtn").onclick = async () => {
@@ -172,47 +158,53 @@
         try {
           urlObj = new URL(serverInput);
         } catch (e) {
-          alert("⚠️ Invalid server address. Use http://192.168.x.x:4200");
+          alert("⚠️ Invalid server address.");
           return;
         }
 
         const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${username}`;
-        console.log("🌐 Connecting to", wsUrl);
 
         try {
           socket = new WebSocket(wsUrl);
 
           socket.onopen = () => {
-            console.log("✅ WebSocket connection opened");
             log(`🛰️ Connected as ${username}`);
             document.getElementById("game").style.display = "block";
           };
 
           socket.onerror = (e) => {
             console.error("🚨 WebSocket error:", e);
-            log("🚨 WebSocket connection error. Check the server address.");
+            log("🚨 Connection error");
           };
 
           socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log("📬 Received:", data);
             const type = data.type;
 
             if (type === "your_turn" && data.next_player === username) {
-              log(`🎮 It's your turn!`);
+              log(`🎮 It's your turn! Drag the new song into the right place.`);
               const list = data.song_list || [];
-              const validRange = `(0–${list.length})`;
-              document.getElementById(
-                "guessLabel"
-              ).innerText = `📍 Enter the index of the song before which you want to insert ${validRange}:`;
-              document.getElementById("songList").innerHTML =
-                buildSongListHtml(list);
+              const newSong = data.new_song || {
+                title: "New Song",
+                artist: "Unknown",
+                release_year: "????",
+                album_cover_url: "https://via.placeholder.com/80",
+              };
+
+              document.getElementById("songList").innerHTML = buildSongListHtml(
+                list,
+                newSong
+              );
+
+              setupDragDrop(list.length);
             } else if (type === "guess_result" && data.player === username) {
               log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
               const list = data.song_list || [];
-              document.getElementById("songList").innerHTML =
-                buildSongListHtml(list);
+              document.getElementById("songList").innerHTML = buildSongListHtml(
+                list,
+                {}
+              );
             } else if (type === "welcome") {
               log(`👋 ${data.message}`);
             } else if (type === "error") {
@@ -221,18 +213,30 @@
               log(`🪄 ${data.player} played: ${data.message}`);
             } else if (type === "game_over") {
               log(`🏁 Game Over! Winner: ${data.winner}`);
-            } else {
-              log(`📬 Unhandled message: ${JSON.stringify(data, null, 2)}`);
             }
           };
 
           socket.onclose = (e) => {
-            console.warn("🔌 WebSocket closed:", e);
             log("🔌 Connection closed.");
           };
         } catch (err) {
-          console.error("❌ Failed to create WebSocket:", err);
+          console.error("❌ Failed to connect:", err);
         }
+      };
+
+      const setupDragDrop = (originalListLength) => {
+        const list = document.getElementById("songList");
+        new Sortable(list, {
+          animation: 150,
+          ghostClass: "drag-ghost",
+          onEnd: (evt) => {
+            if (evt.item.id === "new-song") {
+              const newIndex = evt.newIndex; // Position of the new song
+              log(`📤 Sending guess: insert before index ${newIndex}`);
+              socket.send(JSON.stringify({ type: "guess", index: newIndex }));
+            }
+          },
+        });
       };
 
       document.getElementById("startGameBtn").onclick = async () => {
@@ -240,12 +244,11 @@
           .getElementById("server")
           .value.trim()
           .replace(/\/+$/, "");
-
         let urlObj;
         try {
           urlObj = new URL(serverInput);
         } catch (e) {
-          alert("⚠️ Invalid server address.");
+          alert("Invalid server address");
           return;
         }
 
@@ -256,21 +259,8 @@
           const data = await res.json();
           log(`🎮 ${data.message || "Game started!"}`);
         } catch (err) {
-          console.error("❌ Failed to start game:", err);
           log("❌ Failed to start the game.");
         }
-      };
-
-      document.getElementById("sendGuess").onclick = () => {
-        const index = parseInt(document.getElementById("indexInput").value);
-        if (isNaN(index)) {
-          alert("Please enter a valid number.");
-          return;
-        }
-
-        socket.send(JSON.stringify({ type: "guess", index }));
-        log(`📤 Sent guess at index ${index}`);
-        document.getElementById("indexInput").value = "";
       };
 
       document.getElementById("stopServerBtn").onclick = async () => {
@@ -278,7 +268,6 @@
           .getElementById("server")
           .value.trim()
           .replace(/\/+$/, "");
-
         let urlObj;
         try {
           urlObj = new URL(serverUrl);
@@ -293,7 +282,6 @@
           const data = await res.json();
           log(`🛑 ${data.message}`);
         } catch (err) {
-          console.error("❌ Failed to stop server:", err);
           log("❌ Failed to stop the server.");
         }
       };
