@@ -11,6 +11,10 @@ from backend.game.user import User
 from .game_context import GameContext
 
 
+async def send_ws_message(ws: WebSocket, msg_type: str, message: str):
+    await ws.send_text(json.dumps({"type": msg_type, "message": message}))
+
+
 class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
@@ -20,24 +24,16 @@ class WebSocketGameHandler:
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
         if username in self.ctx.registered_users:
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "welcome",
-                        "message": f"✅ Welcome back, {username}!",
-                    }
-                )
-            )
+            await send_ws_message(websocket, "welcome", f"✅ Welcome back, {username}!")
+
         else:
             self.ctx.registered_users[username] = User(name=username)
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "welcome",
-                        "message": f"✅ Welcome, {username}! You're connected.",
-                    }
-                )
+            await send_ws_message(
+                websocket,
+                "welcome",
+                f"✅ Welcome, {username}! You're connected.",
             )
+
         self.ctx.connected_users[username] = websocket
 
     async def handle_guess(
@@ -63,7 +59,7 @@ class WebSocketGameHandler:
                     "song_list": result["song_list"],
                     "other_players": result["other_players"],
                     "last_song": result["last_song"],
-                    "last_index": result["last_index"]
+                    "last_index": result["last_index"],
                 }
             )
         )

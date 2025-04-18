@@ -9,6 +9,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.game.track_back_game import TrackBackGame
 from backend.game.user import User
@@ -74,6 +75,9 @@ class Server:
 
     async def _start_game(self) -> dict[str, str]:
         """Start the game and notify the first player via WebSocket."""
+        if self.game_context.game is not None:
+            raise HTTPException(status_code=400, detail="Game already started.")
+
         if len(self.game_context.registered_users) < 1:
             raise HTTPException(
                 status_code=400,
@@ -113,15 +117,14 @@ class Server:
         )
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
-        """Handle incoming WebSocket connection for a player."""
         await websocket.accept()
+
         ctx = websocket.app.state.ctx
         if ctx.first_player is None:
             ctx.first_player = username
             logging.info("📌 First player: %s", ctx.first_player)
 
         handler = WebSocketGameHandler(ctx)
-
         await handler.handle_connection(websocket, username)
 
         try:

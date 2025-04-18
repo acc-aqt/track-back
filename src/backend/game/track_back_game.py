@@ -59,18 +59,16 @@ class TrackBackGame:
 
             result = {
                 "result": "correct",
-                "message": (
-                    f"✅ Correct! Song was {current_song}."
-                ),
+                "message": (f"✅ Correct! Song was {current_song}."),
             }
         else:
             result = {
                 "result": "wrong",
-                "message": (
-                    f"❌ Wrong! Song was {current_song}."
-                ),
+                "message": (f"❌ Wrong! Song was {current_song}."),
             }
-        result["other_players"] = [user.serialize() for user in self.users if user != player]
+        result["other_players"] = [
+            user.serialize() for user in self.users if user != player
+        ]
         result["last_index"] = str(insert_index)
         result["last_song"] = current_song.serialize()
         result["round_counter"] = str(self.round_counter)
@@ -104,7 +102,6 @@ class TrackBackGame:
         potential_list.insert(index, selected_song)
 
         return TrackBackGame._is_sorted_by_release_year(potential_list)
-
 
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:

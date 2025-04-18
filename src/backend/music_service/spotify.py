@@ -21,7 +21,9 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
     def current_song(self) -> Song:
         """Get the currently playing song."""
         playback = self.session.current_playback()
-
+        if playback["is_playing"] is False:
+            print("Spotify is not playing.")
+            sys.exit(1)
         song_name = playback["item"]["name"]
         artist_names = ", ".join(
             [artist["name"] for artist in playback["item"]["artists"]]
@@ -29,7 +31,12 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         release_year = extract_year(playback["item"]["album"]["release_date"])
         album_cover_url = playback["item"]["album"]["images"][-1]["url"]
 
-        return Song(title=song_name, artist=artist_names, release_year=release_year, album_cover_url=album_cover_url)
+        return Song(
+            title=song_name,
+            artist=artist_names,
+            release_year=release_year,
+            album_cover_url=album_cover_url,
+        )
 
     def start_playback(self) -> None:
         """Start playing music."""
