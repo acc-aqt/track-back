@@ -46,13 +46,25 @@
         margin-top: 1rem;
       }
 
+      .song-index-label {
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+        font-family: monospace;
+        font-size: 1.1rem;
+      }
+
+      .arrow {
+        display: inline-block;
+        margin-left: 0.5rem;
+        color: #888;
+      }
+
       .song-entry {
         display: flex;
         align-items: flex-start;
         gap: 1rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        padding-left: 2rem;
       }
 
       .song-cover {
@@ -129,13 +141,17 @@
         return list
           .map(
             (s, i) => `
-          <div class="song-entry">
-            <img src="${s.album_cover_url}" alt="cover" class="song-cover">
-            <div class="song-details">
-              <strong>[${i}] ${s.release_year} - "${s.title}"</strong><br>
-              by ${s.artist}
-            </div>
-          </div>`
+      <div class="song-index-label">
+        ${i} <span class="arrow">⟶</span>
+      </div>
+      <div class="song-entry">
+        <img src="${s.album_cover_url}" alt="cover" class="song-cover" />
+        <div class="song-details">
+          <strong>${s.title}</strong> (${s.release_year})<br />
+          by ${s.artist}
+        </div>
+      </div>
+    `
           )
           .join("");
       };
