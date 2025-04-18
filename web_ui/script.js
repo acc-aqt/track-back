@@ -82,7 +82,9 @@ document.getElementById("connectBtn").onclick = async () => {
       const type = data.type;
 
       if (type === "your_turn" && data.next_player === username) {
-        log(`🎮 It's your turn! Drag the new song into the right place.`);
+          log(`🎮 It's your turn! Drag the new song into the right place.`);
+          document.getElementById("songListHeader").style.display = "block";
+          document.getElementById("songTimeline").style.display = "block";
         const list = data.song_list || [];
 
         const dummyCovers = [
@@ -154,6 +156,8 @@ document.getElementById("startGameBtn").onclick = async () => {
   } catch (err) {
     log("❌ Failed to start the game.");
   }
+  document.getElementById("songListHeader").style.display = "block";
+  document.getElementById("songTimeline").style.display = "block";
 };
 
 document.getElementById("stopServerBtn").onclick = async () => {

@@ -28,6 +28,14 @@ body {
     max-width: 300px;
   }
 
+  #controls label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 300px;
+  }
+
   #controls button {
     padding: 0.4rem;
     font-size: 1rem;
