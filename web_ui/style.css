@@ -137,3 +137,18 @@ body {
     font-size: 1rem;
     cursor: pointer;
   }
+
+  #wrongGuessContainer {
+    margin-top: 1rem;
+    transition: opacity 1s ease;
+  }
+  
+  .fade-out {
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+
+  .wrong-guess {
+    border: 2px solid #ff4d4f;
+    background-color: #fff0f0;
+  }

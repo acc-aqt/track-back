@@ -83,6 +83,7 @@ document.getElementById("connectBtn").onclick = async () => {
 
       if (type === "your_turn" && data.next_player === username) {
           log(`🎮 It's your turn! Drag the new song into the right place.`);
+          currentGuessSong = data.new_song || {};
           document.getElementById("songListHeader").style.display = "block";
           document.getElementById("songTimeline").style.display = "block";
         const list = data.song_list || [];
@@ -113,7 +114,24 @@ document.getElementById("connectBtn").onclick = async () => {
 
         setupDragDrop(list.length);
       } else if (type === "guess_result" && data.player === username) {
-        log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
+          log(`🎯 ${data.result.toUpperCase()}: ${data.message}`);
+          if (data.result === "wrong") {
+            const wrongGuessContainer = document.getElementById("wrongGuessContainer");
+          
+            const wrongSong = data.last_song || {};
+            const wrongSongHTML = buildSongEntry(wrongSong, "", "wrong-guess");
+          
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = wrongSongHTML;
+            const wrongSongEl = tempDiv.firstElementChild;
+          
+            wrongGuessContainer.appendChild(wrongSongEl);
+          
+            setTimeout(() => {
+              wrongSongEl.classList.add("fade-out");
+              setTimeout(() => wrongSongEl.remove(), 1000);
+            }, 5000);
+          }
         const list = data.song_list || [];
         document.getElementById("songList").innerHTML = buildSongListHtml(list, {});
         document.getElementById("newSongContainer").style.display = "none";

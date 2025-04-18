@@ -70,7 +70,7 @@ class TrackBackGame:
                     f"❌ Wrong! Song was {current_song}."
                 ),
             }
-
+        result["last_song"] = self._serialize_song(current_song)
         result["round_counter"] = str(self.round_counter)
         result["current_turn_index"] = str(self.current_turn_index)
         result["song_list"] = [song.serialize() for song in player.song_list]
