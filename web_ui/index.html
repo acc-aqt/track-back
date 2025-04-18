@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>TrackBack Game</title>
+    <title>TrackBack</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -85,6 +85,12 @@
         border-radius: 6px;
       }
 
+      .timeline-header {
+        text-align: center;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+      }
+
       .song-details {
         flex: 1;
       }
@@ -107,7 +113,7 @@
     </style>
   </head>
   <body>
-    <h1>🎵 TrackBack Game</h1>
+    <h1>🎵 TrackBack 🎵</h1>
 
     <div id="controls">
       <label
@@ -129,7 +135,9 @@
 
     <div id="game" style="display: none">
       <div id="newSongContainer" style="display: none"></div>
-      <div id="songListHeader"><strong>📦 Song Timeline:</strong></div>
+      <div id="songListHeader" class="timeline-header">
+        🕰️ 📀 Your TrackBack Timeline 📀 🕰️
+      </div>
       <div id="songTimeline" class="drop-box"></div>
 
       <div id="log"></div>
@@ -227,13 +235,26 @@
               log(`🎮 It's your turn! Drag the new song into the right place.`);
               const list = data.song_list || [];
 
+              const dummyCovers = [
+                "dummy-cover/cover1.png",
+                "dummy-cover/cover2.png",
+                "dummy-cover/cover3.png",
+              ];
+
+              const randomCover =
+                dummyCovers[Math.floor(Math.random() * dummyCovers.length)];
+
               const newSongSection =
                 document.getElementById("newSongContainer");
               newSongSection.innerHTML = `
-  <div class="new-song-box" id="new-song">
-    🎯 Move this song into the timeline
+  <div class="song-entry highlight" id="new-song">
+    <img src="${randomCover}" alt="cover" class="song-cover" />
+    <div class="song-details">
+      <strong>Drag the song to the right place in the timeline.</strong>
+    </div>
   </div>
 `;
+
               newSongSection.style.display = "block";
 
               document.getElementById("songTimeline").innerHTML = list
