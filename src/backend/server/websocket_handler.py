@@ -35,7 +35,6 @@ class WebSocketGameHandler:
                     {
                         "type": "welcome",
                         "message": f"✅ Welcome, {username}! You're connected.",
-                        "first_player": username == self.ctx.first_player,
                     }
                 )
             )
