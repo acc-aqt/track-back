@@ -34,6 +34,23 @@
         font-size: 1rem;
       }
 
+      #newSongContainer {
+        margin-bottom: 1.5rem;
+      }
+
+      #songTimeline.drop-box {
+        border: 2px dashed #bbb;
+        padding: 1rem;
+        min-height: 100px;
+        border-radius: 8px;
+        background-color: #fdfdfd;
+        transition: background 0.3s;
+      }
+
+      #songTimeline.drop-box.drag-active {
+        background-color: #e6f7ff;
+      }
+
       button {
         padding: 0.5rem 0.75rem;
         font-size: 1rem;
@@ -99,10 +116,11 @@
     </div>
 
     <div id="game" style="display: none">
-      <div id="songListHeader">
-        <strong>📻 Drag to insert your song:</strong>
-      </div>
-      <div id="songList"></div>
+      <div id="newSongContainer"></div>
+
+      <div id="songListHeader"><strong>📦 Song Timeline:</strong></div>
+      <div id="songTimeline" class="drop-box"></div>
+
       <div id="log"></div>
     </div>
 
@@ -114,6 +132,18 @@
         const logBox = document.getElementById("log");
         logBox.textContent += msg + "\n";
         logBox.scrollTop = logBox.scrollHeight;
+      };
+
+      const buildSongEntry = (song, id = "", extra = "") => {
+        return `
+    <div class="song-entry ${extra}" ${id ? `id="${id}"` : ""}>
+      <img src="${song.album_cover_url}" alt="cover" class="song-cover" />
+      <div class="song-details">
+        <strong>${song.title}</strong> (${song.release_year})<br />
+        by ${song.artist}
+      </div>
+    </div>
+  `;
       };
 
       const buildSongListHtml = (list, newSong) => {
@@ -192,10 +222,14 @@
                 album_cover_url: "https://via.placeholder.com/80",
               };
 
-              document.getElementById("songList").innerHTML = buildSongListHtml(
-                list,
-                newSong
-              );
+              document.getElementById("newSongContainer").innerHTML = `
+  <strong>🎯 Drag this song into the timeline below:</strong>
+  ${buildSongEntry(newSong, "new-song", "highlight")}
+`;
+
+              document.getElementById("songTimeline").innerHTML = list
+                .map((s) => buildSongEntry(s))
+                .join("");
 
               setupDragDrop(list.length);
             } else if (type === "guess_result" && data.player === username) {
@@ -224,18 +258,34 @@
         }
       };
 
-      const setupDragDrop = (originalListLength) => {
-        const list = document.getElementById("songList");
-        new Sortable(list, {
+      const setupDragDrop = () => {
+        const timeline = document.getElementById("songTimeline");
+        const newSongContainer = document.getElementById("newSongContainer");
+
+        // Timeline – where songs are dropped
+        new Sortable(timeline, {
+          group: "songs",
           animation: 150,
           ghostClass: "drag-ghost",
-          onEnd: (evt) => {
+          onAdd: (evt) => {
             if (evt.item.id === "new-song") {
-              const newIndex = evt.newIndex; // Position of the new song
-              log(`📤 Sending guess: insert before index ${newIndex}`);
+              const newIndex = evt.newIndex;
+              log(`📤 Guess submitted: insert at index ${newIndex}`);
               socket.send(JSON.stringify({ type: "guess", index: newIndex }));
             }
           },
+          onStart: () => {
+            timeline.classList.add("drag-active");
+          },
+          onEnd: () => {
+            timeline.classList.remove("drag-active");
+          },
+        });
+
+        // New song container – where drag starts
+        new Sortable(newSongContainer, {
+          group: "songs", // must match
+          sort: false, // can't rearrange in this container
         });
       };
 
