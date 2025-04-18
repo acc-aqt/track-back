@@ -4,38 +4,37 @@ from backend.server.game_context import GameContext
 from backend.music_service.mock import DummyMusicService
 from backend.server.server import Server
 
-game_context = GameContext(
+@pytest.fixture
+def test_env():
+    ctx = GameContext(
     target_song_count=2,
-    music_service=DummyMusicService(),
-)
-server = Server(game_context=game_context, port="")
-client = TestClient(server.app)
+    music_service=DummyMusicService(),)
+    server = Server(game_context=ctx, port="")
+    return TestClient(server.app), ctx
 
 
-@pytest.fixture(autouse=True)
-def reset_game_context():
-    game_context.reset()
-
-
-def test_register_user_succeeds():
+def test_register_user_succeeds(test_env):
+    client, ctx = test_env
     user_name = "testuser"
     response = client.post(f"/register?user_name={user_name}")
     assert response.status_code == 201
     assert "message" in response.json()
     assert "user" in response.json()
-    assert len(server.game_context.registered_users) == 1
+    assert len(ctx.registered_users) == 1
 
 
-def test_register_user_twice_fails():
+def test_register_user_twice_fails(test_env):
+    client, ctx = test_env
     user_name = "testuser"
     client.post(f"/register?user_name={user_name}")
     response = client.post(f"/register?user_name={user_name}")
     assert response.status_code == 409
     assert "detail" in response.json()
-    assert len(server.game_context.registered_users) == 1
+    assert len(ctx.registered_users) == 1
 
 
-def test_register_two_users_succeeds():
+def test_register_two_users_succeeds(test_env):
+    client, ctx = test_env
     user_name_1 = "testuser1"
     user_name_2 = "testuser2"
 
@@ -44,22 +43,25 @@ def test_register_two_users_succeeds():
     assert response.status_code == 201
     assert "message" in response.json()
     assert "user" in response.json()
-    assert len(server.game_context.registered_users) == 2
+    assert len(ctx.registered_users) == 2
 
 
-def test_shutdown_server_endpoint():
+def test_shutdown_server_endpoint(test_env):
+    client, _ = test_env
     response = client.post("/shutdown")
     assert response.status_code == 200
     assert "message" in response.json()
 
 
-def test_nobody_registered_start_fails():
+def test_nobody_registered_start_fails(test_env):
+    client, _ = test_env
     response = client.post("/start")
     assert response.status_code == 400
     assert "detail" in response.json()
 
 
-def test_one_user_registered_start_succeeds():
+def test_one_user_registered_start_succeeds(test_env):
+    client, _ = test_env
     user_name = "testuser"
     client.post(f"/register?user_name={user_name}")
     response = client.post("/start")
@@ -67,6 +69,32 @@ def test_one_user_registered_start_succeeds():
     assert "message" in response.json()
 
 
-def test_invalid_start_game_method():
+def test_websocket_guess_message(test_env):
+    client, ctx = test_env
+
+    # Register the user explicitly
+    client.post("/register?user_name=player1")
+
+    assert len(ctx.registered_users) == 1
+
+    with client.websocket_connect("/ws/player1") as websocket:
+        websocket.send_json({"type": "guess", "index": 0})
+        response = websocket.receive_text()
+        assert "Unknown message type" not in response
+
+
+def test_websocket_disconnect_cleans_user(test_env):
+    client, ctx = test_env
+    username = "disconnect_test"
+
+    with client.websocket_connect(f"/ws/{username}") as websocket:
+        assert username in ctx.connected_users
+
+    # After exiting context manager, disconnect happens
+    assert username not in ctx.connected_users
+
+
+def test_invalid_start_game_method(test_env):
+    client, _ = test_env
     response = client.get("/start")
     assert response.status_code == 405

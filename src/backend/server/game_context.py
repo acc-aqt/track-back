@@ -21,10 +21,3 @@ class GameContext:
         self.connected_users: dict[str, WebSocket] = {}
         self.registered_users: dict[str, User] = {}
         self.first_player: User | None = None
-
-    def reset(self) -> None:
-        """Reset the game context to its initial state."""
-        self.game = None
-        self.connected_users.clear()
-        self.registered_users.clear()
-        self.first_player = None
