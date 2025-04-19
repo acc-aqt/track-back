@@ -8,6 +8,7 @@
   --text-dark: #333;
   --text-light-dark: #5f5f5f;
   --white: #fff;
+  --gold: #E3C86C;
 }
 
 body {
@@ -227,6 +228,19 @@ button:hover,
     transition: opacity 1s ease;
   }
   
+  #winnerHeader {
+    background-color: var(--gold);
+    color: var(--text-dark);
+    font-family: 'Press Start 2P', sans-serif;
+    font-size: 1.2rem;
+    border: 1px dashed var(--border);
+    text-align: center;
+    padding: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+
 
   .wrong-guess {
     position: relative;

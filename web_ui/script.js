@@ -205,6 +205,15 @@ document.getElementById('connectBtn').onclick = async () => {
       } else if (type === 'game_over') {
         log(`🏁 Game Over! Winner: ${data.winner}`)
         document.getElementById('newSongContainer').style.display = 'none'
+
+        const winnerHeader = document.getElementById('winnerHeader')
+        const isYou = data.winner === username
+
+        winnerHeader.innerHTML = isYou
+          ? '🎉&thinsp;You win!&thinsp;🎉<br />👩🏻‍🎤&thinsp;🏆'
+          : `Game over.<br />${data.winner} won the game.`
+
+        winnerHeader.style.display = 'block'
       }
     }
 
