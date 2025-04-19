@@ -5,6 +5,12 @@ from backend.music_service.mock import DummyMusicService
 from backend.server.server import Server
 import json
 
+from backend.server.websocket_handler import WebSocketGameHandler
+
+WebSocketGameHandler.terminate_process = lambda self: print(
+    "Terminating (stubbed)"
+)  # not actually killing the process within Tet
+
 
 @pytest.fixture
 def test_env():
@@ -71,7 +77,7 @@ def test_one_user_registered_start_succeeds(test_env):
         assert "message" in response.json()
 
 
-def test_one_player_one_correct_guess(test_env):
+def test_single_player_game(test_env):
     client, _ = test_env
     user_name = "testuser"
 
@@ -86,27 +92,62 @@ def test_one_player_one_correct_guess(test_env):
         assert data["first_player"] == user_name
 
         # Receive the welcome message
-        welcome = websocket.receive_text()
-        welcome_data = json.loads(welcome)
-        assert welcome_data["type"] == "welcome"
+        response = json.loads(websocket.receive_text())
+        assert response["type"] == "welcome"
 
         # Receive the "your_turn" message
-        welcome = websocket.receive_text()
-        turn_data = json.loads(welcome)
-        assert turn_data["type"] == "your_turn"
+        response = json.loads(websocket.receive_text())
+        assert response["type"] == "your_turn"
 
-        # Then send the guess
+        # Then send the first guess
         websocket.send_json({"type": "guess", "index": 0})
 
         # Then receive the guess result
-        result = websocket.receive_text()
-        result_data = json.loads(result)
+        response = json.loads(websocket.receive_text())
 
-        assert "error" not in result_data
-        assert result_data["type"] == "guess_result"
-        assert len(result_data["song_list"]) == 1
-        assert result_data["last_index"] == "0"
-        assert result_data["other_players"] == []
+        assert "error" not in response
+        assert response["type"] == "guess_result"
+        assert response["result"] == "correct"
+        assert len(response["song_list"]) == 1
+        assert response["last_index"] == "0"
+        assert response["other_players"] == []
+
+        # Receive the "your_turn" message
+        response = json.loads(websocket.receive_text())
+        assert response["type"] == "your_turn"
+
+        # Send the second guess
+        # Songs from MockService are ordered by release year.
+        websocket.send_json({"type": "guess", "index": 0})  # this is a wrong guess
+
+        # Then receive the guess result
+        response = json.loads(websocket.receive_text())
+
+        assert "error" not in response
+        assert response["type"] == "guess_result"
+        assert response["result"] == "wrong"
+        assert len(response["song_list"]) == 1
+        assert response["last_index"] == "0"
+        assert response["other_players"] == []
+
+        # Receive the "your_turn" message
+        response = json.loads(websocket.receive_text())
+        assert response["type"] == "your_turn"
+
+        # Send the third guess
+        websocket.send_json({"type": "guess", "index": 1})  # this is a correct guess
+
+        # Then receive the guess result
+        response = json.loads(websocket.receive_text())
+
+        assert "error" not in response
+        assert response["type"] == "guess_result"
+        assert response["result"] == "correct"
+        assert len(response["song_list"]) == 2
+        assert response["last_index"] == "1"
+        assert response["other_players"] == []
+        assert response["game_over"] == "True"
+        assert response["winner"] == user_name
 
 
 def test_websocket_disconnect_cleans_user(test_env):
