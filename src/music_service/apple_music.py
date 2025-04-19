@@ -6,7 +6,6 @@ import subprocess
 import sys
 
 from game.song import Song
-
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 OSA_SCRIPT_PATH = "osascript"

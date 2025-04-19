@@ -7,7 +7,6 @@ import signal
 from fastapi import WebSocket
 
 from game.user import User
-
 from server.game_context import GameContext
 
 
@@ -51,16 +50,19 @@ class WebSocketGameHandler:
 
         # 🎯 Send result to the player who guessed
         await websocket.send_text(json.dumps(payload))
+        if payload["type"] == "error":
+            return
 
         if payload.get("game_over"):
             winner = payload["winner"]
             await self._broadcast_game_over(winner)
             self._terminate_process()
             return
-        await self._broadcast_turn_result(current_player=username, result=payload)
 
-        next_player = payload["next_player"]
-        await self._notify_next_player(user_name=next_player)
+        if payload["type"] == "guess_result":
+            await self._broadcast_turn_result(current_player=username, result=payload)
+            next_player = payload["next_player"]
+            await self._notify_next_player(user_name=next_player)
 
     def _terminate_process(self) -> None:
         """Terminate the process gracefully."""

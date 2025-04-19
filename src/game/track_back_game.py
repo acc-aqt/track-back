@@ -3,10 +3,9 @@
 from itertools import pairwise
 from typing import Any
 
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
-
 from game.song import Song
 from game.user import User
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
 class TrackBackGameError(Exception):
@@ -42,16 +41,20 @@ class TrackBackGame:
 
     def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
+        payload: dict[str, Any] = {}
         if not self.running:
-            return {"error": "Game not running."}
+            payload["type"] = "error"
+            payload["message"] = "⚠️ Game not running."
+            return payload
 
         player = self.get_current_player()
         if player.name != username:
-            return {"error": f"It is not {username}'s turn."}
+            payload["type"] = "error"
+            payload["message"] = f"It is not {username}'s turn."
+            return payload
 
         current_song = self.music_service.current_song()
 
-        payload: dict[str, Any] = {}
         payload["type"] = "guess_result"
         payload["player"] = username
         if self.verify_choice(player.song_list, insert_index, current_song):

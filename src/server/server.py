@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse
 
 from game.track_back_game import TrackBackGame
 from game.user import User
-
 from server.game_context import GameContext
 from server.websocket_handler import WebSocketGameHandler
 

@@ -7,7 +7,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 from game.song import Song
-
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.utils import extract_year
 
