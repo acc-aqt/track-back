@@ -1,10 +1,11 @@
-import pytest
-from fastapi.testclient import TestClient
-from backend.server.game_context import GameContext
-from backend.music_service.mock import DummyMusicService
-from backend.server.server import Server
 import json
 
+import pytest
+from fastapi.testclient import TestClient
+
+from backend.music_service.mock import DummyMusicService
+from backend.server.game_context import GameContext
+from backend.server.server import Server
 from backend.server.websocket_handler import WebSocketGameHandler
 
 WebSocketGameHandler.terminate_process = lambda self: print(
@@ -128,7 +129,6 @@ def test_single_player_game(test_env):
         assert response["other_players"] == []
         assert response["game_over"] == False
         assert response["winner"] == ""
-
 
         # Receive the "your_turn" message
         response = json.loads(websocket.receive_text())
