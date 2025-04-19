@@ -14,7 +14,7 @@ The game consists of a **Python-based server** and a [Web UI](https://acc-aqt.gi
 
 To run the game server, you need:
 
-- `Python 3.12` or higher
+- `Python 3.11` or higher
 - `pip`
 
 You can check your installed versions as follows:
