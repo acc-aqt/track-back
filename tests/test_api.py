@@ -8,7 +8,7 @@ from backend.server.game_context import GameContext
 from backend.server.server import Server
 from backend.server.websocket_handler import WebSocketGameHandler
 
-WebSocketGameHandler.terminate_process = lambda self: print(
+WebSocketGameHandler._terminate_process = lambda self: print(
     "Terminating (stubbed)"
 )  # not actually killing the process within Tet
 

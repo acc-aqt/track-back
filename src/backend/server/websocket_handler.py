@@ -55,14 +55,14 @@ class WebSocketGameHandler:
         if payload.get("game_over"):
             winner = payload["winner"]
             await self._broadcast_game_over(winner)
-            self.terminate_process()
+            self._terminate_process()
             return
         await self._broadcast_turn_result(current_player=username, result=payload)
 
         next_player = payload["next_player"]
         await self._notify_next_player(user_name=next_player)
 
-    def terminate_process(self) -> None:
+    def _terminate_process(self) -> None:
         """Terminate the process gracefully."""
         os.kill(os.getpid(), signal.SIGINT)
 
@@ -95,7 +95,7 @@ class WebSocketGameHandler:
                     )
                 )
             print("💥 Game over, shutting down server...")
-            self.terminate_process()
+            self._terminate_process()
             return
 
         next_ws = self.ctx.connected_users[user_name]
