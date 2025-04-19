@@ -89,13 +89,25 @@ class Server:
 
         if self.game_context.game_mode == GameMode.SEQUENTIAL:
 
-            first_player = self.game_context.game.get_current_player()
+            players_to_notify = [self.game_context.game.get_current_player()]
+        elif self.game_context.game_mode == GameMode.SIMULTANEOUS:
+            players_to_notify = self.game_context.game.users
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid game mode. Only SEQUENTIAL and SIMULTANEOUS are supported.",
+            )
 
-            ws = self.game_context.connected_users.get(first_player.name)
+        print("Players to notify:")
+        print(players_to_notify)
+
+        for player in players_to_notify:
+
+            ws = self.game_context.connected_users.get(player.name)
             if not ws:
                 raise HTTPException(
                     status_code=409,
-                    detail=f"{first_player.name} is not connected via WebSocket.",
+                    detail=f"{player.name} is not connected via WebSocket.",
                 )
 
             await ws.send_text(
@@ -103,19 +115,19 @@ class Server:
                     {
                         "type": "your_turn",
                         "message": "🎮 It's your turn!",
-                        "next_player": first_player.name,
-                        "song_list": [song.serialize() for song in first_player.song_list],
+                        "next_player": player.name,
+                        "song_list": [song.serialize() for song in player.song_list],
                     }
                 )
             )
 
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Game started!",
-                    "first_player": first_player.name,
-                },
-            )
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Game started!",
+                "first_player": player.name,
+            },
+        )
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
         await websocket.accept()

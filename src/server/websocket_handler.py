@@ -61,8 +61,8 @@ class WebSocketGameHandler:
 
         if payload["type"] == "guess_result":
             await self._broadcast_turn_result(current_player=username, result=payload)
-            next_player = payload["next_player"]
-            await self._notify_next_player(user_name=next_player)
+        if payload.get("next_player"):
+            await self._notify_next_player(user_name=payload["next_player"])
 
     def _terminate_process(self) -> None:
         """Terminate the process gracefully."""
@@ -92,7 +92,7 @@ class WebSocketGameHandler:
                     json.dumps(
                         {
                             "type": "error",
-                            "message": "Player {user_name} has disconnected.",
+                            "message": f"Player {user_name} has disconnected.",
                         }
                     )
                 )

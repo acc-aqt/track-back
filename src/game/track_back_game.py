@@ -57,14 +57,14 @@ class TrackBackGame:
                 payload["type"] = "error"
                 payload["message"] = f"It is not {username}'s turn."
                 return payload
-        elif self.game_mode == GameMode.SEQUENTIAL:
+
+        if self.game_mode == GameMode.SIMULTANEOUS:
             if username in self.users_already_guessed:
                 payload["type"] = "error"
                 payload["message"] = f"⚠️ {username} has already guessed this song."
                 return payload
 
-        else:
-            raise Exception("Invalid game mode")
+            player = [user for user in self.users if user.name == username][0]
 
         current_song = self.music_service.current_song()
 
