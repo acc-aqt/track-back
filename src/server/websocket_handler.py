@@ -6,9 +6,9 @@ import signal
 
 from fastapi import WebSocket
 
-from backend.game.user import User
+from game.user import User
 
-from .game_context import GameContext
+from server.game_context import GameContext
 
 
 async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:

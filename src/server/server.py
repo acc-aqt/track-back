@@ -10,11 +10,11 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.game.track_back_game import TrackBackGame
-from backend.game.user import User
+from game.track_back_game import TrackBackGame
+from game.user import User
 
-from .game_context import GameContext
-from .websocket_handler import WebSocketGameHandler
+from server.game_context import GameContext
+from server.websocket_handler import WebSocketGameHandler
 
 
 class Server:

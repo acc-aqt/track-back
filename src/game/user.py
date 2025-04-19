@@ -1,7 +1,7 @@
 """Contains the user class."""
 
-from .song import Song
-from .utils import get_user_input
+from game.song import Song
+from game.utils import get_user_input
 
 
 class User:

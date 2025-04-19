@@ -5,9 +5,9 @@
 import subprocess
 import sys
 
-from backend.game.song import Song
+from game.song import Song
 
-from .abstract_adapter import AbstractMusicServiceAdapter
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 OSA_SCRIPT_PATH = "osascript"
 

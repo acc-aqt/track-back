@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from backend.game.song import Song
+from game.song import Song
 
 
 class AbstractMusicServiceAdapter(ABC):

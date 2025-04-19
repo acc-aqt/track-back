@@ -2,9 +2,9 @@
 
 from fastapi import WebSocket
 
-from backend.game.track_back_game import TrackBackGame
-from backend.game.user import User
-from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from game.track_back_game import TrackBackGame
+from game.user import User
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
 class GameContext:

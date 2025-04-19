@@ -3,10 +3,10 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.music_service.mock import DummyMusicService
-from backend.server.game_context import GameContext
-from backend.server.server import Server
-from backend.server.websocket_handler import WebSocketGameHandler
+from music_service.mock import DummyMusicService
+from server.game_context import GameContext
+from server.server import Server
+from server.websocket_handler import WebSocketGameHandler
 
 WebSocketGameHandler._terminate_process = lambda self: print(
     "Terminating (stubbed)"

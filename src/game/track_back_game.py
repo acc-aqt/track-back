@@ -3,10 +3,10 @@
 from itertools import pairwise
 from typing import Any
 
-from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
-from .song import Song
-from .user import User
+from game.song import Song
+from game.user import User
 
 
 class TrackBackGameError(Exception):

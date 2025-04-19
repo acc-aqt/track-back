@@ -8,10 +8,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from backend.music_service.factory import MusicServiceFactory
-from backend.server.game_context import GameContext
-from backend.server.local_ip import get_local_ip
-from backend.server.server import Server
+from music_service.factory import MusicServiceFactory
+from server.game_context import GameContext
+from server.local_ip import get_local_ip
+from server.server import Server
 
 
 def parse_args() -> tuple[int, int]:
