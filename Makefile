@@ -40,7 +40,7 @@ install:          ## Install the project in dev mode.
 .PHONY: lint
 lint: ## Run linters (optionally specify LINT_PATH=<path>)
 	@LINT_TARGET=$(LINT_PATH); \
-	if [ -z "$$LINT_TARGET" ]; then LINT_TARGET=.; fi; \
+	if [ -z "$$LINT_TARGET" ]; then LINT_TARGET=src; fi; \
 	echo "Running isort..."; \
 	$(ENV_PREFIX)isort $$LINT_TARGET; \
 	echo "Running docstrfmt..."; \
