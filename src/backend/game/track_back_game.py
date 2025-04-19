@@ -59,10 +59,10 @@ class TrackBackGame:
             player.add_song(insert_index, current_song)
             # player.print_song_list()
             payload["result"] = "correct"
-            payload["result"] = f"✅ Correct! Song was {current_song}."
+            payload["message"] = f"✅ Correct! Song was {current_song}."
         else:
             payload["result"] = "wrong"
-            payload["result"] = f"❌ Wrong! Song was {current_song}."
+            payload["message"] = f"❌ Wrong! Song was {current_song}."
 
         payload["other_players"] = [user.serialize() for user in self.users if user != player]
         payload["last_index"] = str(insert_index)
