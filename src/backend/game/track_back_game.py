@@ -1,6 +1,7 @@
 """Contains the TrackBackGame class that implements the game logic."""
 
 from itertools import pairwise
+from typing import Any
 
 from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
 
@@ -39,9 +40,7 @@ class TrackBackGame:
         """Get the current player."""
         return self.users[self.current_turn_index]
 
-    def handle_player_turn(
-        self, username: str, insert_index: int
-    ) -> dict[str, str | list[dict[str, str]]]:
+    def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
         if not self.running:
             return {"error": "Game not running."}
@@ -52,19 +51,20 @@ class TrackBackGame:
 
         current_song = self.music_service.current_song()
 
-        payload: dict[str, str | list[dict[str, str]]] = {}
+        payload: dict[str, Any] = {}
         payload["type"] = "guess_result"
         payload["player"] = username
         if self.verify_choice(player.song_list, insert_index, current_song):
             player.add_song(insert_index, current_song)
-            # player.print_song_list()
             payload["result"] = "correct"
             payload["message"] = f"✅ Correct! Song was {current_song}."
         else:
             payload["result"] = "wrong"
             payload["message"] = f"❌ Wrong! Song was {current_song}."
 
-        payload["other_players"] = [user.serialize() for user in self.users if user != player]
+        payload["other_players"] = [
+            user.serialize() for user in self.users if user != player
+        ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
         payload["round_counter"] = str(self.round_counter)
@@ -77,7 +77,7 @@ class TrackBackGame:
             payload["game_over"] = True
             payload["winner"] = player.name
             return payload
-        
+
         payload["game_over"] = False
         payload["winner"] = ""
 
@@ -105,7 +105,8 @@ class TrackBackGame:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year
+            for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:

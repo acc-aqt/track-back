@@ -50,7 +50,7 @@ class Server:
 
         return app
 
-    async def _shutdown(self) -> dict[str, str]:
+    async def _shutdown(self) -> JSONResponse:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
@@ -58,7 +58,7 @@ class Server:
             status_code=200, content={"message": "Server shutdown initiated."}
         )
 
-    async def _register(self, user_name: str) -> dict[str, str]:
+    async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
         if user_name in self.game_context.registered_users:
             raise HTTPException(
@@ -75,7 +75,7 @@ class Server:
             },
         )
 
-    async def _start_game(self) -> dict[str, str]:
+    async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
         if self.game_context.game is not None:
             raise HTTPException(status_code=400, detail="Game already started.")
@@ -96,7 +96,10 @@ class Server:
 
         ws = self.game_context.connected_users.get(first_player.name)
         if not ws:
-            return {"error": f"{first_player.name} is not connected via WebSocket."}
+            raise HTTPException(
+                status_code=409,
+                detail=f"{first_player.name} is not connected via WebSocket.",
+            )
 
         await ws.send_text(
             json.dumps(

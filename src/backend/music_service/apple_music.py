@@ -55,7 +55,9 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
                 f"Output was '{result.stdout}'. Check if a song is playing!"
             ) from err
 
-        return Song(title=track_name, artist=artist_name, release_year=release_year)
+        release_year_int = int(release_year) if release_year.isdigit() else 0
+
+        return Song(title=track_name, artist=artist_name, release_year=release_year_int)
 
     def start_playback(self) -> None:
         """Start playing music."""

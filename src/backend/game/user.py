@@ -12,11 +12,6 @@ class User:
         self.name = name
         self.song_list = []  # type: list[Song]
 
-    def print_song_list(self) -> None:
-        """Print the song list of the user."""
-        for index, song in enumerate(self.song_list):
-            print(f"{index} : {song.release_year} | '{song.title}' by {song.artist}")
-
     def add_song(self, index: int, song: Song) -> None:
         """Add a song to the song_list of the user."""
         self.song_list.insert(index, song)
@@ -37,7 +32,7 @@ class User:
             except ValueError:
                 print("Please enter a valid index.")
 
-    def serialize(self) -> dict[str, str]:
+    def serialize(self) -> dict[str, str | list[dict[str, str]]]:
         """Serialize the user object to a dictionary."""
         return {
             "name": self.name,
