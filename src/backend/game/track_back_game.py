@@ -74,9 +74,12 @@ class TrackBackGame:
         if len(player.song_list) >= self.target_song_count:
             self.running = False
             self.winner = player
-            payload["game_over"] = str(True)
+            payload["game_over"] = True
             payload["winner"] = player.name
             return payload
+        
+        payload["game_over"] = False
+        payload["winner"] = ""
 
         # Freeze current player before advancing
         payload["player"] = player.name

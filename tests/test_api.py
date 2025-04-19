@@ -23,7 +23,6 @@ def test_env():
 
 
 def test_register_user_succeeds(test_env):
-    print("Test1 running")
     client, ctx = test_env
     user_name = "testuser"
     response = client.post(f"/register?user_name={user_name}")
@@ -34,8 +33,6 @@ def test_register_user_succeeds(test_env):
 
 
 def test_register_user_twice_fails(test_env):
-    print("Test2 running")
-
     client, ctx = test_env
     user_name = "testuser"
     client.post(f"/register?user_name={user_name}")
@@ -46,8 +43,6 @@ def test_register_user_twice_fails(test_env):
 
 
 def test_register_two_users_succeeds(test_env):
-    print("Test3 running")
-
     client, ctx = test_env
     user_name_1 = "testuser1"
     user_name_2 = "testuser2"
@@ -111,6 +106,8 @@ def test_single_player_game(test_env):
         assert len(response["song_list"]) == 1
         assert response["last_index"] == "0"
         assert response["other_players"] == []
+        assert response["game_over"] == False
+        assert response["winner"] == ""
 
         # Receive the "your_turn" message
         response = json.loads(websocket.receive_text())
@@ -129,6 +126,9 @@ def test_single_player_game(test_env):
         assert len(response["song_list"]) == 1
         assert response["last_index"] == "0"
         assert response["other_players"] == []
+        assert response["game_over"] == False
+        assert response["winner"] == ""
+
 
         # Receive the "your_turn" message
         response = json.loads(websocket.receive_text())
@@ -146,7 +146,7 @@ def test_single_player_game(test_env):
         assert len(response["song_list"]) == 2
         assert response["last_index"] == "1"
         assert response["other_players"] == []
-        assert response["game_over"] == "True"
+        assert response["game_over"] == True
         assert response["winner"] == user_name
 
 
