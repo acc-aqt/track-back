@@ -18,6 +18,8 @@ body {
     margin: auto;
   }
   h1 {
+    font-family: 'Press Start 2P', sans-serif;
+
     text-align: center;
   }
   
@@ -53,6 +55,7 @@ body {
   }
 
   #controls label {
+    font-family: 'Press Start 2P', sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
