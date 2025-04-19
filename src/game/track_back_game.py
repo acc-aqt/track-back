@@ -1,17 +1,12 @@
 """Contains the TrackBackGame class that implements the game logic."""
 
-from enum import Enum
 from itertools import pairwise
 from typing import Any
 
 from game.song import Song
 from game.user import User
+from game.game_modes import GameMode
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
-
-
-class GameMode(Enum):
-    SIMULTANEOUS = "simultaneous"
-    SEQUENTIAL = "sequential"
 
 
 class TrackBackGameError(Exception):
@@ -26,7 +21,7 @@ class TrackBackGame:
         users: list[User],
         target_song_count: int,
         music_service: AbstractMusicServiceAdapter,
-        game_mode: GameMode = GameMode.SEQUENTIAL,
+        game_mode: GameMode,
     ) -> None:
         self.music_service = music_service
         self.target_song_count = target_song_count
@@ -55,7 +50,7 @@ class TrackBackGame:
             payload["type"] = "error"
             payload["message"] = "⚠️ Game not running."
             return payload
-        
+
         if self.game_mode == GameMode.SEQUENTIAL:
             player = self.get_current_player()
             if player.name != username:
@@ -67,10 +62,9 @@ class TrackBackGame:
                 payload["type"] = "error"
                 payload["message"] = f"⚠️ {username} has already guessed this song."
                 return payload
-            
+
         else:
             raise Exception("Invalid game mode")
-            
 
         current_song = self.music_service.current_song()
 
@@ -84,9 +78,7 @@ class TrackBackGame:
             payload["result"] = "wrong"
             payload["message"] = f"❌ Wrong! Song was {current_song}."
 
-        payload["other_players"] = [
-            user.serialize() for user in self.users if user != player
-        ]
+        payload["other_players"] = [user.serialize() for user in self.users if user != player]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
         payload["current_turn_index"] = str(self.current_turn_index)
@@ -128,8 +120,7 @@ class TrackBackGame:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year
-            for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:
