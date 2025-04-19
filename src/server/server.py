@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from game.track_back_game import TrackBackGame
+from game.track_back_game import TrackBackGame, GameMode
 from game.user import User
 from server.game_context import GameContext
 from server.websocket_handler import WebSocketGameHandler
@@ -90,34 +90,36 @@ class Server:
             self.game_context.music_service,
         )
         self.game_context.game.start_game()
+        
+        if self.game_context.game.game_mode == GameMode.SEQUENTIAL:
 
-        first_player = self.game_context.game.get_current_player()
+            first_player = self.game_context.game.get_current_player()
 
-        ws = self.game_context.connected_users.get(first_player.name)
-        if not ws:
-            raise HTTPException(
-                status_code=409,
-                detail=f"{first_player.name} is not connected via WebSocket.",
+            ws = self.game_context.connected_users.get(first_player.name)
+            if not ws:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"{first_player.name} is not connected via WebSocket.",
+                )
+
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "your_turn",
+                        "message": "🎮 It's your turn!",
+                        "next_player": first_player.name,
+                        "song_list": [song.serialize() for song in first_player.song_list],
+                    }
+                )
             )
 
-        await ws.send_text(
-            json.dumps(
-                {
-                    "type": "your_turn",
-                    "message": "🎮 It's your turn!",
-                    "next_player": first_player.name,
-                    "song_list": [song.serialize() for song in first_player.song_list],
-                }
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "Game started!",
+                    "first_player": first_player.name,
+                },
             )
-        )
-
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "Game started!",
-                "first_player": first_player.name,
-            },
-        )
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
         await websocket.accept()
