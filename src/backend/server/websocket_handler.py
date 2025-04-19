@@ -46,31 +46,18 @@ class WebSocketGameHandler:
             )
             return
 
-        result = self.ctx.game.handle_player_turn(username, index)
+        payload = self.ctx.game.handle_player_turn(username, index)
 
         # 🎯 Send result to the player who guessed
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "type": "guess_result",
-                    "player": username,
-                    "result": result["result"],
-                    "message": result["message"],
-                    "song_list": result["song_list"],
-                    "other_players": result["other_players"],
-                    "last_song": result["last_song"],
-                    "last_index": result["last_index"],
-                }
-            )
-        )
+        await websocket.send_text(json.dumps(payload))
 
-        if result.get("game_over"):
-            await self._broadcast_game_over(result["winner"])
+        if payload.get("game_over"):
+            await self._broadcast_game_over(payload["winner"])
             self.terminate_process()
             return
-        await self._broadcast_turn_result(current_player=username, result=result)
+        await self._broadcast_turn_result(current_player=username, result=payload)
 
-        await self._notify_next_player(user_name=result["next_player"])
+        await self._notify_next_player(user_name=payload["next_player"])
 
     def terminate_process(self) -> None:
         """Terminate the process gracefully."""

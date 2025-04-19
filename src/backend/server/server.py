@@ -6,8 +6,7 @@ import os
 import signal
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -19,11 +18,7 @@ from .websocket_handler import WebSocketGameHandler
 
 
 class Server:
-    """
-    Encapsulates the FastAPI application and game lifecycle management.
-    The server handles WebSocket connections.
-    REST endpoints are used for registration and game management.
-    """
+    """Encapsulates the FastAPI application and game lifecycle management. The server handles WebSocket connections. REST endpoints are used for registration and game management."""
 
     def __init__(self, game_context: GameContext, port: int) -> None:
         self.game_context = game_context
@@ -59,18 +54,25 @@ class Server:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
-        return JSONResponse(status_code=200, content={"message": "Server shutdown initiated."})
+        return JSONResponse(
+            status_code=200, content={"message": "Server shutdown initiated."}
+        )
 
     async def _register(self, user_name: str) -> dict[str, str]:
         """Register a new user for the game via REST POST."""
         if user_name in self.game_context.registered_users:
-            raise HTTPException(status_code=409, detail=f"User '{user_name}' already registered")
+            raise HTTPException(
+                status_code=409, detail=f"User '{user_name}' already registered"
+            )
 
         self.game_context.registered_users[user_name] = User(name=user_name)
 
         return JSONResponse(
             status_code=201,
-            content={"message": "User '{user_name}' registered successfully.", "user": user_name},
+            content={
+                "message": "User '{user_name}' registered successfully.",
+                "user": user_name,
+            },
         )
 
     async def _start_game(self) -> dict[str, str]:
@@ -80,8 +82,7 @@ class Server:
 
         if len(self.game_context.registered_users) < 1:
             raise HTTPException(
-                status_code=400,
-                detail="Not enough players to start the game."
+                status_code=400, detail="Not enough players to start the game."
             )
         users = list(self.game_context.registered_users.values())
         self.game_context.game = TrackBackGame(

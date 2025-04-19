@@ -52,44 +52,40 @@ class TrackBackGame:
 
         current_song = self.music_service.current_song()
 
-        result: dict[str, str | list[dict[str, str]]]
+        payload: dict[str, str | list[dict[str, str]]] = {}
+        payload["type"] = "guess_result"
+        payload["player"] = username
         if self.verify_choice(player.song_list, insert_index, current_song):
             player.add_song(insert_index, current_song)
-            player.print_song_list()
-
-            result = {
-                "result": "correct",
-                "message": (f"✅ Correct! Song was {current_song}."),
-            }
+            # player.print_song_list()
+            payload["result"] = "correct"
+            payload["result"] = f"✅ Correct! Song was {current_song}."
         else:
-            result = {
-                "result": "wrong",
-                "message": (f"❌ Wrong! Song was {current_song}."),
-            }
-        result["other_players"] = [
-            user.serialize() for user in self.users if user != player
-        ]
-        result["last_index"] = str(insert_index)
-        result["last_song"] = current_song.serialize()
-        result["round_counter"] = str(self.round_counter)
-        result["current_turn_index"] = str(self.current_turn_index)
-        result["song_list"] = [song.serialize() for song in player.song_list]
+            payload["result"] = "wrong"
+            payload["result"] = f"❌ Wrong! Song was {current_song}."
+
+        payload["other_players"] = [user.serialize() for user in self.users if user != player]
+        payload["last_index"] = str(insert_index)
+        payload["last_song"] = current_song.serialize()
+        payload["round_counter"] = str(self.round_counter)
+        payload["current_turn_index"] = str(self.current_turn_index)
+        payload["song_list"] = [song.serialize() for song in player.song_list]
 
         if len(player.song_list) >= self.target_song_count:
             self.running = False
             self.winner = player
-            result["game_over"] = str(True)
-            result["winner"] = player.name
-            return result
+            payload["game_over"] = str(True)
+            payload["winner"] = player.name
+            return payload
 
         # Freeze current player before advancing
-        result["player"] = player.name
+        payload["player"] = player.name
         self._advance_turn()
         self.music_service.next_track()
 
-        result["next_player"] = self.get_current_player().name
+        payload["next_player"] = self.get_current_player().name
 
-        return result
+        return payload
 
     def _advance_turn(self) -> None:
         self.round_counter += 1
@@ -106,8 +102,7 @@ class TrackBackGame:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year
-            for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:
