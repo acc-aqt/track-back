@@ -1,4 +1,4 @@
-"""Contains the game server class."""
+"""Contains the game server class for managing game state and WebSocket connections."""
 
 import json
 import logging
@@ -18,7 +18,7 @@ from .websocket_handler import WebSocketGameHandler
 
 
 class Server:
-    """Encapsulates the FastAPI application and game lifecycle management. The server handles WebSocket connections. REST endpoints are used for registration and game management."""
+    """Encapsulates the FastAPI application."""
 
     def __init__(self, game_context: GameContext, port: int) -> None:
         self.game_context = game_context
