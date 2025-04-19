@@ -1,11 +1,12 @@
 """Contains the TrackBackGame class that implements the game logic."""
 
 from itertools import pairwise
+from typing import Any
 
-from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
-from .song import Song
-from .user import User
+from game.song import Song
+from game.user import User
 
 
 class TrackBackGameError(Exception):
@@ -39,9 +40,7 @@ class TrackBackGame:
         """Get the current player."""
         return self.users[self.current_turn_index]
 
-    def handle_player_turn(
-        self, username: str, insert_index: int
-    ) -> dict[str, str | list[dict[str, str]]]:
+    def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
         if not self.running:
             return {"error": "Game not running."}
@@ -52,46 +51,44 @@ class TrackBackGame:
 
         current_song = self.music_service.current_song()
 
-        result: dict[str, str | list[dict[str, str]]]
+        payload: dict[str, Any] = {}
+        payload["type"] = "guess_result"
+        payload["player"] = username
         if self.verify_choice(player.song_list, insert_index, current_song):
             player.add_song(insert_index, current_song)
-            player.print_song_list()
-
-            result = {
-                "result": "correct",
-                "message": (
-                    f"✅ Correct! Song was {current_song}."
-                ),
-            }
+            payload["result"] = "correct"
+            payload["message"] = f"✅ Correct! Song was {current_song}."
         else:
-            result = {
-                "result": "wrong",
-                "message": (
-                    f"❌ Wrong! Song was {current_song}."
-                ),
-            }
-        result["other_players"] = [user.serialize() for user in self.users if user != player]
-        result["last_index"] = str(insert_index)
-        result["last_song"] = current_song.serialize()
-        result["round_counter"] = str(self.round_counter)
-        result["current_turn_index"] = str(self.current_turn_index)
-        result["song_list"] = [song.serialize() for song in player.song_list]
+            payload["result"] = "wrong"
+            payload["message"] = f"❌ Wrong! Song was {current_song}."
+
+        payload["other_players"] = [
+            user.serialize() for user in self.users if user != player
+        ]
+        payload["last_index"] = str(insert_index)
+        payload["last_song"] = current_song.serialize()
+        payload["round_counter"] = str(self.round_counter)
+        payload["current_turn_index"] = str(self.current_turn_index)
+        payload["song_list"] = [song.serialize() for song in player.song_list]
 
         if len(player.song_list) >= self.target_song_count:
             self.running = False
             self.winner = player
-            result["game_over"] = str(True)
-            result["winner"] = player.name
-            return result
+            payload["game_over"] = True
+            payload["winner"] = player.name
+            return payload
+
+        payload["game_over"] = False
+        payload["winner"] = ""
 
         # Freeze current player before advancing
-        result["player"] = player.name
+        payload["player"] = player.name
         self._advance_turn()
         self.music_service.next_track()
 
-        result["next_player"] = self.get_current_player().name
+        payload["next_player"] = self.get_current_player().name
 
-        return result
+        return payload
 
     def _advance_turn(self) -> None:
         self.round_counter += 1
@@ -104,7 +101,6 @@ class TrackBackGame:
         potential_list.insert(index, selected_song)
 
         return TrackBackGame._is_sorted_by_release_year(potential_list)
-
 
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:

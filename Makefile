@@ -38,23 +38,23 @@ install:          ## Install the project in dev mode.
 
 
 .PHONY: lint
-lint: ## Run linters (optionally specify PATH=<path>)
-	@PATH_TO_LINT=$(PATH); \
-	if [ -z "$$PATH_TO_LINT" ]; then PATH_TO_LINT=.; fi; \
+lint: ## Run linters (optionally specify LINT_PATH=<path>)
+	@LINT_TARGET=$(LINT_PATH); \
+	if [ -z "$$LINT_TARGET" ]; then LINT_TARGET=src; fi; \
 	echo "Running isort..."; \
-	$(ENV_PREFIX)isort $$PATH_TO_LINT; \
+	$(ENV_PREFIX)isort $$LINT_TARGET; \
 	echo "Running docstrfmt..."; \
-	$(ENV_PREFIX)docstrfmt $$PATH_TO_LINT; \
+	$(ENV_PREFIX)docstrfmt $$LINT_TARGET; \
 	echo "Running black..."; \
-	$(ENV_PREFIX)black $$PATH_TO_LINT; \
+	$(ENV_PREFIX)black $$LINT_TARGET; \
 	echo "Running ruff format..."; \
-	$(ENV_PREFIX)ruff format $$PATH_TO_LINT; \
+	$(ENV_PREFIX)ruff format $$LINT_TARGET; \
 	echo "Running ruff check..."; \
-	$(ENV_PREFIX)ruff check $$PATH_TO_LINT; \
+	$(ENV_PREFIX)ruff check $$LINT_TARGET; \
 	echo "Running mypy..."; \
-	$(ENV_PREFIX)mypy $$PATH_TO_LINT; \
+	$(ENV_PREFIX)mypy $$LINT_TARGET; \
 	echo "Running pylint..."; \
-	$(ENV_PREFIX)pylint $$PATH_TO_LINT
+	$(ENV_PREFIX)pylint $$LINT_TARGET
 
 .PHONY: test
 test:

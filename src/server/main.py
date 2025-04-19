@@ -8,10 +8,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from backend.music_service.factory import MusicServiceFactory
-from backend.server.game_context import GameContext
-from backend.server.local_ip import get_local_ip
-from backend.server.server import Server
+from music_service.factory import MusicServiceFactory
+from server.game_context import GameContext
+from server.local_ip import get_local_ip
+from server.server import Server
 
 
 def parse_args() -> tuple[int, int]:
@@ -49,7 +49,7 @@ def main() -> None:
         target_song_count=target_song_count,
         music_service=music_service,
     )
-    
+
     if os.getenv("RENDER") == "true":
         print("Running on Render 🚀")
     else:
@@ -57,14 +57,10 @@ def main() -> None:
         ip = get_local_ip()
         url = f"http://{ip}:{port}"
         logging.info("\n🌍 Game server running at: %s\n", url)
-        
+
     server = Server(game_context=game_context, port=port)
-    
-    
-    
+
     server.run()
-
-
 
 
 if __name__ == "__main__":

@@ -2,9 +2,9 @@
 
 from fastapi import WebSocket
 
-from backend.game.track_back_game import TrackBackGame
-from backend.game.user import User
-from backend.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from game.track_back_game import TrackBackGame
+from game.user import User
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
 class GameContext:
@@ -18,6 +18,8 @@ class GameContext:
         self.target_song_count = target_song_count
         self.music_service = music_service
         self.game: TrackBackGame | None = None
+
         self.connected_users: dict[str, WebSocket] = {}
         self.registered_users: dict[str, User] = {}
-        self.first_player: User | None = None
+
+        self.first_player: str | None = None

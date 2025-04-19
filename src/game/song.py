@@ -1,6 +1,7 @@
 """Contains a class representing a song."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
@@ -18,19 +19,9 @@ class Song:
 
     def serialize(self) -> dict[str, str]:
         """Serialize the song to a dictionary."""
-        return {
-            "title": self.title,
-            "artist": self.artist,
-            "release_year": str(self.release_year),
-            "album_cover_url": self.album_cover_url,
-        }
+        return asdict(self)
 
 
-def deserialize_song(data: dict[str, str]) -> Song:
+def deserialize_song(data: dict[str, Any]) -> Song:
     """Deserialize the song from a dictionary."""
-    return Song(
-        title=data["title"],
-        artist=data["artist"],
-        release_year=int(data["release_year"]),
-        album_cover_url=data.get("album_cover_url", ""),
-    )
+    return Song(**data)

@@ -6,9 +6,14 @@ import signal
 
 from fastapi import WebSocket
 
-from backend.game.user import User
+from game.user import User
 
-from .game_context import GameContext
+from server.game_context import GameContext
+
+
+async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:
+    """Send a message to the WebSocket client."""
+    await ws.send_text(json.dumps({"type": msg_type, "message": message}))
 
 
 class WebSocketGameHandler:
@@ -20,25 +25,16 @@ class WebSocketGameHandler:
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
         if username in self.ctx.registered_users:
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "welcome",
-                        "message": f"✅ Welcome back, {username}!",
-                    }
-                )
-            )
+            await send_ws_message(websocket, "welcome", f"✅ Welcome back, {username}!")
+
         else:
             self.ctx.registered_users[username] = User(name=username)
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "welcome",
-                        "message": f"✅ Welcome, {username}! You're connected.",
-                        "first_player": username == self.ctx.first_player,
-                    }
-                )
+            await send_ws_message(
+                websocket,
+                "welcome",
+                f"✅ Welcome, {username}! You're connected.",
             )
+
         self.ctx.connected_users[username] = websocket
 
     async def handle_guess(
@@ -51,33 +47,22 @@ class WebSocketGameHandler:
             )
             return
 
-        result = self.ctx.game.handle_player_turn(username, index)
+        payload = self.ctx.game.handle_player_turn(username, index)
 
         # 🎯 Send result to the player who guessed
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "type": "guess_result",
-                    "player": username,
-                    "result": result["result"],
-                    "message": result["message"],
-                    "song_list": result["song_list"],
-                    "other_players": result["other_players"],
-                    "last_song": result["last_song"],
-                    "last_index": result["last_index"]
-                }
-            )
-        )
+        await websocket.send_text(json.dumps(payload))
 
-        if result.get("game_over"):
-            await self._broadcast_game_over(result["winner"])
-            self.terminate_process()
+        if payload.get("game_over"):
+            winner = payload["winner"]
+            await self._broadcast_game_over(winner)
+            self._terminate_process()
             return
-        await self._broadcast_turn_result(current_player=username, result=result)
+        await self._broadcast_turn_result(current_player=username, result=payload)
 
-        await self._notify_next_player(user_name=result["next_player"])
+        next_player = payload["next_player"]
+        await self._notify_next_player(user_name=next_player)
 
-    def terminate_process(self) -> None:
+    def _terminate_process(self) -> None:
         """Terminate the process gracefully."""
         os.kill(os.getpid(), signal.SIGINT)
 
@@ -110,7 +95,7 @@ class WebSocketGameHandler:
                     )
                 )
             print("💥 Game over, shutting down server...")
-            self.terminate_process()
+            self._terminate_process()
             return
 
         next_ws = self.ctx.connected_users[user_name]

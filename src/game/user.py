@@ -1,7 +1,7 @@
 """Contains the user class."""
 
-from .song import Song
-from .utils import get_user_input
+from game.song import Song
+from game.utils import get_user_input
 
 
 class User:
@@ -11,11 +11,6 @@ class User:
         """User has name and song list (release year ascending)."""
         self.name = name
         self.song_list = []  # type: list[Song]
-
-    def print_song_list(self) -> None:
-        """Print the song list of the user."""
-        for index, song in enumerate(self.song_list):
-            print(f"{index} : {song.release_year} | '{song.title}' by {song.artist}")
 
     def add_song(self, index: int, song: Song) -> None:
         """Add a song to the song_list of the user."""
@@ -36,24 +31,10 @@ class User:
                 print("Please enter a valid index.")
             except ValueError:
                 print("Please enter a valid index.")
-    
-    def serialize(self) -> dict[str, str]:
+
+    def serialize(self) -> dict[str, str | list[dict[str, str]]]:
         """Serialize the user object to a dictionary."""
         return {
             "name": self.name,
             "song_list": [song.serialize() for song in self.song_list],
         }
-
-
-def get_users() -> list[User]:
-    """Ask for input of user names and return a list of User objects."""
-    users: list[User] = []
-    while True:
-        user_name = get_user_input(
-            f"Enter the name of user #{len(users) + 1} (if empty, continue to play): "
-        )
-        if user_name.strip() == "":
-            break
-        users.append(User(user_name))
-
-    return users or [User("Anonymous")]

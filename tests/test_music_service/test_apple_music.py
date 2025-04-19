@@ -2,14 +2,12 @@
 
 import pytest
 
-from backend.game.track_back_game import TrackBackGame
-from backend.game.user import User
-from backend.music_service.apple_music import AppleMusicAdapter
+from game.track_back_game import TrackBackGame
+from game.user import User
+from music_service.apple_music import AppleMusicAdapter
 
 
-@pytest.mark.skipif(
-    not AppleMusicAdapter.running_on_macos(), reason="Test only runs on macOS"
-)
+@pytest.mark.skipif(not AppleMusicAdapter.running_on_macos(), reason="Test only runs on macOS")
 @pytest.mark.skipif(
     not AppleMusicAdapter.music_app_is_running(),
     reason="Apple Music is not running",

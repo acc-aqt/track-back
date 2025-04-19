@@ -1,8 +1,8 @@
 """Defines the MusicServiceFactory class."""
 
-from .abstract_adapter import AbstractMusicServiceAdapter
-from .apple_music import AppleMusicAdapter
-from .spotify import SpotifyAdapter
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
+from music_service.apple_music import AppleMusicAdapter
+from music_service.spotify import SpotifyAdapter
 
 
 class MusicServiceError(Exception):

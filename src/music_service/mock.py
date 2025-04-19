@@ -1,8 +1,8 @@
 """Contains a mock music service for testing purposes."""
 
-from backend.game.song import Song
+from game.song import Song
 
-from .abstract_adapter import AbstractMusicServiceAdapter
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
 class DummyMusicService(AbstractMusicServiceAdapter):
@@ -36,7 +36,7 @@ class DummyMusicService(AbstractMusicServiceAdapter):
         self.playlist_index = 0
 
     def next_track(self) -> None:
-        """Increment the playlist index to skip to the next track."""
+        """Skip to next track. Songs are orderer by release year."""
         self.playlist_index += 1
         if self.playlist_index >= len(self.playlist):
             self.playlist_index = 0  # Loop back around
