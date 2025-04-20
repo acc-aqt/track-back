@@ -124,7 +124,7 @@ class Server:
         return JSONResponse(
             status_code=200,
             content={
-                "message": "Game started!",
+                "message": "You started the game!",
                 "first_player": player.name,
             },
         )
