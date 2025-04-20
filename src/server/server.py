@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from game.game_modes import GameMode
 from game.track_back_game import TrackBackGame
 from game.user import User
+from music_service.error import MusicServiceError
 from server.game_context import GameContext
 from server.websocket_handler import WebSocketGameHandler
 
@@ -84,6 +85,15 @@ class Server:
             raise HTTPException(
                 status_code=400, detail="Not enough players to start the game."
             )
+
+        try:
+            self.game_context.music_service.start_playback()
+        except MusicServiceError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to play music: {e}",
+            )
+
         users = list(self.game_context.registered_users.values())
         self.game_context.game = TrackBackGame(
             users,

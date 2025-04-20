@@ -8,6 +8,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 from game.song import Song
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
+from music_service.error import MusicServiceError
 from music_service.utils import extract_year
 
 
@@ -46,8 +47,9 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             try:
                 self.session.next_track()
             except spotipy.exceptions.SpotifyException:
-                print("Could not start playback. Please start a song manually.")
-                sys.exit(1)
+                raise MusicServiceError(
+                    "Cannot start playback. Spotify is probably not running."
+                )
 
     def next_track(self) -> None:
         """Skip to the next track."""
