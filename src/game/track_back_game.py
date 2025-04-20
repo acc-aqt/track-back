@@ -3,10 +3,10 @@
 from itertools import pairwise
 from typing import Any
 
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
-
 from game.song import Song
 from game.user import User
+from game.game_modes import GameMode
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
 class TrackBackGameError(Exception):
@@ -21,37 +21,53 @@ class TrackBackGame:
         users: list[User],
         target_song_count: int,
         music_service: AbstractMusicServiceAdapter,
+        game_mode: GameMode,
     ) -> None:
         self.music_service = music_service
         self.target_song_count = target_song_count
+        self.game_mode = game_mode
         self.users = users
-        self.round_counter = 0
+
+        self.running = False
         self.winner: User | None = None
 
         self.current_turn_index = 0
-        self.running = False
+        self.users_already_guessed: set[str] = set()
 
     def start_game(self) -> None:
         """Start the game."""
-        self.round_counter = 1
         self.running = True
 
+    # only for sequential mode?
     def get_current_player(self) -> User:
         """Get the current player."""
         return self.users[self.current_turn_index]
 
     def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
+        payload: dict[str, Any] = {}
         if not self.running:
-            return {"error": "Game not running."}
+            payload["type"] = "error"
+            payload["message"] = "⚠️ Game not running."
+            return payload
 
-        player = self.get_current_player()
-        if player.name != username:
-            return {"error": f"It is not {username}'s turn."}
+        if self.game_mode == GameMode.SEQUENTIAL:
+            player = self.get_current_player()
+            if player.name != username:
+                payload["type"] = "error"
+                payload["message"] = f"It is not {username}'s turn."
+                return payload
+
+        if self.game_mode == GameMode.SIMULTANEOUS:
+            if username in self.users_already_guessed:
+                payload["type"] = "error"
+                payload["message"] = f"⚠️ {username} has already guessed this song."
+                return payload
+
+            player = [user for user in self.users if user.name == username][0]
 
         current_song = self.music_service.current_song()
 
-        payload: dict[str, Any] = {}
         payload["type"] = "guess_result"
         payload["player"] = username
         if self.verify_choice(player.song_list, insert_index, current_song):
@@ -62,12 +78,9 @@ class TrackBackGame:
             payload["result"] = "wrong"
             payload["message"] = f"❌ Wrong! Song was {current_song}."
 
-        payload["other_players"] = [
-            user.serialize() for user in self.users if user != player
-        ]
+        payload["other_players"] = [user.serialize() for user in self.users if user != player]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
-        payload["round_counter"] = str(self.round_counter)
         payload["current_turn_index"] = str(self.current_turn_index)
         payload["song_list"] = [song.serialize() for song in player.song_list]
 
@@ -83,16 +96,18 @@ class TrackBackGame:
 
         # Freeze current player before advancing
         payload["player"] = player.name
-        self._advance_turn()
-        self.music_service.next_track()
-
-        payload["next_player"] = self.get_current_player().name
+        if self.game_mode == GameMode.SEQUENTIAL:
+            self.current_turn_index = (self.current_turn_index + 1) % len(self.users)
+            self.music_service.next_track()
+            payload["next_player"] = self.get_current_player().name
+        elif self.game_mode == GameMode.SIMULTANEOUS:
+            self.users_already_guessed.add(username)
+            payload["next_player"] = None
+            if len(self.users_already_guessed) == len(self.users):
+                self.users_already_guessed.clear()
+                self.music_service.next_track()
 
         return payload
-
-    def _advance_turn(self) -> None:
-        self.round_counter += 1
-        self.current_turn_index = (self.current_turn_index + 1) % len(self.users)
 
     @staticmethod
     def verify_choice(song_list: list[Song], index: int, selected_song: Song) -> bool:
@@ -105,8 +120,7 @@ class TrackBackGame:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year
-            for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:

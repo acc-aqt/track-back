@@ -7,7 +7,7 @@ import signal
 from fastapi import WebSocket
 
 from game.user import User
-
+from game.game_modes import GameMode
 from server.game_context import GameContext
 
 
@@ -37,9 +37,7 @@ class WebSocketGameHandler:
 
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(
-        self, websocket: WebSocket, username: str, index: int
-    ) -> None:
+    async def handle_guess(self, websocket: WebSocket, username: str, index: int) -> None:
         """Handle a guess from a player."""
         if self.ctx.game is None:
             await websocket.send_text(
@@ -51,17 +49,41 @@ class WebSocketGameHandler:
 
         # 🎯 Send result to the player who guessed
         await websocket.send_text(json.dumps(payload))
+        if payload["type"] == "error":
+            return
 
         if payload.get("game_over"):
             winner = payload["winner"]
             await self._broadcast_game_over(winner)
             self._terminate_process()
             return
-        await self._broadcast_turn_result(current_player=username, result=payload)
 
-        next_player = payload["next_player"]
-        await self._notify_next_player(user_name=next_player)
+        if self.ctx.game.game_mode == GameMode.SEQUENTIAL:
+            if payload["type"] == "guess_result":
+                await self._broadcast_turn_result(current_player=username, result=payload)
+            if payload.get("next_player"):
+                await self._notify_next_player(user_name=payload["next_player"])
 
+        elif self.ctx.game.game_mode == GameMode.SIMULTANEOUS:
+            # No need to track guesses here — already handled inside `handle_player_turn()`
+            if payload["next_player"] is None:
+                # Means all players have guessed and game has moved forward
+                await self._notify_all_players_next_song()
+
+    async def _notify_all_players_next_song(self) -> None:
+        for user in self.ctx.game.users:
+            if user.name in self.ctx.game.users_already_guessed:
+                continue  # Don't notify again
+            ws = self.ctx.connected_users.get(user.name)
+            if ws:
+                await ws.send_text(
+                    json.dumps({
+                        "type": "your_turn",
+                        "message": "🎮 New round! Make your guess!",
+                        "next_player": user.name,
+                        "song_list": [song.serialize() for song in user.song_list],
+                    })
+                )
     def _terminate_process(self) -> None:
         """Terminate the process gracefully."""
         os.kill(os.getpid(), signal.SIGINT)
@@ -90,7 +112,7 @@ class WebSocketGameHandler:
                     json.dumps(
                         {
                             "type": "error",
-                            "message": "Player {user_name} has disconnected.",
+                            "message": f"Player {user_name} has disconnected.",
                         }
                     )
                 )

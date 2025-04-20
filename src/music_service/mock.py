@@ -1,7 +1,6 @@
 """Contains a mock music service for testing purposes."""
 
 from game.song import Song
-
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 

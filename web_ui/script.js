@@ -80,6 +80,11 @@ document.getElementById('connectBtn').onclick = async () => {
       queuedTurn = data
       return
     }
+    const isMyTurn = data.next_player === username
+    if (!isMyTurn) {
+      return
+    }
+
     log(`🎮 It's your turn! Drag the new song into the right place.`)
     document.getElementById('songListHeader').style.display = 'block'
     document.getElementById('songTimeline').style.display = 'block'
@@ -178,7 +183,6 @@ document.getElementById('connectBtn').onclick = async () => {
     socket = new WebSocket(wsUrl)
 
     socket.onopen = () => {
-      log(`🛰️ Connected as ${username}`)
       document.getElementById('game').style.display = 'block'
       document.getElementById('startGameBtn').style.display = 'inline-block'
     }
@@ -192,7 +196,7 @@ document.getElementById('connectBtn').onclick = async () => {
       const data = JSON.parse(event.data)
       const type = data.type
 
-      if (type === 'your_turn' && data.next_player === username) {
+      if (type === 'your_turn') {
         handleYourTurn(data)
       } else if (type === 'guess_result' && data.player === username) {
         handleGuessResult(data)
@@ -243,6 +247,12 @@ document.getElementById('startGameBtn').onclick = async () => {
   try {
     const res = await fetch(startUrl, { method: 'POST' })
     const data = await res.json()
+    if (!res.ok) {
+      // Handle server-side error (like 400 or 409)
+      log(`❌ Server-Exception: ${data.detail || 'Unknown error from server.'}`)
+      return
+    }
+
     log(`🎮 ${data.message || 'Game started!'}`)
   } catch (err) {
     log('❌ Failed to start the game.')

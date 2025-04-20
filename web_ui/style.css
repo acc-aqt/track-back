@@ -198,6 +198,7 @@ button:hover,
   #log {
     white-space: pre-wrap;
     background: var(--section-main);
+    scrollbar-color: #8AABDB #B88ADB; /* thumb color | track color */
     padding: 1rem;
     border-radius: 6px;
     height: 200px;
