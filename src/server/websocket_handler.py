@@ -73,6 +73,8 @@ class WebSocketGameHandler:
 
     async def _notify_all_players_next_song(self) -> None:
         for user in self.ctx.game.users:
+            if user.name in self.ctx.game.users_already_guessed:
+                continue  # Don't notify again
             ws = self.ctx.connected_users.get(user.name)
             if ws:
                 await ws.send_text(

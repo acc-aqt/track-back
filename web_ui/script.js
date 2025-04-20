@@ -80,6 +80,11 @@ document.getElementById('connectBtn').onclick = async () => {
       queuedTurn = data
       return
     }
+    const isMyTurn = data.next_player === username
+    if (!isMyTurn) {
+      return
+    }
+
     log(`🎮 It's your turn! Drag the new song into the right place.`)
     document.getElementById('songListHeader').style.display = 'block'
     document.getElementById('songTimeline').style.display = 'block'
@@ -192,7 +197,7 @@ document.getElementById('connectBtn').onclick = async () => {
       const data = JSON.parse(event.data)
       const type = data.type
 
-      if (type === 'your_turn' && data.next_player === username) {
+      if (type === 'your_turn') {
         handleYourTurn(data)
       } else if (type === 'guess_result' && data.player === username) {
         handleGuessResult(data)
