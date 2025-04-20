@@ -201,6 +201,8 @@ document.getElementById('connectBtn').onclick = async () => {
         handleGuessResult(data)
       } else if (type === 'welcome') {
         log(`👋 ${data.message}`)
+      } else if (type === 'game_start') {
+        log(`🎮 ${data.message}`)
       } else if (type === 'error') {
         log(`🚨 Error: ${data.message}`)
       } else if (type === 'turn_result') {

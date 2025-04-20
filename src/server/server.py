@@ -129,21 +129,13 @@ class Server:
                 )
             )
 
-        if self.game_context.game_mode == GameMode.SEQUENTIAL:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "You started the game!",
-                    "first_player": player.name,
-                },
-            )
-        elif self.game_context.game_mode == GameMode.SIMULTANEOUS:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Game started!",
-                },
-            )
+        return JSONResponse(
+            status_code=200,
+            content={
+                "type": "game_start",
+                "message": "Game started successfully.",
+            },
+        )
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
         await websocket.accept()

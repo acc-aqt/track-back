@@ -31,10 +31,7 @@ def test_single_player_game(test_env):
         response = client.post("/start")
         data = response.json()
         assert response.status_code == 200
-        assert "message" in data
-        if game_mode == GameMode.SEQUENTIAL:
-            assert "first_player" in data
-            assert data["first_player"] == user_name
+        assert data["type"] == "game_start"
 
         # Receive the welcome message
         response = json.loads(websocket.receive_text())
@@ -111,10 +108,7 @@ def test_two_player_game(test_env):
         response = client.post("/start")
         data = response.json()
         assert response.status_code == 200
-        assert "message" in data
-        if game_mode == GameMode.SEQUENTIAL:
-            assert "first_player" in data
-            assert data["first_player"] == user_name_1
+        assert data["type"] == "game_start"
 
         # Player 1 & 2: Receive the welcome message
         response = json.loads(ws1.receive_text())
