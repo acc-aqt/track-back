@@ -68,7 +68,6 @@ class WebSocketGameHandler:
             # No need to track guesses here — already handled inside `handle_player_turn()`
             if payload["next_player"] is None:
                 # Means all players have guessed and game has moved forward
-                await self._broadcast_turn_result(current_player=username, result=payload)
                 await self._notify_all_players_next_song()
 
     async def _notify_all_players_next_song(self) -> None:
