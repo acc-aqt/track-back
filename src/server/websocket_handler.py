@@ -37,9 +37,7 @@ class WebSocketGameHandler:
 
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(
-        self, websocket: WebSocket, username: str, index: int
-    ) -> None:
+    async def handle_guess(self, websocket: WebSocket, username: str, index: int) -> None:
         """Handle a guess from a player."""
         if self.ctx.game is None:
             await websocket.send_text(
@@ -61,15 +59,16 @@ class WebSocketGameHandler:
             return
 
         if self.ctx.game.game_mode == GameMode.SEQUENTIAL:
-            if payload["type"] == "guess_result":
-                await self._broadcast_turn_result(
-                    current_player=username, result=payload
-                )
             if payload.get("next_player"):
                 await self._notify_next_player(user_name=payload["next_player"])
 
         elif self.ctx.game.game_mode == GameMode.SIMULTANEOUS:
-            # No need to track guesses here — already handled inside `handle_player_turn()`
+            if payload["type"] == "guess_result":
+                await self._broadcast_guess_to_other_players(
+                    current_player=username,
+                    message=f"Player {username} made a guess!",
+                    result=payload,
+                )
             if payload["next_player"] is None:
                 # Means all players have guessed and game has moved forward
                 await self._notify_all_players_next_song()
@@ -95,18 +94,18 @@ class WebSocketGameHandler:
         """Terminate the process gracefully."""
         os.kill(os.getpid(), signal.SIGINT)
 
-    async def _broadcast_turn_result(
-        self, current_player: str, result: dict[str, str]
+    async def _broadcast_guess_to_other_players(
+        self, current_player: str, message: str, result: dict[str, str]
     ) -> None:
         for name, ws in self.ctx.connected_users.items():
             if name != current_player:
                 await ws.send_text(
                     json.dumps(
                         {
-                            "type": "turn_result",
+                            "type": "other_player_guess",
                             "player": current_player,
                             "result": result["result"],
-                            "message": result["message"],
+                            "message": message,
                             "next_player": result["next_player"],
                         }
                     )

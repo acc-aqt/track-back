@@ -22,7 +22,7 @@ def test_env(request):
 
 
 def test_single_player_game(test_env):
-    client, game_mode = test_env
+    client, _ = test_env
     user_name = "testuser"
 
     client.post(f"/register?user_name={user_name}")
@@ -133,10 +133,10 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        if game_mode == GameMode.SEQUENTIAL:
-            # Player2: Receive the turn result
-            response = json.loads(ws2.receive_text())
-            assert response["type"] == "turn_result"
+        # if game_mode == GameMode.SEQUENTIAL:
+        #     # Player2: Receive the turn result
+        #     response = json.loads(ws2.receive_text())
+        #     assert response["type"] == "turn_result"
 
         # Player1: Make another guess -> not my turn
         ws1.send_json({"type": "guess", "index": 0})
@@ -152,11 +152,15 @@ def test_two_player_game(test_env):
 
         if game_mode == GameMode.SIMULTANEOUS:
             response = json.loads(ws2.receive_text())
-            assert response["type"] == "your_turn"
+            assert response["type"] == "other_player_guess"
 
         # Player2: Send the first guess
         ws2.send_json({"type": "guess", "index": 0})
         response = json.loads(ws2.receive_text())
+
+        if game_mode == GameMode.SIMULTANEOUS:
+            assert response["type"] == "your_turn"
+            response = json.loads(ws2.receive_text())
 
         assert response["type"] == "guess_result"
         assert response["result"] == "correct"
@@ -166,14 +170,22 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        # Player1: Receive the turn result
+        # # Player1: Receive the turn result
+        # if game_mode == GameMode.SEQUENTIAL:
+        #     response = json.loads(ws1.receive_text())
+        #     assert response["type"] == "your_turn"
+
+        # Player1: Receive the "other_player_guess" message
         if game_mode == GameMode.SEQUENTIAL:
             response = json.loads(ws1.receive_text())
-            assert response["type"] == "turn_result"
+            assert response["type"] == "your_turn"
+        else:
+            response = json.loads(ws1.receive_text())
+            assert response["type"] == "other_player_guess"
 
-        # Player1: Receive the "your_turn" message
-        response = json.loads(ws1.receive_text())
-        assert response["type"] == "your_turn"
+            # Player1: Receive the "your_turn" message
+            response = json.loads(ws1.receive_text())
+            assert response["type"] == "your_turn"
 
         # Player1: Send the second guess -> wrong
         ws1.send_json({"type": "guess", "index": 0})
@@ -187,15 +199,12 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        # Player2: Receive the turn result
-        if game_mode == GameMode.SEQUENTIAL:
-            response = json.loads(ws2.receive_text())
-            assert response["type"] == "turn_result"
-
         # Player2: Receive the "your_turn" message
         response = json.loads(ws2.receive_text())
         assert response["type"] == "your_turn"
         if game_mode == GameMode.SIMULTANEOUS:
+            response = json.loads(ws2.receive_text())
+            assert response["type"] == "other_player_guess"
             response = json.loads(ws2.receive_text())
             assert response["type"] == "your_turn"
 

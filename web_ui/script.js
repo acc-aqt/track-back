@@ -205,8 +205,8 @@ document.getElementById('connectBtn').onclick = async () => {
         log(`🎮 ${data.message}`)
       } else if (type === 'error') {
         log(`🚨 Error: ${data.message}`)
-      } else if (type === 'turn_result') {
-        log(`🪄 ${data.player} played: ${data.message}`)
+      } else if (type === 'other_player_guess') {
+        log(`🧑🏽‍🎤 ${data.player} guessed: ${data.message}`)
       } else if (type === 'game_over') {
         log(`🏁 Game Over! Winner: ${data.winner}`)
         document.getElementById('newSongContainer').style.display = 'none'
