@@ -176,16 +176,12 @@ def test_two_player_game(test_env):
         #     assert response["type"] == "your_turn"
 
         # Player1: Receive the "other_player_guess" message
-        if game_mode == GameMode.SEQUENTIAL:
-            response = json.loads(ws1.receive_text())
-            assert response["type"] == "your_turn"
-        else:
+        if game_mode == GameMode.SIMULTANEOUS:
             response = json.loads(ws1.receive_text())
             assert response["type"] == "other_player_guess"
 
-            # Player1: Receive the "your_turn" message
-            response = json.loads(ws1.receive_text())
-            assert response["type"] == "your_turn"
+        response = json.loads(ws1.receive_text())
+        assert response["type"] == "your_turn"
 
         # Player1: Send the second guess -> wrong
         ws1.send_json({"type": "guess", "index": 0})
@@ -202,6 +198,7 @@ def test_two_player_game(test_env):
         # Player2: Receive the "your_turn" message
         response = json.loads(ws2.receive_text())
         assert response["type"] == "your_turn"
+        
         if game_mode == GameMode.SIMULTANEOUS:
             response = json.loads(ws2.receive_text())
             assert response["type"] == "other_player_guess"
