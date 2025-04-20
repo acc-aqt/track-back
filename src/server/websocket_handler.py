@@ -6,8 +6,8 @@ import signal
 
 from fastapi import WebSocket
 
-from game.user import User
 from game.game_modes import GameMode
+from game.user import User
 from server.game_context import GameContext
 
 
@@ -37,7 +37,9 @@ class WebSocketGameHandler:
 
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(self, websocket: WebSocket, username: str, index: int) -> None:
+    async def handle_guess(
+        self, websocket: WebSocket, username: str, index: int
+    ) -> None:
         """Handle a guess from a player."""
         if self.ctx.game is None:
             await websocket.send_text(
@@ -60,7 +62,9 @@ class WebSocketGameHandler:
 
         if self.ctx.game.game_mode == GameMode.SEQUENTIAL:
             if payload["type"] == "guess_result":
-                await self._broadcast_turn_result(current_player=username, result=payload)
+                await self._broadcast_turn_result(
+                    current_player=username, result=payload
+                )
             if payload.get("next_player"):
                 await self._notify_next_player(user_name=payload["next_player"])
 
@@ -77,13 +81,16 @@ class WebSocketGameHandler:
             ws = self.ctx.connected_users.get(user.name)
             if ws:
                 await ws.send_text(
-                    json.dumps({
-                        "type": "your_turn",
-                        "message": "🎮 New round! Make your guess!",
-                        "next_player": user.name,
-                        "song_list": [song.serialize() for song in user.song_list],
-                    })
+                    json.dumps(
+                        {
+                            "type": "your_turn",
+                            "message": "🎮 New round! Make your guess!",
+                            "next_player": user.name,
+                            "song_list": [song.serialize() for song in user.song_list],
+                        }
+                    )
                 )
+
     def _terminate_process(self) -> None:
         """Terminate the process gracefully."""
         os.kill(os.getpid(), signal.SIGINT)

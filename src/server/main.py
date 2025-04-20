@@ -8,8 +8,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from music_service.factory import MusicServiceFactory
 from game.game_modes import GameMode
+from music_service.factory import MusicServiceFactory
 from server.game_context import GameContext
 from server.local_ip import get_local_ip
 from server.server import Server
@@ -43,9 +43,9 @@ def main() -> None:
     target_song_count, port = parse_args()
     load_dotenv()
     config = load_user_config()
-    
+
     music_service = MusicServiceFactory.create_music_service(config["music_service"])
-    game_mode = GameMode(config["game_mode"]) 
+    game_mode = GameMode(config["game_mode"])
 
     game_context = GameContext(
         target_song_count=target_song_count,

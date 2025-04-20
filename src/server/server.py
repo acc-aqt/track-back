@@ -10,9 +10,9 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from game.game_modes import GameMode
 from game.track_back_game import TrackBackGame
 from game.user import User
-from game.game_modes import GameMode
 from server.game_context import GameContext
 from server.websocket_handler import WebSocketGameHandler
 
@@ -54,12 +54,16 @@ class Server:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
-        return JSONResponse(status_code=200, content={"message": "Server shutdown initiated."})
+        return JSONResponse(
+            status_code=200, content={"message": "Server shutdown initiated."}
+        )
 
     async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
         if user_name in self.game_context.registered_users:
-            raise HTTPException(status_code=409, detail=f"User '{user_name}' already registered")
+            raise HTTPException(
+                status_code=409, detail=f"User '{user_name}' already registered"
+            )
 
         self.game_context.registered_users[user_name] = User(name=user_name)
 
@@ -77,7 +81,9 @@ class Server:
             raise HTTPException(status_code=400, detail="Game already started.")
 
         if len(self.game_context.registered_users) < 1:
-            raise HTTPException(status_code=400, detail="Not enough players to start the game.")
+            raise HTTPException(
+                status_code=400, detail="Not enough players to start the game."
+            )
         users = list(self.game_context.registered_users.values())
         self.game_context.game = TrackBackGame(
             users,
@@ -88,7 +94,6 @@ class Server:
         self.game_context.game.start_game()
 
         if self.game_context.game_mode == GameMode.SEQUENTIAL:
-
             players_to_notify = [self.game_context.game.get_current_player()]
         elif self.game_context.game_mode == GameMode.SIMULTANEOUS:
             players_to_notify = self.game_context.game.users
@@ -102,7 +107,6 @@ class Server:
         print(players_to_notify)
 
         for player in players_to_notify:
-
             ws = self.game_context.connected_users.get(player.name)
             if not ws:
                 raise HTTPException(

@@ -1,13 +1,13 @@
 """Contains the GameContext class, which holds the shared game state."""
+
 from fastapi import WebSocket
 
+from game.game_modes import GameMode
 from game.track_back_game import TrackBackGame
 from game.user import User
-from game.game_modes import GameMode
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
-    
 class GameContext:
     """Holds the shared game state across requests and WebSocket sessions."""
 
@@ -16,7 +16,6 @@ class GameContext:
         target_song_count: int,
         music_service: AbstractMusicServiceAdapter,
         game_mode: GameMode = GameMode.SEQUENTIAL,
-
     ) -> None:
         self.target_song_count = target_song_count
         self.music_service = music_service

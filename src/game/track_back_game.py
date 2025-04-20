@@ -3,9 +3,9 @@
 from itertools import pairwise
 from typing import Any
 
+from game.game_modes import GameMode
 from game.song import Song
 from game.user import User
-from game.game_modes import GameMode
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
@@ -78,7 +78,9 @@ class TrackBackGame:
             payload["result"] = "wrong"
             payload["message"] = f"❌ Wrong! Song was {current_song}."
 
-        payload["other_players"] = [user.serialize() for user in self.users if user != player]
+        payload["other_players"] = [
+            user.serialize() for user in self.users if user != player
+        ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
         payload["current_turn_index"] = str(self.current_turn_index)
@@ -120,7 +122,8 @@ class TrackBackGame:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year
+            for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:
