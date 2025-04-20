@@ -66,7 +66,7 @@ class WebSocketGameHandler:
             if payload["type"] == "guess_result":
                 await self._broadcast_guess_to_other_players(
                     current_player=username,
-                    message=f"Player {username} made a guess!",
+                    message=f"Guess was {payload['result']}",
                     result=payload,
                 )
             if payload["next_player"] is None:
