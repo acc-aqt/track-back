@@ -5,24 +5,23 @@ import pytest
 from fastapi.testclient import TestClient
 
 from music_service.mock import DummyMusicService
-from game.game_modes import GameMode
+from game.strategies.factory import GameStrategyEnum
 from server.game_context import GameContext
 from server.server import Server
 
 
-@pytest.fixture(params=[GameMode.SEQUENTIAL, GameMode.SIMULTANEOUS])
+@pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
 def test_env(request):
     ctx = GameContext(
         target_song_count=2,
         music_service=DummyMusicService(),
-        game_mode=request.param,
     )
-    server = Server(game_context=ctx, port="")
+    server = Server(game_context=ctx, game_strategy_enum=request.param)
     return TestClient(server.app)
 
 
 def test_single_player_game(test_env):
-    client  = test_env
+    client = test_env
     user_name = "testuser"
 
     client.post(f"/register?user_name={user_name}")

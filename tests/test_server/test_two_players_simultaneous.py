@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from music_service.mock import DummyMusicService
-from game.game_modes import GameMode
+from game.strategies.factory import GameStrategyEnum
 from server.game_context import GameContext
 from server.server import Server
 
@@ -15,12 +15,9 @@ def test_env():
     ctx = GameContext(
         target_song_count=2,
         music_service=DummyMusicService(),
-        game_mode=GameMode.SIMULTANEOUS,
     )
-    server = Server(game_context=ctx, port="")
+    server = Server(game_context=ctx, game_strategy_enum=GameStrategyEnum.SIMULTANEOUS)
     return TestClient(server.app)
-
-
 
 
 def test_two_player_game(test_env):
@@ -50,7 +47,7 @@ def test_two_player_game(test_env):
         # Player1 & 2: Receive the "your_turn" message
         response = json.loads(ws1.receive_text())
         assert response["type"] == "your_turn"
-        
+
         response = json.loads(ws2.receive_text())
         assert response["type"] == "your_turn"
 
@@ -65,8 +62,8 @@ def test_two_player_game(test_env):
         assert len(response["other_players"]) == 1
         assert response["game_over"] is False
         assert response["winner"] == ""
-        
-        # SIMULTANEUOUS, MISSING IN SEQUENTIAL
+
+        # SIMULTANEUOUS, MISSING IN SEQUENTIAL -> came in!
         response = json.loads(ws2.receive_text())
         assert response["type"] == "other_player_guess"
 
@@ -78,10 +75,10 @@ def test_two_player_game(test_env):
         # Player2: Send the first guess
         ws2.send_json({"type": "guess", "index": 0})
         response = json.loads(ws2.receive_text())
-        
-        # SIMULTANEUOUS, WHY IS PLAYER 2 RECEIVING THIS?
-        assert response["type"] == "your_turn"
-        response = json.loads(ws2.receive_text())
+
+        # # SIMULTANEUOUS, WHY IS PLAYER 2 RECEIVING THIS?
+        # assert response["type"] == "your_turn"
+        # response = json.loads(ws2.receive_text())
 
         assert response["type"] == "guess_result"
         assert response["result"] == "correct"
@@ -90,12 +87,12 @@ def test_two_player_game(test_env):
         assert len(response["other_players"]) == 1
         assert response["game_over"] is False
         assert response["winner"] == ""
-        
+
         # Player2: Receive the "your_turn" message
         response = json.loads(ws2.receive_text())
         assert response["type"] == "your_turn"
 
-        # SIMULTANEUOUS, MISSING IN SEQUENTIAL
+        # SIMULTANEUOUS, MISSING IN SEQUENTIAL -> came in!
         response = json.loads(ws1.receive_text())
         assert response["type"] == "other_player_guess"
 
@@ -114,8 +111,7 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-
-        # if game_mode == GameMode.SIMULTANEOUS:
+        # if game_mode == GameMode.SIMULTANEOUS: -> came in!
         response = json.loads(ws2.receive_text())
         assert response["type"] == "other_player_guess"
         response = json.loads(ws2.receive_text())

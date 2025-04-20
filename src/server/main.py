@@ -8,7 +8,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from game.game_modes import GameMode
+from game.strategies.factory import GameStrategyEnum
 from music_service.factory import MusicServiceFactory
 from server.game_context import GameContext
 from server.local_ip import get_local_ip
@@ -45,12 +45,11 @@ def main() -> None:
     config = load_user_config()
 
     music_service = MusicServiceFactory.create_music_service(config["music_service"])
-    game_mode = GameMode(config["game_mode"])
+    game_strategy_enum = GameStrategyEnum(config["game_mode"])
 
     game_context = GameContext(
         target_song_count=target_song_count,
         music_service=music_service,
-        game_mode=game_mode,
     )
 
     if os.getenv("RENDER") == "true":
@@ -61,9 +60,9 @@ def main() -> None:
         url = f"http://{ip}:{port}"
         logging.info("\n🌍 Game server running at: %s\n", url)
 
-    server = Server(game_context=game_context, port=port)
+    server = Server(game_context=game_context, game_strategy_enum=game_strategy_enum)
 
-    server.run()
+    server.run(port=port)
 
 
 if __name__ == "__main__":

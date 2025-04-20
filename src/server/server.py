@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from game.game_modes import GameMode
+from game.strategies.factory import GameStrategyEnum
 from game.track_back_game import TrackBackGame
 from game.user import User
 from music_service.error import MusicServiceError
@@ -21,14 +21,19 @@ from server.websocket_handler import WebSocketGameHandler
 class Server:
     """Encapsulates the FastAPI application."""
 
-    def __init__(self, game_context: GameContext, port: int) -> None:
+    def __init__(
+        self,
+        game_context: GameContext,
+        game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
+    ) -> None:
         self.game_context = game_context
-        self.port = port
+        self.game: TrackBackGame | None = None
+        self.game_strategy_enum = game_strategy_enum
         self.app = self.create_app()
 
-    def run(self) -> None:
+    def run(self, port) -> None:
         """Start the Uvicorn server."""
-        uvicorn.run(self.app, host="0.0.0.0", port=self.port)  # noqa: S104
+        uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
@@ -74,7 +79,7 @@ class Server:
 
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
-        if self.game_context.game is not None:
+        if self.game is not None:
             raise HTTPException(status_code=400, detail="Game already started.")
 
         if len(self.game_context.registered_users) < 1:
@@ -89,27 +94,15 @@ class Server:
             )
 
         users = list(self.game_context.registered_users.values())
-        self.game_context.game = TrackBackGame(
+        self.game = TrackBackGame(
             users,
             self.game_context.target_song_count,
             self.game_context.music_service,
-            self.game_context.game_mode,
+            self.game_strategy_enum,
         )
-        self.game_context.game.start_game()
+        self.game.start_game()
 
-        if self.game_context.game_mode == GameMode.SEQUENTIAL:
-            players_to_notify = [self.game_context.game.get_current_player()]
-        elif self.game_context.game_mode == GameMode.SIMULTANEOUS:
-            players_to_notify = self.game_context.game.users
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid game mode. Only SEQUENTIAL and SIMULTANEOUS are supported.",
-            )
-
-        print("Players to notify:")
-        print(players_to_notify)
-
+        players_to_notify = self.game.strategy.get_players_to_notify()
         for player in players_to_notify:
             ws = self.game_context.connected_users.get(player.name)
             if not ws:
@@ -155,7 +148,7 @@ class Server:
 
                 if data.get("type") == "guess":
                     index = data.get("index")
-                    await handler.handle_guess(websocket, username, index)
+                    await handler.handle_guess(websocket, username, index, self.game)
                 else:
                     await websocket.send_text("❓ Unknown message type.")
         except WebSocketDisconnect:

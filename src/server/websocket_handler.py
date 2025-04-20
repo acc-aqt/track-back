@@ -5,8 +5,10 @@ import os
 import signal
 
 from fastapi import WebSocket
-
-from game.game_modes import GameMode
+from game.strategies.sequential import SequentialStrategy
+from game.strategies.simultaneous import SimultaneousStrategy   
+from game.strategies.factory import GameStrategyEnum
+from game.track_back_game import TrackBackGame
 from game.user import User
 from server.game_context import GameContext
 
@@ -37,15 +39,15 @@ class WebSocketGameHandler:
 
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(self, websocket: WebSocket, username: str, index: int) -> None:
+    async def handle_guess(self, websocket: WebSocket, username: str, index: int, game) -> None:
         """Handle a guess from a player."""
-        if self.ctx.game is None:
+        if game is None: # ToDo: This check probably can be removed?
             await websocket.send_text(
                 json.dumps({"type": "error", "message": "⚠️ Game has not started yet."})
             )
             return
 
-        payload = self.ctx.game.handle_player_turn(username, index)
+        payload = game.handle_player_turn(username, index)
 
         # 🎯 Send result to the player who guessed
         await websocket.send_text(json.dumps(payload))
@@ -57,38 +59,49 @@ class WebSocketGameHandler:
             await self._broadcast_game_over(winner)
             self._terminate_process()
             return
-
-        if self.ctx.game.game_mode == GameMode.SEQUENTIAL:
-            if payload.get("next_player"):
-                await self._notify_next_player(user_name=payload["next_player"])
-
-        elif self.ctx.game.game_mode == GameMode.SIMULTANEOUS:
+        
+        
+        # ToDo: broadcasting to other players
+        if game.game_strategy_enum == GameStrategyEnum.SEQUENTIAL:
             if payload["type"] == "guess_result":
                 await self._broadcast_guess_to_other_players(
-                    current_player=username,
-                    message=f"Guess was {payload['result']}",
-                    result=payload,
-                )
-            if payload["next_player"] is None:
-                # Means all players have guessed and game has moved forward
-                await self._notify_all_players_next_song()
+                            current_player=username,
+                            message=f"Guess was {payload['result']}",
+                            result=payload,
+                        )
+        
+        players_to_notify = game.strategy.get_players_to_notify()
+        for player in players_to_notify:
+            return await self._notify_for_next_turn(
+                player
+            ) 
 
-    async def _notify_all_players_next_song(self) -> None:
-        for user in self.ctx.game.users:
-            if user.name in self.ctx.game.users_already_guessed:
-                continue  # Don't notify again
-            ws = self.ctx.connected_users.get(user.name)
-            if ws:
+    async def _notify_for_next_turn(self, player):
+        if player.name not in self.ctx.connected_users:
+            for ws in self.ctx.connected_users.values():
                 await ws.send_text(
                     json.dumps(
-                        {
-                            "type": "your_turn",
-                            "message": "🎮 New round! Make your guess!",
-                            "next_player": user.name,
-                            "song_list": [song.serialize() for song in user.song_list],
+                        {                            "type": "error",
+                            "message": f"Player {player.name} has disconnected.",
                         }
                     )
                 )
+            print("💥 Game over, shutting down server...")
+            self._terminate_process()
+            return  # TODO: Statt shutdown Spieler sauber deregistrieren und weiter spielen...
+
+        ws = self.ctx.connected_users.get(player.name)
+        if ws:  # TODO: ist das notwendig? prüfen wo man landet wenn spieler disconnected ist
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "your_turn",
+                        "message": "🎮 New round! Make your guess!",
+                        "next_player": player.name,
+                        "song_list": [song.serialize() for song in player.song_list],
+                    }
+                )
+            )
 
     def _terminate_process(self) -> None:
         """Terminate the process gracefully."""
@@ -110,34 +123,6 @@ class WebSocketGameHandler:
                         }
                     )
                 )
-
-    async def _notify_next_player(self, user_name: str) -> None:
-        if user_name not in self.ctx.connected_users:
-            for ws in self.ctx.connected_users.values():
-                await ws.send_text(
-                    json.dumps(
-                        {
-                            "type": "error",
-                            "message": f"Player {user_name} has disconnected.",
-                        }
-                    )
-                )
-            print("💥 Game over, shutting down server...")
-            self._terminate_process()
-            return
-
-        next_ws = self.ctx.connected_users[user_name]
-        player = self.ctx.registered_users[user_name]
-        serialized_song_list = [song.serialize() for song in player.song_list]
-        await next_ws.send_text(
-            json.dumps(
-                {
-                    "type": "your_turn",
-                    "next_player": user_name,
-                    "song_list": serialized_song_list,
-                }
-            )
-        )
 
     async def _broadcast_game_over(self, winner: str) -> None:
         for ws in self.ctx.connected_users.values():
