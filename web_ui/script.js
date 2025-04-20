@@ -85,7 +85,6 @@ document.getElementById('connectBtn').onclick = async () => {
       return
     }
 
-    log(`🎮 It's your turn! Drag the new song into the right place.`)
     document.getElementById('songListHeader').style.display = 'block'
     document.getElementById('songTimeline').style.display = 'block'
 
@@ -117,7 +116,7 @@ document.getElementById('connectBtn').onclick = async () => {
   }
 
   function handleGuessResult (data) {
-    log(`🎯 ${data.result.toUpperCase()}: ${data.message}`)
+    log(`🎯 Guess result: ${data.message}`)
     const list = data.song_list || []
 
     const timeline = document.getElementById('songTimeline')
