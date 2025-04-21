@@ -25,7 +25,6 @@ class TrackBackGame:
     ) -> None:
         self.music_service = music_service
         self.target_song_count = target_song_count
-        self.game_strategy_enum = game_strategy_enum  # TODO: remove later
         self.strategy = GameStrategyFactory.create_game_strategy(
             game_strategy_enum, self
         )
