@@ -172,11 +172,22 @@ button:hover,
     width: 80px;
     border-radius: 6px;
   }
+
+  .timeline-counter {
+    font-family: sans-serif;
+    text-align: left;
+    font-size: 0.7rem;
+    margin-top: 0rem;
+    margin-bottom: 0.2rem;
+    margin-left: 0.2rem;
+    font-weight: 400; 
+  }
   
   .timeline-header {
+    font-family: sans-serif;
     text-align: center;
     font-size: 1.2rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0rem;
   }
 
   .log-header {
