@@ -96,7 +96,7 @@ class Server:
 
         players_to_notify = self.game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
-            ws = self.connection_manager.websockets.get(player.name)
+            ws = self.connection_manager.get_websocket(player.name)
             if not ws:
                 raise HTTPException(
                     status_code=409,
