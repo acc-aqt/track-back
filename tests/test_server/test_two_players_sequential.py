@@ -6,16 +6,13 @@ from fastapi.testclient import TestClient
 from game.track_back_game import TrackBackGame
 from music_service.mock import DummyMusicService
 from game.strategies.factory import GameStrategyEnum
-from server.game_context import GameContext
+from server.connection_manager import ConnectionManager
 from server.server import Server
 
 
 @pytest.fixture()
 def test_env():
-    ctx = GameContext(
-        target_song_count=2,
-        music_service=DummyMusicService(),
-    )
+    ctx = ConnectionManager()
 
     game = TrackBackGame(
         target_song_count=2,
@@ -23,7 +20,7 @@ def test_env():
         game_strategy_enum=GameStrategyEnum.SEQUENTIAL,
     )
 
-    server = Server(game_context=ctx, game=game)
+    server = Server(connection_manager=ctx, game=game)
     return TestClient(server.app)
 
 

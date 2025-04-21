@@ -7,23 +7,20 @@ from fastapi.testclient import TestClient
 from music_service.mock import DummyMusicService
 from game.track_back_game import TrackBackGame
 from game.strategies.factory import GameStrategyEnum
-from server.game_context import GameContext
+from server.connection_manager import ConnectionManager
 from server.server import Server
 
 
 @pytest.fixture()
 def test_env():
-    ctx = GameContext(
-        target_song_count=2,
-        music_service=DummyMusicService(),
-    )
+    ctx = ConnectionManager()
     game = TrackBackGame(
         target_song_count=2,
         music_service=DummyMusicService(),
         game_strategy_enum=GameStrategyEnum.SIMULTANEOUS,
     )
 
-    server = Server(game_context=ctx, game=game)
+    server = Server(connection_manager=ctx, game=game)
     return TestClient(server.app)
 
 
@@ -69,7 +66,7 @@ def test_two_player_game(test_env):
         assert len(response["other_players"]) == 1
         assert response["game_over"] is False
         assert response["winner"] == ""
-        
+
         # Player 2: Receive guess from Player 1
         response = json.loads(ws2.receive_text())
         assert response["type"] == "other_player_guess"
@@ -82,7 +79,7 @@ def test_two_player_game(test_env):
         # Player2: Send the first guess
         ws2.send_json({"type": "guess", "index": 0})
         response = json.loads(ws2.receive_text())
-        
+
         assert response["type"] == "guess_result"
         assert response["result"] == "correct"
         assert len(response["song_list"]) == 1
@@ -94,11 +91,11 @@ def test_two_player_game(test_env):
         # Player 1: Receive guess from Player 2
         response = json.loads(ws1.receive_text())
         assert response["type"] == "other_player_guess"
-        
+
         # Player1 & 2: Receive the "your_turn" message
         response = json.loads(ws1.receive_text())
         assert response["type"] == "your_turn"
-        
+
         response = json.loads(ws2.receive_text())
         assert response["type"] == "your_turn"
 
@@ -113,8 +110,8 @@ def test_two_player_game(test_env):
         assert len(response["other_players"]) == 1
         assert response["game_over"] is False
         assert response["winner"] == ""
-        
-#        # Player2: Receive guess from Player 1 
+
+        #        # Player2: Receive guess from Player 1
         response = json.loads(ws2.receive_text())
         assert response["type"] == "other_player_guess"
 

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from game.strategies.factory import GameStrategyEnum
 from game.track_back_game import TrackBackGame
 from music_service.factory import MusicServiceFactory
-from server.game_context import GameContext
+from server.connection_manager import ConnectionManager
 from server.local_ip import get_local_ip
 from server.server import Server
 
@@ -48,10 +48,7 @@ def main() -> None:
     music_service = MusicServiceFactory.create_music_service(config["music_service"])
     game_strategy_enum = GameStrategyEnum(config["game_mode"])
 
-    game_context = GameContext(
-        target_song_count=target_song_count,
-        music_service=music_service,
-    )
+    connection_manager = ConnectionManager()
 
     if os.getenv("RENDER") == "true":
         print("Running on Render 🚀")
@@ -62,12 +59,12 @@ def main() -> None:
         logging.info("\n🌍 Game server running at: %s\n", url)
 
     game = TrackBackGame(
-        game_context.target_song_count,
-        game_context.music_service,
+        target_song_count,
+        music_service,
         game_strategy_enum,
     )
 
-    server = Server(game_context=game_context, game=game)
+    server = Server(connection_manager=connection_manager, game=game)
 
     server.run(port=port)
 

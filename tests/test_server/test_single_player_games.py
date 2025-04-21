@@ -7,21 +7,18 @@ from fastapi.testclient import TestClient
 from music_service.mock import DummyMusicService
 from game.track_back_game import TrackBackGame
 from game.strategies.factory import GameStrategyEnum
-from server.game_context import GameContext
+from server.connection_manager import ConnectionManager
 from server.server import Server
 
 
 @pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
 def test_env(request):
-    ctx = GameContext(
-        target_song_count=2,
-        music_service=DummyMusicService(),
-    )
+    ctx = ConnectionManager()
     game = TrackBackGame(
         target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
     )
 
-    server = Server(game_context=ctx, game=game)
+    server = Server(connection_manager=ctx, game=game)
     return TestClient(server.app)
 
 

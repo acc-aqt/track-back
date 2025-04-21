@@ -8,7 +8,7 @@ from fastapi import WebSocket
 
 from game.track_back_game import TrackBackGame
 from game.user import User
-from server.game_context import GameContext
+from server.connection_manager import ConnectionManager
 
 
 async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:
@@ -19,23 +19,23 @@ async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:
 class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
-    def __init__(self, ctx: GameContext) -> None:
-        self.ctx = ctx  # GameContext with game, users, sockets, etc.
+    def __init__(self, connection_manager: ConnectionManager) -> None:
+        self.connection_manager = connection_manager  # GameContext with game, users, sockets, etc.
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
-        if username in self.ctx.registered_users:
+        if username in self.connection_manager.registered_users:
             await send_ws_message(websocket, "welcome", f"✅ Welcome back, {username}!")
 
         else:
-            self.ctx.registered_users[username] = User(name=username)
+            self.connection_manager.registered_users[username] = User(name=username)
             await send_ws_message(
                 websocket,
                 "welcome",
                 f"✅ Welcome, {username}! You're connected.",
             )
 
-        self.ctx.user_websockets[username] = websocket
+        self.connection_manager.websockets[username] = websocket
 
     async def handle_guess(
         self, websocket: WebSocket, username: str, index: int, game: TrackBackGame
@@ -66,8 +66,8 @@ class WebSocketGameHandler:
             await self._notify_for_next_turn(player)
 
     async def _notify_for_next_turn(self, player: User) -> None:
-        if player.name not in self.ctx.user_websockets:
-            for ws in self.ctx.user_websockets.values():
+        if player.name not in self.connection_manager.websockets:
+            for ws in self.connection_manager.websockets.values():
                 await ws.send_text(
                     json.dumps(
                         {
@@ -78,7 +78,7 @@ class WebSocketGameHandler:
                 )
             return
 
-        ws = self.ctx.user_websockets.get(player.name)
+        ws = self.connection_manager.websockets.get(player.name)
         if not ws:
             await ws.send_text(
                 json.dumps(
@@ -107,7 +107,7 @@ class WebSocketGameHandler:
     async def _broadcast_guess_to_other_players(
         self, current_player: str, message: str, result: dict[str, str]
     ) -> None:
-        for name, ws in self.ctx.user_websockets.items():
+        for name, ws in self.connection_manager.websockets.items():
             if name != current_player:
                 await ws.send_text(
                     json.dumps(
@@ -122,7 +122,7 @@ class WebSocketGameHandler:
                 )
 
     async def _broadcast_game_over(self, winner: str) -> None:
-        for ws in self.ctx.user_websockets.values():
+        for ws in self.connection_manager.websockets.values():
             await ws.send_text(
                 json.dumps(
                     {
