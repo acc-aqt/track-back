@@ -20,7 +20,9 @@ from server.websocket_handler import WebSocketGameHandler
 class Server:
     """Encapsulates the FastAPI application."""
 
-    def __init__(self, connection_manager: ConnectionManager, game: TrackBackGame) -> None:
+    def __init__(
+        self, connection_manager: ConnectionManager, game: TrackBackGame
+    ) -> None:
         self.connection_manager = connection_manager
         self.game = game
         self.app = self.create_app()
@@ -52,12 +54,16 @@ class Server:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
-        return JSONResponse(status_code=200, content={"message": "Server shutdown initiated."})
+        return JSONResponse(
+            status_code=200, content={"message": "Server shutdown initiated."}
+        )
 
     async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
         if user_name in self.connection_manager.registered_users:
-            raise HTTPException(status_code=409, detail=f"User '{user_name}' already registered")
+            raise HTTPException(
+                status_code=409, detail=f"User '{user_name}' already registered"
+            )
 
         self.connection_manager.registered_users[user_name] = User(name=user_name)
 
@@ -72,7 +78,9 @@ class Server:
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
         if len(self.connection_manager.registered_users) < 1:
-            raise HTTPException(status_code=400, detail="Not enough players to start the game.")
+            raise HTTPException(
+                status_code=400, detail="Not enough players to start the game."
+            )
 
         try:
             self.game.music_service.start_playback()

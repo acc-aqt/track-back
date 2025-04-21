@@ -1,1 +1,1 @@
-"""Package containing the different game modes. They are implemented as strategies that can be injected into the game."""
+"""Contains the different game modes, implemented as strategies."""

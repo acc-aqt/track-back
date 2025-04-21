@@ -20,7 +20,9 @@ class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
     def __init__(self, connection_manager: ConnectionManager) -> None:
-        self.connection_manager = connection_manager  # GameContext with game, users, sockets, etc.
+        self.connection_manager = (
+            connection_manager  # GameContext with game, users, sockets, etc.
+        )
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
