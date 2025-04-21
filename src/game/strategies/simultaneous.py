@@ -10,7 +10,7 @@ from .abstract_game_strategy import AbstractGameStrategy
 class SimultaneousStrategy(AbstractGameStrategy):
     """Implements the game mode where all players guess on the same songs."""
 
-    def __init__(self, game):
+    def __init__(self, game) -> None:  # noqa: ANN001
         super().__init__(game)
         self.users_already_guessed = set()
 
@@ -34,7 +34,7 @@ class SimultaneousStrategy(AbstractGameStrategy):
         return {"next_player": None}
 
     def get_players_to_notify_for_next_turn(self) -> list[User]:
-        """Returns a list of players to notify for the next turn."""
+        """Return a list of players to notify for the next turn."""
         if len(self.users_already_guessed) == 0:
             return self.game.users
         return []

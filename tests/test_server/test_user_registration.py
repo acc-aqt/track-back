@@ -82,7 +82,7 @@ def test_websocket_disconnect_cleans_user(test_env):
     username = "disconnect_test"
 
     with client.websocket_connect(f"/ws/{username}") as websocket:
-        assert username in ctx.connected_users
+        assert username in ctx.user_websockets
 
     # After exiting context manager, disconnect happens
-    assert username not in ctx.connected_users
+    assert username not in ctx.user_websockets

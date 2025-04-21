@@ -7,8 +7,9 @@ import tomllib
 from pathlib import Path
 
 from dotenv import load_dotenv
-from game.track_back_game import TrackBackGame
+
 from game.strategies.factory import GameStrategyEnum
+from game.track_back_game import TrackBackGame
 from music_service.factory import MusicServiceFactory
 from server.game_context import GameContext
 from server.local_ip import get_local_ip
@@ -59,12 +60,12 @@ def main() -> None:
         ip = get_local_ip()
         url = f"http://{ip}:{port}"
         logging.info("\n🌍 Game server running at: %s\n", url)
-    
+
     game = TrackBackGame(
-            game_context.target_song_count,
-            game_context.music_service,
-            game_strategy_enum,
-        )
+        game_context.target_song_count,
+        game_context.music_service,
+        game_strategy_enum,
+    )
 
     server = Server(game_context=game_context, game=game)
 

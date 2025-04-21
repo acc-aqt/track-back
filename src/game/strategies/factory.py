@@ -18,13 +18,16 @@ class GameStrategyFactory:
     """Creates game strategy based on the provided name."""
 
     @staticmethod
-    def create_game_strategy(game_mode: GameStrategyEnum, game) -> AbstractGameStrategy:
+    def create_game_strategy(
+        game_mode: GameStrategyEnum,
+        game_instance,  # noqa: ANN001
+    ) -> AbstractGameStrategy:
         """Create a music service adapter based on the provided name."""
         if game_mode == GameStrategyEnum.SIMULTANEOUS:
-            return SimultaneousStrategy(game)
+            return SimultaneousStrategy(game_instance)
 
         if game_mode == GameStrategyEnum.SEQUENTIAL:
-            return SequentialStrategy(game)
+            return SequentialStrategy(game_instance)
 
         raise ValueError(
             f"Game mode {game_mode} is not supported. "

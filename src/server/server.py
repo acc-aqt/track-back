@@ -10,7 +10,6 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from game.strategies.factory import GameStrategyEnum
 from game.track_back_game import TrackBackGame
 from game.user import User
 from music_service.error import MusicServiceError
@@ -21,17 +20,12 @@ from server.websocket_handler import WebSocketGameHandler
 class Server:
     """Encapsulates the FastAPI application."""
 
-    def __init__(
-        self,
-        game_context: GameContext,
-        game: TrackBackGame
-    ) -> None:
-
+    def __init__(self, game_context: GameContext, game: TrackBackGame) -> None:
         self.game_context = game_context
         self.game = game
         self.app = self.create_app()
 
-    def run(self, port) -> None:
+    def run(self, port: int) -> None:
         """Start the Uvicorn server."""
         uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
 
@@ -83,7 +77,6 @@ class Server:
 
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
-
         if len(self.game_context.registered_users) < 1:
             raise HTTPException(
                 status_code=400, detail="Not enough players to start the game."
@@ -103,7 +96,7 @@ class Server:
 
         players_to_notify = self.game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
-            ws = self.game_context.connected_users.get(player.name)
+            ws = self.game_context.user_websockets.get(player.name)
             if not ws:
                 raise HTTPException(
                     status_code=409,
@@ -152,4 +145,4 @@ class Server:
                     await websocket.send_text("❓ Unknown message type.")
         except WebSocketDisconnect:
             logging.info("User %s disconnected", username)
-            ctx.connected_users.pop(username, None)
+            ctx.user_websockets.pop(username, None)

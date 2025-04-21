@@ -10,8 +10,8 @@ from .abstract_game_strategy import AbstractGameStrategy
 class SequentialStrategy(AbstractGameStrategy):
     """Each user's turn one after another, each user guesses a different song."""
 
-    def __init__(self, game):
-        super().__init__(game)
+    def __init__(self, game_instance) -> None:  # noqa: ANN001
+        super().__init__(game_instance)
         self.current_player_index = 0
 
     def validate_turn(self, username: str) -> dict[str, str] | None:
@@ -20,7 +20,7 @@ class SequentialStrategy(AbstractGameStrategy):
             return {"type": "error", "message": f"It is not {username}'s turn."}
         return None
 
-    def handle_turn_progression(self, username: str) -> dict[str, Any]:
+    def handle_turn_progression(self, _: str) -> dict[str, Any]:
         """Skip to next track and to the next player."""
         self.current_player_index = (self.current_player_index + 1) % len(
             self.game.users
@@ -29,7 +29,7 @@ class SequentialStrategy(AbstractGameStrategy):
         return {"next_player": self._get_current_player().name}
 
     def get_players_to_notify_for_next_turn(self) -> list[User]:
-        """Returns a list of players to notify for the next turn."""
+        """Return a list of players to notify for the next turn."""
         return [self._get_current_player()]
 
     def _get_current_player(self) -> User:

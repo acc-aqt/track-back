@@ -17,7 +17,7 @@ class GameContext:
         self.target_song_count = target_song_count
         self.music_service = music_service
 
-        self.connected_users: dict[str, WebSocket] = {}
         self.registered_users: dict[str, User] = {}
+        self.user_websockets: dict[str, WebSocket] = {}
 
         self.first_player: str | None = None

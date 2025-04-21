@@ -49,7 +49,7 @@ class TrackBackGame:
         if validation:
             return validation
 
-        player = [user for user in self.users if user.name == username][0]
+        player = next(user for user in self.users if user.name == username)
         current_song = self.music_service.current_song()
 
         payload["type"] = "guess_result"
