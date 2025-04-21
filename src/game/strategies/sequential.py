@@ -10,7 +10,7 @@ from .abstract_game_strategy import AbstractGameStrategy
 class SequentialStrategy(AbstractGameStrategy):
     """Each user's turn one after another, each user guesses a different song."""
 
-    def __init__(self, game_instance) -> None:  # noqa: ANN001
+    def __init__(self, game_instance) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
         super().__init__(game_instance)
         self.current_player_index = 0
 

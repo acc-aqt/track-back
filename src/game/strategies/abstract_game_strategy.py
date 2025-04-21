@@ -9,7 +9,7 @@ from game.user import User
 class AbstractGameStrategy(ABC):
     """Use strategy pattern to inject different game modes."""
 
-    def __init__(self, game_instance) -> None:  # noqa: ANN001
+    def __init__(self, game_instance) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
         self.game = game_instance
 
     @abstractmethod

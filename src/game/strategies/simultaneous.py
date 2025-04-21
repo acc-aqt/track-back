@@ -10,9 +10,9 @@ from .abstract_game_strategy import AbstractGameStrategy
 class SimultaneousStrategy(AbstractGameStrategy):
     """Implements the game mode where all players guess on the same songs."""
 
-    def __init__(self, game) -> None:  # noqa: ANN001
+    def __init__(self, game) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
         super().__init__(game)
-        self.users_already_guessed = set()
+        self.users_already_guessed: set[str] = set()
 
     def validate_turn(self, username: str) -> dict[str, str] | None:
         """Only users who haven't guessed yet can make a guess."""
@@ -35,6 +35,4 @@ class SimultaneousStrategy(AbstractGameStrategy):
 
     def get_players_to_notify_for_next_turn(self) -> list[User]:
         """Return a list of players to notify for the next turn."""
-        if len(self.users_already_guessed) == 0:
-            return self.game.users
-        return []
+        return self.game.users if len(self.users_already_guessed) == 0 else []

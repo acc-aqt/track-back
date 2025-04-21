@@ -27,7 +27,7 @@ class TrackBackGame:
         self.strategy = GameStrategyFactory.create_game_strategy(
             game_strategy_enum, self
         )
-        self.users = []
+        self.users: list[User] = []
 
         self.running = False
         self.winner: User | None = None

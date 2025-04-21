@@ -76,12 +76,19 @@ class WebSocketGameHandler:
                         }
                     )
                 )
-            # TODO (Alex): instead of shutdown deregister user...
-            print("💥 Game over, shutting down server...")
-            self._terminate_process()
             return
 
         ws = self.ctx.user_websockets.get(player.name)
+        if not ws:
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": f"Player {player.name} has disconnected.",
+                    }
+                )
+            )
+            return
         await ws.send_text(
             json.dumps(
                 {
