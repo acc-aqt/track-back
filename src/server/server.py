@@ -10,25 +10,26 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from game.game_modes import GameMode
 from game.track_back_game import TrackBackGame
 from game.user import User
 from music_service.error import MusicServiceError
-from server.game_context import GameContext
+from server.connection_manager import ConnectionManager
 from server.websocket_handler import WebSocketGameHandler
 
 
 class Server:
     """Encapsulates the FastAPI application."""
 
-    def __init__(self, game_context: GameContext, port: int) -> None:
-        self.game_context = game_context
-        self.port = port
+    def __init__(
+        self, connection_manager: ConnectionManager, game: TrackBackGame
+    ) -> None:
+        self.connection_manager = connection_manager
+        self.game = game
         self.app = self.create_app()
 
-    def run(self) -> None:
+    def run(self, port: int) -> None:
         """Start the Uvicorn server."""
-        uvicorn.run(self.app, host="0.0.0.0", port=self.port)  # noqa: S104
+        uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
@@ -41,8 +42,6 @@ class Server:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-
-        app.state.ctx = self.game_context
 
         app.post("/shutdown")(self._shutdown)
         app.post("/register")(self._register)
@@ -61,12 +60,12 @@ class Server:
 
     async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
-        if user_name in self.game_context.registered_users:
+        if user_name in self.connection_manager.registered_users:
             raise HTTPException(
                 status_code=409, detail=f"User '{user_name}' already registered"
             )
 
-        self.game_context.registered_users[user_name] = User(name=user_name)
+        self.connection_manager.registered_users[user_name] = User(name=user_name)
 
         return JSONResponse(
             status_code=201,
@@ -78,46 +77,26 @@ class Server:
 
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
-        if self.game_context.game is not None:
-            raise HTTPException(status_code=400, detail="Game already started.")
-
-        if len(self.game_context.registered_users) < 1:
+        if len(self.connection_manager.registered_users) < 1:
             raise HTTPException(
                 status_code=400, detail="Not enough players to start the game."
             )
 
         try:
-            self.game_context.music_service.start_playback()
+            self.game.music_service.start_playback()
         except MusicServiceError as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to play music: {e}",
-            )
+                detail="Failed to play music",
+            ) from e
 
-        users = list(self.game_context.registered_users.values())
-        self.game_context.game = TrackBackGame(
-            users,
-            self.game_context.target_song_count,
-            self.game_context.music_service,
-            self.game_context.game_mode,
-        )
-        self.game_context.game.start_game()
+        users = list(self.connection_manager.registered_users.values())
 
-        if self.game_context.game_mode == GameMode.SEQUENTIAL:
-            players_to_notify = [self.game_context.game.get_current_player()]
-        elif self.game_context.game_mode == GameMode.SIMULTANEOUS:
-            players_to_notify = self.game_context.game.users
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid game mode. Only SEQUENTIAL and SIMULTANEOUS are supported.",
-            )
+        self.game.start_game(users)
 
-        print("Players to notify:")
-        print(players_to_notify)
-
+        players_to_notify = self.game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
-            ws = self.game_context.connected_users.get(player.name)
+            ws = self.connection_manager.get_websocket(player.name)
             if not ws:
                 raise HTTPException(
                     status_code=409,
@@ -138,20 +117,20 @@ class Server:
         return JSONResponse(
             status_code=200,
             content={
-                "message": "You started the game!",
-                "first_player": player.name,
+                "type": "game_start",
+                "message": "Game started successfully.",
             },
         )
 
     async def _websocket_endpoint(self, websocket: WebSocket, username: str) -> None:
         await websocket.accept()
 
-        ctx = websocket.app.state.ctx
-        if ctx.first_player is None:
-            ctx.first_player = username
-            logging.info("📌 First player: %s", ctx.first_player)
+        connection_manager = self.connection_manager
+        if connection_manager.first_player is None:
+            connection_manager.first_player = username
+            logging.info("📌 First player: %s", connection_manager.first_player)
 
-        handler = WebSocketGameHandler(ctx)
+        handler = WebSocketGameHandler(connection_manager)
         await handler.handle_connection(websocket, username)
 
         try:
@@ -161,9 +140,9 @@ class Server:
 
                 if data.get("type") == "guess":
                     index = data.get("index")
-                    await handler.handle_guess(websocket, username, index)
+                    await handler.handle_guess(websocket, username, index, self.game)
                 else:
                     await websocket.send_text("❓ Unknown message type.")
         except WebSocketDisconnect:
             logging.info("User %s disconnected", username)
-            ctx.connected_users.pop(username, None)
+            connection_manager.websockets.pop(username, None)

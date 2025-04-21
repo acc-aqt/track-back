@@ -3,7 +3,6 @@
 import pytest
 
 from game.track_back_game import TrackBackGame
-from game.game_modes import GameMode
 from game.user import User
 from music_service.apple_music import AppleMusicAdapter
 
@@ -17,16 +16,13 @@ def test_full_game_one_round() -> None:
     """Test a full game with one round."""
     user_1 = User("Elton")
     user_2 = User("John")
-    users = [user_1, user_2]
 
     music_service = AppleMusicAdapter()
     game = TrackBackGame(
         target_song_count=1,
         music_service=music_service,
-        users=users,
-        game_mode=GameMode.SEQUENTIAL,
     )
-    game.start_game()
+    game.start_game(users=[user_1, user_2])
     # Simulate one user input: "0" to insert at start
 
     game.handle_player_turn("Elton", 0)

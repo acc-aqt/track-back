@@ -3,98 +3,29 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
-
+from game.track_back_game import TrackBackGame
 from music_service.mock import DummyMusicService
-from game.game_modes import GameMode
-from server.game_context import GameContext
+from game.strategies.factory import GameStrategyEnum
+from server.connection_manager import ConnectionManager
 from server.server import Server
-@pytest.fixture(params=[GameMode.SEQUENTIAL, GameMode.SIMULTANEOUS])
+
+
+@pytest.fixture()
 def test_env():
-    ctx = GameContext(
+    ctx = ConnectionManager()
+
+    game = TrackBackGame(
         target_song_count=2,
         music_service=DummyMusicService(),
+        game_strategy_enum=GameStrategyEnum.SEQUENTIAL,
     )
-    server = Server(game_context=ctx, port="")
-    return TestClient(server.app), ctx
 
-
-
-def test_single_player_game(test_env):
-    client, _ = test_env
-    user_name = "testuser"
-
-    client.post(f"/register?user_name={user_name}")
-
-    with client.websocket_connect(f"/ws/{user_name}") as websocket:
-        response = client.post("/start")
-        data = response.json()
-        assert response.status_code == 200
-        assert "message" in data
-        assert "first_player" in data
-        assert data["first_player"] == user_name
-
-        # Receive the welcome message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "welcome"
-
-        # Receive the "your_turn" message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "your_turn"
-
-        # Then send the first guess
-        websocket.send_json({"type": "guess", "index": 0})
-
-        # Then receive the guess result
-        response = json.loads(websocket.receive_text())
-
-        assert response["type"] == "guess_result"
-        assert response["result"] == "correct"
-        assert len(response["song_list"]) == 1
-        assert response["last_index"] == "0"
-        assert response["other_players"] == []
-        assert response["game_over"] is False
-        assert response["winner"] == ""
-
-        # Receive the "your_turn" message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "your_turn"
-
-        # Send the second guess
-        # Songs from MockService are ordered by release year.
-        websocket.send_json({"type": "guess", "index": 0})  # this is a wrong guess
-
-        # Then receive the guess result
-        response = json.loads(websocket.receive_text())
-
-        assert response["type"] == "guess_result"
-        assert response["result"] == "wrong"
-        assert len(response["song_list"]) == 1
-        assert response["last_index"] == "0"
-        assert response["other_players"] == []
-        assert response["game_over"] is False
-        assert response["winner"] == ""
-
-        # Receive the "your_turn" message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "your_turn"
-
-        # Send the third guess
-        websocket.send_json({"type": "guess", "index": 1})  # this is a correct guess
-
-        # Then receive the guess result
-        response = json.loads(websocket.receive_text())
-
-        assert response["type"] == "guess_result"
-        assert response["result"] == "correct"
-        assert len(response["song_list"]) == 2
-        assert response["last_index"] == "1"
-        assert response["other_players"] == []
-        assert response["game_over"] is True
-        assert response["winner"] == user_name
+    server = Server(connection_manager=ctx, game=game)
+    return TestClient(server.app)
 
 
 def test_two_player_game(test_env):
-    client, _ = test_env
+    client = test_env
     user_name_1 = "testuser1"
     user_name_2 = "testuser2"
 
@@ -108,9 +39,7 @@ def test_two_player_game(test_env):
         response = client.post("/start")
         data = response.json()
         assert response.status_code == 200
-        assert "message" in data
-        assert "first_player" in data
-        assert data["first_player"] == user_name_1
+        assert data["type"] == "game_start"
 
         # Player 1 & 2: Receive the welcome message
         response = json.loads(ws1.receive_text())
@@ -135,17 +64,14 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        # Player2: Receive the turn result
-        response = json.loads(ws2.receive_text())
-        assert response["type"] == "turn_result"
-
         # Player1: Make another guess -> not my turn
         ws1.send_json({"type": "guess", "index": 0})
         response = json.loads(ws1.receive_text())
         assert response["type"] == "error"
-        # # Player2: Also receive the "error" message
-        # response = json.loads(ws2.receive_text())
-        # assert response["type"] == "error"
+
+        # Player2: Receive the "other_player_guess" message --> came in after refactoring
+        response = json.loads(ws2.receive_text())
+        assert response["type"] == "other_player_guess"
 
         # Player2: Receive the "your_turn" message
         response = json.loads(ws2.receive_text())
@@ -163,9 +89,9 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        # Player1: Receive the turn result
+        # Player1: Receive the "other_player_guess" message --> came in after refactoring
         response = json.loads(ws1.receive_text())
-        assert response["type"] == "turn_result"
+        assert response["type"] == "other_player_guess"
 
         # Player1: Receive the "your_turn" message
         response = json.loads(ws1.receive_text())
@@ -183,9 +109,9 @@ def test_two_player_game(test_env):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        # Player2: Receive the turn result
+        # Player2: Receive the "other_player_guess" message --> came in after refactoring
         response = json.loads(ws2.receive_text())
-        assert response["type"] == "turn_result"
+        assert response["type"] == "other_player_guess"
 
         # Player2: Receive the "your_turn" message
         response = json.loads(ws2.receive_text())
@@ -193,8 +119,6 @@ def test_two_player_game(test_env):
 
         # Player2: Send the second guess --> correct --> wins
         ws2.send_json({"type": "guess", "index": 1})
-
-        # Then receive the guess result
         response = json.loads(ws2.receive_text())
 
         assert response["type"] == "guess_result"
