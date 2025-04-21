@@ -41,11 +41,6 @@ class WebSocketGameHandler:
         self, websocket: WebSocket, username: str, index: int, game: TrackBackGame
     ) -> None:
         """Handle a guess from a player."""
-        if game is None:  # TODO: This check probably can be removed?
-            await websocket.send_text(
-                json.dumps({"type": "error", "message": "⚠️ Game has not started yet."})
-            )
-            return
 
         payload = game.handle_player_turn(username, index)
 
@@ -59,8 +54,6 @@ class WebSocketGameHandler:
             await self._broadcast_game_over(winner)
             self._terminate_process()
             return
-
-        # TODO: broadcasting to other players
 
         if payload["type"] == "guess_result":
             await self._broadcast_guess_to_other_players(
