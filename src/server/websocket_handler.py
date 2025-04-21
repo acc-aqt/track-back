@@ -80,18 +80,11 @@ class WebSocketGameHandler:
                 )
             return
 
-        ws = self.connection_manager.websockets.get(player.name)
-        if not ws:
-            await ws.send_text(
-                json.dumps(
-                    {
-                        "type": "error",
-                        "message": f"Player {player.name} has disconnected.",
-                    }
-                )
-            )
+        websocket: WebSocket | None = self.connection_manager.get_websocket(player.name)
+        if not websocket:
             return
-        await ws.send_text(
+
+        await websocket.send_text(
             json.dumps(
                 {
                     "type": "your_turn",

@@ -13,3 +13,7 @@ class ConnectionManager:
         self.websockets: dict[str, WebSocket] = {}
 
         self.first_player: str | None = None
+
+    def get_websocket(self, username: str) -> WebSocket | None:
+        """Get the WebSocket connection for a given username."""
+        return self.websockets.get(username)
