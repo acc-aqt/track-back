@@ -1,16 +1,19 @@
 """Contains the SimultaneousStrategy class."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from game.user import User
 
 from .abstract_game_strategy import AbstractGameStrategy
 
+if TYPE_CHECKING:
+    from game.track_back_game import TrackBackGame
+
 
 class SimultaneousStrategy(AbstractGameStrategy):
     """Implements the game mode where all players guess on the same songs."""
 
-    def __init__(self, game) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
+    def __init__(self, game: "TrackBackGame") -> None:
         super().__init__(game)
         self.users_already_guessed: set[str] = set()
 

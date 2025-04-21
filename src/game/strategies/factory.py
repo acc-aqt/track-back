@@ -1,10 +1,14 @@
 """Contains the factory and enum-class to creating the desired game strategies."""
 
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from .abstract_game_strategy import AbstractGameStrategy
 from .sequential import SequentialStrategy
 from .simultaneous import SimultaneousStrategy
+
+if TYPE_CHECKING:
+    from game.track_back_game import TrackBackGame
 
 
 class GameStrategyEnum(Enum):
@@ -20,7 +24,7 @@ class GameStrategyFactory:
     @staticmethod
     def create_game_strategy(
         game_mode: GameStrategyEnum,
-        game_instance,  # noqa: ANN001
+        game_instance: "TrackBackGame",
     ) -> AbstractGameStrategy:
         """Create a music service adapter based on the provided name."""
         if game_mode == GameStrategyEnum.SIMULTANEOUS:

@@ -1,16 +1,19 @@
 """Contains the SequentialStrategy class."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from game.user import User
 
 from .abstract_game_strategy import AbstractGameStrategy
 
+if TYPE_CHECKING:
+    from game.track_back_game import TrackBackGame
+
 
 class SequentialStrategy(AbstractGameStrategy):
     """Each user's turn one after another, each user guesses a different song."""
 
-    def __init__(self, game_instance) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
+    def __init__(self, game_instance: "TrackBackGame") -> None:
         super().__init__(game_instance)
         self.current_player_index = 0
 

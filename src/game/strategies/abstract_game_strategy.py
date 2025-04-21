@@ -1,15 +1,18 @@
 """Implements the interface for the game mode strategies tht can be injected."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from game.user import User
+
+if TYPE_CHECKING:
+    from game.track_back_game import TrackBackGame
 
 
 class AbstractGameStrategy(ABC):
     """Use strategy pattern to inject different game modes."""
 
-    def __init__(self, game_instance) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
+    def __init__(self, game_instance: "TrackBackGame") -> None:
         self.game = game_instance
 
     @abstractmethod
