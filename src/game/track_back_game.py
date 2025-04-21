@@ -33,17 +33,11 @@ class TrackBackGame:
         self.running = False
         self.winner: User | None = None
 
-        self.current_turn_index = 0
         self.users_already_guessed: set[str] = set()
 
     def start_game(self) -> None:
         """Start the game."""
         self.running = True
-
-    # only for sequential mode?
-    def get_current_player(self) -> User:
-        """Get the current player."""
-        return self.users[self.current_turn_index]
 
     def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
@@ -76,7 +70,6 @@ class TrackBackGame:
         ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
-        payload["current_turn_index"] = str(self.current_turn_index)
         payload["song_list"] = [song.serialize() for song in player.song_list]
 
         if len(player.song_list) >= self.target_song_count:
