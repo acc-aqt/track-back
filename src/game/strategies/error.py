@@ -1,2 +1,0 @@
-class GameStrategyError(Exception):
-    pass

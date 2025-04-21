@@ -1,3 +1,5 @@
+"""Implements the interface for the game mode strategies tht can be injected."""
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -5,17 +7,19 @@ from game.user import User
 
 
 class AbstractGameStrategy(ABC):
+    """Use strategy pattern to inject different game modes."""
+
     def __init__(self, game: "TrackBackGame") -> None:
         self.game = game
 
     @abstractmethod
     def validate_turn(self, username: str) -> dict[str, Any] | None:
-        pass
+        """Return an error message if the turn is invalid, otherwise None."""
 
     @abstractmethod
     def handle_turn_progression(self, username: str) -> dict[str, Any]:
-        pass
+        """Implement the logic for handling turn progression."""
 
     @abstractmethod
-    def get_players_to_notify(self) -> list[User]:
-        pass
+    def get_players_to_notify_for_next_turn(self) -> list[User]:
+        """Returns a list of players to notify for the next turn."""

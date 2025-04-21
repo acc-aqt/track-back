@@ -41,7 +41,6 @@ class WebSocketGameHandler:
         self, websocket: WebSocket, username: str, index: int, game: TrackBackGame
     ) -> None:
         """Handle a guess from a player."""
-
         payload = game.handle_player_turn(username, index)
 
         # 🎯 Send result to the player who guessed
@@ -62,7 +61,7 @@ class WebSocketGameHandler:
                 result=payload,
             )
 
-        players_to_notify = game.strategy.get_players_to_notify()
+        players_to_notify = game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
             await self._notify_for_next_turn(player)
 
@@ -77,12 +76,13 @@ class WebSocketGameHandler:
                         }
                     )
                 )
+            # TODO: instead of shutdown deregister user...
             print("💥 Game over, shutting down server...")
             self._terminate_process()
-            return  # TODO: Statt shutdown Spieler sauber deregistrieren und weiter spielen...
+            return
 
         ws = self.ctx.connected_users.get(player.name)
-        if ws:  # TODO: ist das notwendig? prüfen wo man landet wenn spieler disconnected ist
+        if ws:
             await ws.send_text(
                 json.dumps(
                     {

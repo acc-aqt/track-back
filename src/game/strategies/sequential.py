@@ -1,3 +1,5 @@
+"""Contains the SequentialStrategy class."""
+
 from typing import Any
 
 from game.user import User
@@ -6,25 +8,30 @@ from .abstract_game_strategy import AbstractGameStrategy
 
 
 class SequentialStrategy(AbstractGameStrategy):
-    
+    """Each user's turn one after another, each user guesses a different song."""
+
     def __init__(self, game):
         super().__init__(game)
-        self.current_turn_index = 0
+        self.current_player_index = 0
+
     def validate_turn(self, username: str) -> dict[str, str] | None:
+        """Only the current player can make a guess."""
         if self._get_current_player().name != username:
             return {"type": "error", "message": f"It is not {username}'s turn."}
         return None
 
     def handle_turn_progression(self, username: str) -> dict[str, Any]:
-        self.current_turn_index = (self.current_turn_index + 1) % len(
+        """Skip to next track and to the next player."""
+        self.current_player_index = (self.current_player_index + 1) % len(
             self.game.users
         )
         self.game.music_service.next_track()
         return {"next_player": self._get_current_player().name}
 
-    def get_players_to_notify(self) -> list[User]:
+    def get_players_to_notify_for_next_turn(self) -> list[User]:
+        """Returns a list of players to notify for the next turn."""
         return [self._get_current_player()]
-    
+
     def _get_current_player(self) -> User:
         """Get the current player."""
-        return self.game.users[self.current_turn_index]
+        return self.game.users[self.current_player_index]

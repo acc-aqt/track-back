@@ -96,8 +96,8 @@ class Server:
         except MusicServiceError as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to play music: {e}",
-            )
+                detail="Failed to play music",
+            ) from e
 
         users = list(self.game_context.registered_users.values())
         self.game = TrackBackGame(
@@ -108,7 +108,7 @@ class Server:
         )
         self.game.start_game()
 
-        players_to_notify = self.game.strategy.get_players_to_notify()
+        players_to_notify = self.game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
             ws = self.game_context.connected_users.get(player.name)
             if not ws:

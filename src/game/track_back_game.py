@@ -33,7 +33,6 @@ class TrackBackGame:
         self.running = False
         self.winner: User | None = None
 
-
     def start_game(self) -> None:
         """Start the game."""
         self.running = True

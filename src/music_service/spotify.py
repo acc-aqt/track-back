@@ -46,10 +46,10 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             print("Probably song is already plaing, skip to next...")
             try:
                 self.session.next_track()
-            except spotipy.exceptions.SpotifyException:
+            except spotipy.exceptions.SpotifyException as e:
                 raise MusicServiceError(
                     "Cannot start playback. Spotify is probably not running."
-                )
+                ) from e
 
     def next_track(self) -> None:
         """Skip to the next track."""

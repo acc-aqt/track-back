@@ -1,3 +1,5 @@
+"""Contains the factory and enum-class to creating the desired game strategies."""
+
 from enum import Enum
 
 from .abstract_game_strategy import AbstractGameStrategy
@@ -6,6 +8,8 @@ from .simultaneous import SimultaneousStrategy
 
 
 class GameStrategyEnum(Enum):
+    """Enum containing the game modes."""
+
     SEQUENTIAL = "sequential"
     SIMULTANEOUS = "simultaneous"
 
@@ -21,3 +25,9 @@ class GameStrategyFactory:
 
         if game_mode == GameStrategyEnum.SEQUENTIAL:
             return SequentialStrategy(game)
+
+        raise ValueError(
+            f"Game mode {game_mode} is not supported. "
+            f"Supported game modes are: "
+            f"{', '.join([mode.value for mode in GameStrategyEnum])}"
+        )
