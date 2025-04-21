@@ -33,7 +33,6 @@ class TrackBackGame:
         self.running = False
         self.winner: User | None = None
 
-        self.users_already_guessed: set[str] = set()
 
     def start_game(self) -> None:
         """Start the game."""
