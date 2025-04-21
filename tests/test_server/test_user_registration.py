@@ -1,6 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from game.track_back_game import TrackBackGame
+from game.strategies.factory import GameStrategyEnum
 from music_service.mock import DummyMusicService
 from server.game_context import GameContext
 from server.server import Server
@@ -10,13 +12,18 @@ WebSocketGameHandler._terminate_process = lambda self: print(
     "Terminating (stubbed)"
 )  # not actually killing the process within Tet
 
-@pytest.fixture()
-def test_env():
+
+@pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
+def test_env(request):
     ctx = GameContext(
         target_song_count=2,
         music_service=DummyMusicService(),
     )
-    server = Server(game_context=ctx)
+    game = TrackBackGame(
+        target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
+    )
+
+    server = Server(game_context=ctx, game=game)
     return TestClient(server.app), ctx
 
 

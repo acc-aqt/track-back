@@ -24,11 +24,11 @@ class Server:
     def __init__(
         self,
         game_context: GameContext,
-        game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
+        game: TrackBackGame
     ) -> None:
+
         self.game_context = game_context
-        self.game: TrackBackGame | None = None
-        self.game_strategy_enum = game_strategy_enum
+        self.game = game
         self.app = self.create_app()
 
     def run(self, port) -> None:
@@ -83,8 +83,6 @@ class Server:
 
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
-        if self.game is not None:
-            raise HTTPException(status_code=400, detail="Game already started.")
 
         if len(self.game_context.registered_users) < 1:
             raise HTTPException(
@@ -100,13 +98,8 @@ class Server:
             ) from e
 
         users = list(self.game_context.registered_users.values())
-        self.game = TrackBackGame(
-            users,
-            self.game_context.target_song_count,
-            self.game_context.music_service,
-            self.game_strategy_enum,
-        )
-        self.game.start_game()
+
+        self.game.start_game(users)
 
         players_to_notify = self.game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:

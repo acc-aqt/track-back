@@ -18,7 +18,6 @@ class TrackBackGame:
 
     def __init__(
         self,
-        users: list[User],
         target_song_count: int,
         music_service: AbstractMusicServiceAdapter,
         game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
@@ -28,13 +27,14 @@ class TrackBackGame:
         self.strategy = GameStrategyFactory.create_game_strategy(
             game_strategy_enum, self
         )
-        self.users = users
+        self.users = []
 
         self.running = False
         self.winner: User | None = None
 
-    def start_game(self) -> None:
+    def start_game(self, users: list[User]) -> None:
         """Start the game."""
+        self.users = users
         self.running = True
 
     def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
