@@ -11,8 +11,6 @@ class SequentialStrategy(AbstractGameStrategy):
             return {"type": "error", "message": f"It is not {username}'s turn."}
         return None
 
-
-        
     def handle_turn_progression(self, username: str) -> dict[str, Any]:
         self.game.current_turn_index = (self.game.current_turn_index + 1) % len(
             self.game.users

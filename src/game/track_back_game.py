@@ -25,8 +25,10 @@ class TrackBackGame:
     ) -> None:
         self.music_service = music_service
         self.target_song_count = target_song_count
-        self.game_strategy_enum = game_strategy_enum  # ToDo: remove later
-        self.strategy = GameStrategyFactory.create_game_strategy(game_strategy_enum, self)
+        self.game_strategy_enum = game_strategy_enum  # TODO: remove later
+        self.strategy = GameStrategyFactory.create_game_strategy(
+            game_strategy_enum, self
+        )
         self.users = users
 
         self.running = False
@@ -56,7 +58,7 @@ class TrackBackGame:
         if validation:
             return validation
 
-        player = next(user for user in self.users if user.name == username)
+        player = [user for user in self.users if user.name == username][0]
         current_song = self.music_service.current_song()
 
         payload["type"] = "guess_result"
@@ -70,7 +72,9 @@ class TrackBackGame:
             payload["result"] = "wrong"
             payload["message"] = f"❌ Wrong! Song was {current_song}."
 
-        payload["other_players"] = [user.serialize() for user in self.users if user != player]
+        payload["other_players"] = [
+            user.serialize() for user in self.users if user != player
+        ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
         payload["current_turn_index"] = str(self.current_turn_index)
@@ -103,7 +107,8 @@ class TrackBackGame:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year
+            for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:

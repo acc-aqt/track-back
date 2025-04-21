@@ -60,12 +60,16 @@ class Server:
         """Gracefully shut down the server process."""
         logging.info("🛑 Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
-        return JSONResponse(status_code=200, content={"message": "Server shutdown initiated."})
+        return JSONResponse(
+            status_code=200, content={"message": "Server shutdown initiated."}
+        )
 
     async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
         if user_name in self.game_context.registered_users:
-            raise HTTPException(status_code=409, detail=f"User '{user_name}' already registered")
+            raise HTTPException(
+                status_code=409, detail=f"User '{user_name}' already registered"
+            )
 
         self.game_context.registered_users[user_name] = User(name=user_name)
 
@@ -83,7 +87,9 @@ class Server:
             raise HTTPException(status_code=400, detail="Game already started.")
 
         if len(self.game_context.registered_users) < 1:
-            raise HTTPException(status_code=400, detail="Not enough players to start the game.")
+            raise HTTPException(
+                status_code=400, detail="Not enough players to start the game."
+            )
 
         try:
             self.game_context.music_service.start_playback()

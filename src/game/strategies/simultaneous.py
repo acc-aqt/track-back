@@ -24,4 +24,7 @@ class SimultaneousStrategy(AbstractGameStrategy):
         return {"next_player": None}
 
     def get_players_to_notify(self) -> list[User]:
-        return self.game.users
+        if len(self.game.users_already_guessed) == 0:
+            return self.game.users
+        else:
+            return []

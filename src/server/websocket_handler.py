@@ -5,9 +5,7 @@ import os
 import signal
 
 from fastapi import WebSocket
-from game.strategies.sequential import SequentialStrategy
-from game.strategies.simultaneous import SimultaneousStrategy   
-from game.strategies.factory import GameStrategyEnum
+
 from game.track_back_game import TrackBackGame
 from game.user import User
 from server.game_context import GameContext
@@ -39,9 +37,11 @@ class WebSocketGameHandler:
 
         self.ctx.connected_users[username] = websocket
 
-    async def handle_guess(self, websocket: WebSocket, username: str, index: int, game) -> None:
+    async def handle_guess(
+        self, websocket: WebSocket, username: str, index: int, game: TrackBackGame
+    ) -> None:
         """Handle a guess from a player."""
-        if game is None: # ToDo: This check probably can be removed?
+        if game is None:  # TODO: This check probably can be removed?
             await websocket.send_text(
                 json.dumps({"type": "error", "message": "⚠️ Game has not started yet."})
             )
@@ -59,29 +59,27 @@ class WebSocketGameHandler:
             await self._broadcast_game_over(winner)
             self._terminate_process()
             return
-        
-        
-        # ToDo: broadcasting to other players
-        if game.game_strategy_enum == GameStrategyEnum.SEQUENTIAL:
-            if payload["type"] == "guess_result":
-                await self._broadcast_guess_to_other_players(
-                            current_player=username,
-                            message=f"Guess was {payload['result']}",
-                            result=payload,
-                        )
-        
+
+        # TODO: broadcasting to other players
+
+        if payload["type"] == "guess_result":
+            await self._broadcast_guess_to_other_players(
+                current_player=username,
+                message=f"{username} made his guess. (Guess was: {payload['result']})",
+                result=payload,
+            )
+
         players_to_notify = game.strategy.get_players_to_notify()
         for player in players_to_notify:
-            return await self._notify_for_next_turn(
-                player
-            ) 
+            await self._notify_for_next_turn(player)
 
     async def _notify_for_next_turn(self, player):
         if player.name not in self.ctx.connected_users:
             for ws in self.ctx.connected_users.values():
                 await ws.send_text(
                     json.dumps(
-                        {                            "type": "error",
+                        {
+                            "type": "error",
                             "message": f"Player {player.name} has disconnected.",
                         }
                     )
