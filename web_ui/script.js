@@ -87,6 +87,7 @@ document.getElementById('connectBtn').onclick = async () => {
 
     document.getElementById('songListHeader').style.display = 'block'
     document.getElementById('songTimeline').style.display = 'block'
+    document.getElementById('songCount').style.display = 'block'
 
     const list = data.song_list || []
     const dummyCovers = [
@@ -107,6 +108,10 @@ document.getElementById('connectBtn').onclick = async () => {
     `
 
     document.getElementById('newSongContainer').style.display = 'block'
+
+    document.getElementById(
+      'songCount'
+    ).textContent = `Song count: ${list.length}`
 
     document.getElementById('songTimeline').innerHTML = list
       .map(s => buildSongEntry(s))
@@ -261,6 +266,7 @@ document.getElementById('startGameBtn').onclick = async () => {
 
   document.getElementById('songListHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
+  document.getElementById('songCount').style.display = 'block'
 }
 
 document.getElementById('stopServerBtn').onclick = async () => {
