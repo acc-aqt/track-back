@@ -31,7 +31,7 @@ def test_register_user_succeeds(test_env):
     assert response.status_code == 201
     assert "message" in response.json()
     assert "user" in response.json()
-    assert len(ctx.registered_users) == 1
+    assert len(ctx.user_connections) == 1
 
 
 def test_register_user_twice_fails(test_env):
@@ -41,7 +41,7 @@ def test_register_user_twice_fails(test_env):
     response = client.post(f"/register?user_name={user_name}")
     assert response.status_code == 409
     assert "detail" in response.json()
-    assert len(ctx.registered_users) == 1
+    assert len(ctx.user_connections) == 1
 
 
 def test_register_two_users_succeeds(test_env):
@@ -54,7 +54,7 @@ def test_register_two_users_succeeds(test_env):
     assert response.status_code == 201
     assert "message" in response.json()
     assert "user" in response.json()
-    assert len(ctx.registered_users) == 2
+    assert len(ctx.user_connections) == 2
 
 
 def test_nobody_registered_start_fails(test_env):
@@ -79,7 +79,7 @@ def test_websocket_disconnect_cleans_user(test_env):
     username = "disconnect_test"
 
     with client.websocket_connect(f"/ws/{username}") as websocket:
-        assert username in ctx.websockets
+        assert username in ctx.user_connections
 
     # After exiting context manager, disconnect happens
-    assert username not in ctx.websockets
+    assert username not in ctx.user_connections

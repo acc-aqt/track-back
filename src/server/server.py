@@ -58,24 +58,13 @@ class Server:
 
     async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
-        if user_name in self.connection_manager.registered_users:
-            raise HTTPException(
-                status_code=409, detail=f"User '{user_name}' already registered"
-            )
+        json_respone = self.connection_manager.register_user(user_name)
 
-        self.connection_manager.registered_users[user_name] = User(name=user_name)
-
-        return JSONResponse(
-            status_code=201,
-            content={
-                "message": "User '{user_name}' registered successfully.",
-                "user": user_name,
-            },
-        )
+        return json_respone
 
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
-        if len(self.connection_manager.registered_users) < 1:
+        if len(self.connection_manager.get_registered_user_names()) < 1:
             raise HTTPException(
                 status_code=400, detail="Not enough players to start the game."
             )
@@ -88,7 +77,8 @@ class Server:
                 detail="Failed to play music",
             ) from e
 
-        users = list(self.connection_manager.registered_users.values())
+        user_names = self.connection_manager.get_registered_user_names()
+        users = [User(name=user_name) for user_name in user_names]
 
         self.game.start_game(users)
 
@@ -143,4 +133,4 @@ class Server:
                     await websocket.send_text("❓ Unknown message type.")
         except WebSocketDisconnect:
             logging.info("User %s disconnected", username)
-            connection_manager.websockets.pop(username, None)
+            connection_manager.unregister_user(username)
