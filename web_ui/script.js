@@ -1,4 +1,52 @@
 let socket
+
+function startApp () {
+  console.log('✅ isLocalUrl defined:', isLocalUrl)
+  console.log('isLocalURL result', isLocalUrl('http://localhost:4200'))
+
+  const config = window.TRACK_BACK_CONFIG || {}
+  console.log('🧾 Loaded config:', config)
+  console.log('CONFIG VALUE:', window.TRACK_BACK_CONFIG)
+
+  const serverUrl = config.TRACK_BACK_SERVER_URL
+  console.log('🌐 serverUrl:', serverUrl)
+
+  const serverInput = document.getElementById('server')
+  const serverLabel = document.getElementById('server-label')
+
+  console.log('Checking serverUrl before calling isLocalUrl:', serverUrl)
+
+  if (serverUrl && isLocalUrl(serverUrl)) {
+    console.log('🌍 Using local server:', serverUrl)
+
+    serverInput.value = serverUrl
+    serverInput.style.display = 'inline-block'
+    serverLabel.style.display = 'inline-block'
+  } else {
+    console.log('🚫 Not a local URL, keeping server input hidden.')
+    console.log('🛠️ Final config:', window.TRACK_BACK_CONFIG)
+  }
+}
+
+function isLocalUrl (url) {
+  try {
+    console.log('Parsing URL:', url)
+    const parsed = new URL(url)
+    const host = parsed.hostname
+    console.log('Parsed host:', host)
+    return (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.startsWith('192.168.') ||
+      host.startsWith('10.') ||
+      host.endsWith('.local')
+    )
+  } catch (e) {
+    console.log('Parsed host, got exception:', e)
+    return false
+  }
+}
+
 let username
 let currentGuessSong = null
 let pauseAfterGuess = false
