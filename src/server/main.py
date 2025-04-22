@@ -31,32 +31,35 @@ def parse_args() -> tuple[int, int]:
     return target_song_count, port
 
 
-def load_user_config(config_path: str = "config.toml") -> dict[str, str]:
+def load_user_config(config_path: str) -> dict[str, str]:
     """Load configuration values (e.g. music service provider) from TOML file."""
     with Path(config_path).open("rb") as f:
         return tomllib.load(f)
 
 
-def main() -> None:
-    """Command-line entry point for launching the server."""
+def log_server_info(port: int) -> None:
+    """Log info where the server is running."""
+    if os.getenv("RENDER") == "true":
+        logging.info("Running on Render")
+    else:
+        logging.info("Running locally")
+        ip = get_local_ip()
+        url = f"http://{ip}:{port}"
+        logging.info("\nGame server running at: %s\n", url)
+
+
+def build_server(
+    config_path: str,
+    target_song_count: int,
+) -> Server:
+    """Parse args and start the server."""
     logging.basicConfig(level=logging.INFO)
 
-    target_song_count, port = parse_args()
     load_dotenv()
-    config = load_user_config()
+    config = load_user_config(config_path)
 
     music_service = MusicServiceFactory.create_music_service(config["music_service"])
     game_strategy_enum = GameStrategyEnum(config["game_mode"])
-
-    connection_manager = ConnectionManager()
-
-    if os.getenv("RENDER") == "true":
-        print("Running on Render 🚀")
-    else:
-        print("Running locally 💻")
-        ip = get_local_ip()
-        url = f"http://{ip}:{port}"
-        logging.info("\n🌍 Game server running at: %s\n", url)
 
     game = GameLogic(
         target_song_count,
@@ -64,7 +67,21 @@ def main() -> None:
         game_strategy_enum,
     )
 
+    connection_manager = ConnectionManager()
+
     server = Server(connection_manager=connection_manager, game=game)
+    return server
+
+
+def main() -> None:
+    """Parse args and start the server."""
+    target_song_count, port = parse_args()
+    server = build_server(
+        config_path="config.toml",
+        target_song_count=target_song_count,
+    )
+
+    log_server_info(port)
 
     server.run(port=port)
 
