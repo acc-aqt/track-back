@@ -8,8 +8,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from game.game_logic import GameLogic
 from game.strategies.factory import GameStrategyEnum
-from game.track_back_game import TrackBackGame
 from music_service.factory import MusicServiceFactory
 from server.connection_manager import ConnectionManager
 from server.local_ip import get_local_ip
@@ -58,7 +58,7 @@ def main() -> None:
         url = f"http://{ip}:{port}"
         logging.info("\n🌍 Game server running at: %s\n", url)
 
-    game = TrackBackGame(
+    game = GameLogic(
         target_song_count,
         music_service,
         game_strategy_enum,

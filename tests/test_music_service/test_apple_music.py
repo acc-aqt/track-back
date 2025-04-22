@@ -2,7 +2,7 @@
 
 import pytest
 
-from game.track_back_game import TrackBackGame
+from game.game_logic import GameLogic
 from game.user import User
 from music_service.apple_music import AppleMusicAdapter
 
@@ -18,7 +18,7 @@ def test_full_game_one_round() -> None:
     user_2 = User("John")
 
     music_service = AppleMusicAdapter()
-    game = TrackBackGame(
+    game = GameLogic(
         target_song_count=1,
         music_service=music_service,
     )

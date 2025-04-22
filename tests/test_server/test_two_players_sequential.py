@@ -3,7 +3,7 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
-from game.track_back_game import TrackBackGame
+from game.game_logic import GameLogic
 from music_service.mock import DummyMusicService
 from game.strategies.factory import GameStrategyEnum
 from server.connection_manager import ConnectionManager
@@ -14,7 +14,7 @@ from server.server import Server
 def test_env():
     ctx = ConnectionManager()
 
-    game = TrackBackGame(
+    game = GameLogic(
         target_song_count=2,
         music_service=DummyMusicService(),
         game_strategy_enum=GameStrategyEnum.SEQUENTIAL,

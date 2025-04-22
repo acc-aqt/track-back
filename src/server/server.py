@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from game.track_back_game import TrackBackGame
+from game.game_logic import GameLogic
 from game.user import User
 from music_service.error import MusicServiceError
 from server.connection_manager import ConnectionManager
@@ -20,9 +20,7 @@ from server.websocket_handler import WebSocketGameHandler
 class Server:
     """Encapsulates the FastAPI application."""
 
-    def __init__(
-        self, connection_manager: ConnectionManager, game: TrackBackGame
-    ) -> None:
+    def __init__(self, connection_manager: ConnectionManager, game: GameLogic) -> None:
         self.connection_manager = connection_manager
         self.game = game
         self.app = self.create_app()

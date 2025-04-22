@@ -7,13 +7,13 @@ from game.user import User
 from .abstract_game_strategy import AbstractGameStrategy
 
 if TYPE_CHECKING:
-    from game.track_back_game import TrackBackGame
+    from game.game_logic import GameLogic
 
 
 class SequentialStrategy(AbstractGameStrategy):
     """Each user's turn one after another, each user guesses a different song."""
 
-    def __init__(self, game_instance: "TrackBackGame") -> None:
+    def __init__(self, game_instance: "GameLogic") -> None:
         super().__init__(game_instance)
         self.current_player_index = 0
 

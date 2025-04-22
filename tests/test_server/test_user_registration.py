@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from game.track_back_game import TrackBackGame
+from game.game_logic import GameLogic
 from game.strategies.factory import GameStrategyEnum
 from music_service.mock import DummyMusicService
 from server.connection_manager import ConnectionManager
@@ -16,7 +16,7 @@ WebSocketGameHandler._terminate_process = lambda self: print(
 @pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
 def test_env(request):
     ctx = ConnectionManager()
-    game = TrackBackGame(
+    game = GameLogic(
         target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
     )
 

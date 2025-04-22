@@ -7,13 +7,13 @@ from game.user import User
 from .abstract_game_strategy import AbstractGameStrategy
 
 if TYPE_CHECKING:
-    from game.track_back_game import TrackBackGame
+    from game.game_logic import GameLogic
 
 
 class SimultaneousStrategy(AbstractGameStrategy):
     """Implements the game mode where all players guess on the same songs."""
 
-    def __init__(self, game: "TrackBackGame") -> None:
+    def __init__(self, game: "GameLogic") -> None:
         super().__init__(game)
         self.users_already_guessed: set[str] = set()
 

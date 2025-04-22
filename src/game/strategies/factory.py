@@ -8,7 +8,7 @@ from .sequential import SequentialStrategy
 from .simultaneous import SimultaneousStrategy
 
 if TYPE_CHECKING:
-    from game.track_back_game import TrackBackGame
+    from game.game_logic import GameLogic
 
 
 class GameStrategyEnum(Enum):
@@ -24,7 +24,7 @@ class GameStrategyFactory:
     @staticmethod
     def create_game_strategy(
         game_mode: GameStrategyEnum,
-        game_instance: "TrackBackGame",
+        game_instance: "GameLogic",
     ) -> AbstractGameStrategy:
         """Create a music service adapter based on the provided name."""
         if game_mode == GameStrategyEnum.SIMULTANEOUS:

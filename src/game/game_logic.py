@@ -9,11 +9,7 @@ from game.user import User
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
-class TrackBackGameError(Exception):
-    """Base class for exceptions in this module."""
-
-
-class TrackBackGame:
+class GameLogic:
     """Implements the game logic."""
 
     def __init__(
@@ -92,7 +88,7 @@ class TrackBackGame:
         potential_list = song_list.copy()
         potential_list.insert(index, selected_song)
 
-        return TrackBackGame._is_sorted_by_release_year(potential_list)
+        return GameLogic._is_sorted_by_release_year(potential_list)
 
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:

@@ -6,7 +6,7 @@ import signal
 
 from fastapi import WebSocket
 
-from game.track_back_game import TrackBackGame
+from game.game_logic import GameLogic
 from game.user import User
 from server.connection_manager import ConnectionManager
 
@@ -40,7 +40,7 @@ class WebSocketGameHandler:
         self.connection_manager.websockets[username] = websocket
 
     async def handle_guess(
-        self, websocket: WebSocket, username: str, index: int, game: TrackBackGame
+        self, websocket: WebSocket, username: str, index: int, game: GameLogic
     ) -> None:
         """Handle a guess from a player."""
         payload = game.handle_player_turn(username, index)

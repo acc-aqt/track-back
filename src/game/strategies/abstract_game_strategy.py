@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Any
 from game.user import User
 
 if TYPE_CHECKING:
-    from game.track_back_game import TrackBackGame
+    from game.game_logic import GameLogic
 
 
 class AbstractGameStrategy(ABC):
     """Use strategy pattern to inject different game modes."""
 
-    def __init__(self, game_instance: "TrackBackGame") -> None:
+    def __init__(self, game_instance: "GameLogic") -> None:
         self.game = game_instance
 
     @abstractmethod
