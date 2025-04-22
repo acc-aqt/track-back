@@ -38,7 +38,7 @@ class GameLogic:
         payload: dict[str, Any] = {}
         if not self.running:
             payload["type"] = "error"
-            payload["message"] = "⚠️ Game not running."
+            payload["message"] = "Game not running."
             return payload
 
         validation = self.strategy.validate_turn(username)
@@ -54,10 +54,9 @@ class GameLogic:
         if self.verify_choice(player.song_list, insert_index, current_song):
             player.add_song(insert_index, current_song)
             payload["result"] = "correct"
-            payload["message"] = f"✅ Correct! Song was {current_song}."
         else:
             payload["result"] = "wrong"
-            payload["message"] = f"❌ Wrong! Song was {current_song}."
+        payload["message"] = f"Wrong! Song was {current_song}."
 
         payload["other_players"] = [
             user.serialize() for user in self.users if user != player

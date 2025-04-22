@@ -1,7 +1,5 @@
 """Get the local IPv4 address of the machine running the script."""
 
-import ipaddress
-import os
 import platform
 import shlex
 import subprocess
@@ -13,7 +11,6 @@ class LocalIpRetrievalError(Exception):
 
 def get_local_ip() -> str:
     """Get the local IPv4 address of the machine running the script."""
-
     operating_system_kind = platform.system()
     try:
         if operating_system_kind == "Darwin":  # macOS

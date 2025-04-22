@@ -50,7 +50,7 @@ class Server:
 
     async def _shutdown(self) -> JSONResponse:
         """Gracefully shut down the server process."""
-        logging.info("🛑 Shutdown requested via web UI")
+        logging.info("Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
         return JSONResponse(
             status_code=200, content={"message": "Server shutdown initiated."}
@@ -95,7 +95,7 @@ class Server:
                 json.dumps(
                     {
                         "type": "your_turn",
-                        "message": "🎮 It's your turn!",
+                        "message": "It's your turn!",
                         "next_player": player.name,
                         "song_list": [song.serialize() for song in player.song_list],
                     }
@@ -116,7 +116,7 @@ class Server:
         connection_manager = self.connection_manager
         if connection_manager.first_player is None:
             connection_manager.first_player = username
-            logging.info("📌 First player: %s", connection_manager.first_player)
+            logging.info("First player: %s", connection_manager.first_player)
 
         handler = WebSocketGameHandler(connection_manager)
         await handler.handle_connection(websocket, username)
@@ -130,7 +130,7 @@ class Server:
                     index = data.get("index")
                     await handler.handle_guess(websocket, username, index, self.game)
                 else:
-                    await websocket.send_text("❓ Unknown message type.")
+                    await websocket.send_text("Unknown message type.")
         except WebSocketDisconnect:
             logging.info("User %s disconnected", username)
             connection_manager.unregister_user(username)

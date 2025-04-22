@@ -121,7 +121,12 @@ document.getElementById('connectBtn').onclick = async () => {
   }
 
   function handleGuessResult (data) {
-    log(`🎯 Guess result: ${data.message}`)
+    if (data.result === 'correct') {
+      log(`✅ Guess was correct: ${data.message}`)
+    } else {
+      log(`❌ Guess was wrong: ${data.message}`)
+    }
+
     const list = data.song_list || []
 
     const timeline = document.getElementById('songTimeline')
@@ -168,8 +173,6 @@ document.getElementById('connectBtn').onclick = async () => {
         }, FADE_DURATION)
       }, WRONG_GUESS_DISPLAY_TIME)
 
-      log(`DATA ${data}`)
-
       pauseAfterGuess = true
       setTimeout(() => {
         pauseAfterGuess = false
@@ -205,7 +208,7 @@ document.getElementById('connectBtn').onclick = async () => {
       } else if (type === 'guess_result' && data.player === username) {
         handleGuessResult(data)
       } else if (type === 'welcome') {
-        log(`👋 ${data.message}`)
+        log(`👋🏻 ${data.message}`)
       } else if (type === 'game_start') {
         log(`🎮 ${data.message}`)
       } else if (type === 'error') {
@@ -306,7 +309,7 @@ const setupDragDrop = () => {
     onAdd: evt => {
       if (evt.item.id === 'new-song') {
         const newIndex = evt.newIndex
-        log(`📤 Guess submitted: insert at index ${newIndex}`)
+        // log(`📤 Guess submitted: insert at index ${newIndex}`)
 
         // Remove the dragged song from the timeline immediately
         evt.item.remove()

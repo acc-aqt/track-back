@@ -27,14 +27,14 @@ class WebSocketGameHandler:
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
         if self.connection_manager.user_is_registered(username):
-            await send_ws_message(websocket, "welcome", f"✅ Welcome back, {username}!")
+            await send_ws_message(websocket, "welcome", f"Welcome back, {username}!")
 
         else:
             self.connection_manager.register_user(username)
             await send_ws_message(
                 websocket,
                 "welcome",
-                f"✅ Welcome, {username}! You're connected.",
+                f"Welcome, {username}! You're connected.",
             )
 
         self.connection_manager.set_websocket(username, websocket)
@@ -45,7 +45,7 @@ class WebSocketGameHandler:
         """Handle a guess from a player."""
         payload = game.handle_player_turn(username, index)
 
-        # 🎯 Send result to the player who guessed
+        # Send result to the player who guessed
         await websocket.send_text(json.dumps(payload))
         if payload["type"] == "error":
             return
@@ -88,7 +88,7 @@ class WebSocketGameHandler:
             json.dumps(
                 {
                     "type": "your_turn",
-                    "message": "🎮 New round! Make your guess!",
+                    "message": "New round! Make your guess!",
                     "next_player": player.name,
                     "song_list": [song.serialize() for song in player.song_list],
                 }
@@ -123,8 +123,8 @@ class WebSocketGameHandler:
                     {
                         "type": "game_over",
                         "winner": winner,
-                        "message": f"🏆 {winner} has won the game!",
+                        "message": f"{winner} has won the game!",
                     }
                 )
             )
-        print("💥 Game over, shutting down server...")
+        print("Game over, shutting down server...")

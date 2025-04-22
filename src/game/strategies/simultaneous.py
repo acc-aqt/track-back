@@ -22,7 +22,7 @@ class SimultaneousStrategy(AbstractGameStrategy):
         if username in self.users_already_guessed:
             return {
                 "type": "error",
-                "message": f"⚠️ {username} has already guessed this song.",
+                "message": f"{username} has already guessed this song.",
             }
         return None
 
