@@ -102,16 +102,17 @@ const buildSongListHtml = (list, newSong) => {
 
 document.getElementById('connectBtn').onclick = async () => {
   username = document.getElementById('username').value
-  const serverFromInput = document
-    .getElementById('server')
-    .value.trim()
-    .replace(/\/+\$/, '')
 
-  const serverFromConfig =
-    (window.TRACK_BACK_CONFIG || {}).TRACK_BACK_SERVER_URL || ''
+  let serverInput = (window.TRACK_BACK_CONFIG || {}).TRACK_BACK_SERVER_URL || ''
 
-  const serverInput = serverFromInput || serverFromConfig
+  if (!serverInput) {
+    serverInput = document
+      .getElementById('server')
+      .value.trim()
+      .replace(/\/+\$/, '')
+  }
 
+  console.log('Server input:', serverInput)
   if (!username || !serverInput) {
     alert('Please enter both server address and username.')
     return
@@ -121,7 +122,7 @@ document.getElementById('connectBtn').onclick = async () => {
   try {
     urlObj = new URL(serverInput)
   } catch (e) {
-    alert('⚠️ Invalid server address.')
+    alert('⚠️ Invalid server address.', serverInput)
     return
   }
 
