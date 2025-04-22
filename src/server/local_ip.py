@@ -13,37 +13,15 @@ class LocalIpRetrievalError(Exception):
 
 def get_local_ip() -> str:
     """Get the local IPv4 address of the machine running the script."""
-    local_ipv4 = ""
+
     operating_system_kind = platform.system()
-    if operating_system_kind == "Darwin":  # macOS
-        local_ipv4 = _run_shell_command("ipconfig getifaddr en0", True).stdout.strip()
-    elif operating_system_kind == "Windows":
-        for line in _run_shell_command(
-            'netsh ip show address | findstr "IP Address"', True
-        ).stdout.split(os.linesep):
-            local_ipv4_or_empty = line.removeprefix("IP Address:").strip()
-            if local_ipv4_or_empty:
-                local_ipv4 = local_ipv4_or_empty
-                break
-    else:  # Linux
-        local_ipv4 = _run_shell_command(
-            "hostname -I | awk '{print $1}'", True
-        ).stdout.strip()  # TODO(Alex): not tested under Linux...
-
     try:
-        ipaddress.IPv4Address(local_ipv4)
-    except ipaddress.AddressValueError as e:
-        raise LocalIpRetrievalError(
-            "Could not get local network IPv4 address for Expo Fronted"
-        ) from e
+        if operating_system_kind == "Darwin":  # macOS
+            return _run_shell_command("ipconfig getifaddr en0", True).stdout.strip()
+    except subprocess.CalledProcessError:
+        return "local-ip-retrieval-failed"
 
-    if local_ipv4.startswith("127.0."):
-        raise LocalIpRetrievalError(
-            "Could not get correct local network IPv4 address"
-            "for Expo Fronted, got {local_ipv4}"
-        )
-
-    return local_ipv4
+    return "evaluation-of-local-ip-not-yet-implemented-for-current-os"
 
 
 def _run_shell_command(
