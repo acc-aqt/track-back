@@ -15,6 +15,7 @@ from music_service.utils import extract_year
 
 current_adapter = None
 
+
 class SpotifyAdapter(AbstractMusicServiceAdapter):
     """Interface to the Spotify API."""
 
@@ -31,9 +32,7 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             print("Spotify is not playing.")
             sys.exit(1)
         song_name = playback["item"]["name"]
-        artist_names = ", ".join(
-            [artist["name"] for artist in playback["item"]["artists"]]
-        )
+        artist_names = ", ".join([artist["name"] for artist in playback["item"]["artists"]])
         release_year = extract_year(playback["item"]["album"]["release_date"])
         album_cover_url = playback["item"]["album"]["images"][-1]["url"]
 
@@ -93,6 +92,8 @@ def spotify_login():
 
 @router.get("/spotify-callback")
 def spotify_callback(request: Request):
+    global current_adapter
+
     code = request.query_params.get("code")
     if not code:
         return HTMLResponse("❌ Missing code from Spotify", status_code=400)
@@ -108,11 +109,9 @@ def spotify_callback(request: Request):
     user_profile = sp.current_user()
     username = user_profile["id"]
 
-    # ✅ Instantiate and store the adapter
-    if current_adapter is not None:
-        adapter = SpotifyAdapter()
-        adapter.authenticate(access_token)
-        current_adapter = adapter  # store it for use in your game
+    adapter = SpotifyAdapter()
+    adapter.authenticate(access_token)
+    current_adapter = adapter
 
     return HTMLResponse(
         f"✅ Logged in as <b>{username}</b>. You can now close this tab and return to the game."
