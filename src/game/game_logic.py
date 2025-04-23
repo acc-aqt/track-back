@@ -22,9 +22,7 @@ class GameLogic:
     ) -> None:
         self.music_service = None
         self.target_song_count = target_song_count
-        self.strategy = GameStrategyFactory.create_game_strategy(
-            game_strategy_enum, self
-        )
+        self.strategy = GameStrategyFactory.create_game_strategy(game_strategy_enum, self)
         self.users: list[User] = []
 
         self.running = False
@@ -33,23 +31,24 @@ class GameLogic:
     def start_game(self, users: list[User]) -> None:
         """Start the game."""
         from music_service.spotify import current_adapter  # ensure fresh import
+
         if current_adapter is None:
             raise HTTPException(status_code=400, detail="Spotify not authenticated yet.")
-        
+
         self.music_service = current_adapter
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
             raise HTTPException(status_code=500, detail="Failed to play music") from e
-            try:
-                self.music_service.start_playback()
-            except MusicServiceError as e:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to play music",
-                ) from e
-            self.users = users
-            self.running = True
+        try:
+            self.music_service.start_playback()
+        except MusicServiceError as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to play music",
+            ) from e
+        self.users = users
+        self.running = True
 
     def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
@@ -76,9 +75,7 @@ class GameLogic:
             payload["result"] = "wrong"
         payload["message"] = f"Wrong! Song was {current_song}."
 
-        payload["other_players"] = [
-            user.serialize() for user in self.users if user != player
-        ]
+        payload["other_players"] = [user.serialize() for user in self.users if user != player]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
         payload["song_list"] = [song.serialize() for song in player.song_list]
@@ -110,8 +107,7 @@ class GameLogic:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year
-            for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:
