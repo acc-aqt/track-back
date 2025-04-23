@@ -32,16 +32,24 @@ class GameLogic:
 
     def start_game(self, users: list[User]) -> None:
         """Start the game."""
+        from music_service.spotify import current_adapter  # ensure fresh import
+        if current_adapter is None:
+            raise HTTPException(status_code=400, detail="Spotify not authenticated yet.")
+        
         self.music_service = current_adapter
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to play music",
-            ) from e
-        self.users = users
-        self.running = True
+            raise HTTPException(status_code=500, detail="Failed to play music") from e
+            try:
+                self.music_service.start_playback()
+            except MusicServiceError as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to play music",
+                ) from e
+            self.users = users
+            self.running = True
 
     def handle_player_turn(self, username: str, insert_index: int) -> dict[str, Any]:
         """Handle a player's turn."""
