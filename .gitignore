@@ -169,3 +169,4 @@ config.toml
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 web_ui/server_config.js
+web_ui/server_config.js.temp
