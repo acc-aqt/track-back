@@ -326,29 +326,6 @@ document.getElementById('startGameBtn').onclick = async () => {
   document.getElementById('songCount').style.display = 'block'
 }
 
-document.getElementById('stopServerBtn').onclick = async () => {
-  const serverUrl = document
-    .getElementById('server')
-    .value.trim()
-    .replace(/\/+\$/, '')
-  let urlObj
-  try {
-    urlObj = new URL(serverUrl)
-  } catch (e) {
-    alert('Invalid server URL')
-    return
-  }
-
-  const shutdownUrl = `${urlObj.origin}/shutdown`
-  try {
-    const res = await fetch(shutdownUrl, { method: 'POST' })
-    const data = await res.json()
-    log(`🛑 ${data.message}`)
-  } catch (err) {
-    log('❌ Failed to stop the server.')
-  }
-}
-
 const setupDragDrop = () => {
   const timeline = document.getElementById('songTimeline')
   const newSongContainer = document.getElementById('newSongContainer')
