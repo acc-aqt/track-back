@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import signal
+from music_service.spotify import router as spotify_auth_router
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -12,7 +13,6 @@ from fastapi.responses import JSONResponse
 
 from game.game_logic import GameLogic
 from game.user import User
-from music_service.error import MusicServiceError
 from server.connection_manager import ConnectionManager
 from server.websocket_handler import WebSocketGameHandler
 
@@ -45,6 +45,7 @@ class Server:
         app.post("/register")(self._register)
         app.post("/start")(self._start_game)
         app.websocket("/ws/{username}")(self._websocket_endpoint)
+        app.include_router(spotify_auth_router)
 
         return app
 
@@ -52,9 +53,7 @@ class Server:
         """Gracefully shut down the server process."""
         logging.info("Shutdown requested via web UI")
         os.kill(os.getpid(), signal.SIGINT)
-        return JSONResponse(
-            status_code=200, content={"message": "Server shutdown initiated."}
-        )
+        return JSONResponse(status_code=200, content={"message": "Server shutdown initiated."})
 
     async def _register(self, user_name: str) -> JSONResponse:
         """Register a new user for the game via REST POST."""
@@ -65,17 +64,7 @@ class Server:
     async def _start_game(self) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
         if len(self.connection_manager.get_registered_user_names()) < 1:
-            raise HTTPException(
-                status_code=400, detail="Not enough players to start the game."
-            )
-
-        try:
-            self.game.music_service.start_playback()
-        except MusicServiceError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to play music",
-            ) from e
+            raise HTTPException(status_code=400, detail="Not enough players to start the game.")
 
         user_names = self.connection_manager.get_registered_user_names()
         users = [User(name=user_name) for user_name in user_names]

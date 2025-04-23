@@ -26,6 +26,9 @@ class DummyMusicService(AbstractMusicServiceAdapter):
         ]
         self.playlist_index = 0
 
+    def authenticate(self) -> None:
+        """Mock authentication method."""
+
     def current_song(self) -> Song:
         """Return the currently playing song."""
         return self.playlist[self.playlist_index]

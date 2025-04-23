@@ -19,6 +19,11 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
             raise RuntimeError("Apple Music is only supported on macOS!")
         if not self.music_app_is_running():
             raise RuntimeError("Apple Music is not running!")
+    
+    def authenticate(self) -> None:
+        """Authenticate the user with the music service."""
+        # No authentication needed for Apple Music
+        pass
 
     def current_song(self) -> Song:
         """Get the currently playing song."""
