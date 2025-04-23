@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 
 from game.game_logic import GameLogic
 from game.strategies.factory import GameStrategyEnum
-from music_service.factory import MusicServiceFactory
 from server.connection_manager import ConnectionManager
 from server.local_ip import get_local_ip
 from server.server import Server
@@ -58,12 +57,11 @@ def build_server(
     load_dotenv()
     config = load_user_config(config_path)
 
-    music_service = MusicServiceFactory.create_music_service(config["music_service"])
+    # music_service = MusicServiceFactory.create_music_service(config["music_service"])
     game_strategy_enum = GameStrategyEnum(config["game_mode"])
 
     game = GameLogic(
         target_song_count,
-        music_service,
         game_strategy_enum,
     )
 

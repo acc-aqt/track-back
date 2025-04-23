@@ -9,9 +9,9 @@ class AbstractMusicServiceAdapter(ABC):
     """Abstract base class that defines the interface for a music service."""
 
     @abstractmethod
-    def authenticate(self) -> None:
+    def authenticate(self, access_token: str) -> None:
         """Authenticate the user with the music service."""
-        
+
     @abstractmethod
     def current_song(self) -> Song:
         """Return the currently playing song."""

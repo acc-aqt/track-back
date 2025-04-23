@@ -2,9 +2,10 @@
 
 import os
 import sys
-from fastapi import APIRouter, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
+
 import spotipy
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from spotipy.oauth2 import SpotifyOAuth
 
 from game.song import Song
@@ -12,6 +13,7 @@ from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.error import MusicServiceError
 from music_service.utils import extract_year
 
+current_adapter = None
 
 class SpotifyAdapter(AbstractMusicServiceAdapter):
     """Interface to the Spotify API."""
@@ -29,7 +31,9 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             print("Spotify is not playing.")
             sys.exit(1)
         song_name = playback["item"]["name"]
-        artist_names = ", ".join([artist["name"] for artist in playback["item"]["artists"]])
+        artist_names = ", ".join(
+            [artist["name"] for artist in playback["item"]["artists"]]
+        )
         release_year = extract_year(playback["item"]["album"]["release_date"])
         album_cover_url = playback["item"]["album"]["images"][-1]["url"]
 
@@ -74,7 +78,7 @@ def get_spotify_oauth(username=None):
     return SpotifyOAuth(
         client_id=os.getenv("SPOTIPY_CLIENT_ID"),
         client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
-        redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI", "http://localhost:8000/spotify-callback"),
+        redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
         scope=scope,
         cache_path=f".cache-{username}" if username else None,
     )
@@ -99,11 +103,16 @@ def spotify_callback(request: Request):
     if not token_info:
         return HTMLResponse("❌ Could not get token from Spotify", status_code=400)
 
-    sp = spotipy.Spotify(auth=token_info["access_token"])
+    access_token = token_info["access_token"]
+    sp = spotipy.Spotify(auth=access_token)
     user_profile = sp.current_user()
     username = user_profile["id"]
 
-    user_tokens[username] = token_info
+    # ✅ Instantiate and store the adapter
+    if current_adapter is not None:
+        adapter = SpotifyAdapter()
+        adapter.authenticate(access_token)
+        current_adapter = adapter  # store it for use in your game
 
     return HTMLResponse(
         f"✅ Logged in as <b>{username}</b>. You can now close this tab and return to the game."

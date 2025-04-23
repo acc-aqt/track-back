@@ -2,13 +2,14 @@
 
 from itertools import pairwise
 from typing import Any
-from music_service.error import MusicServiceError
+
 from fastapi import HTTPException
 
 from game.song import Song
 from game.strategies.factory import GameStrategyEnum, GameStrategyFactory
 from game.user import User
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
+from music_service.error import MusicServiceError
+from music_service.spotify import current_adapter
 
 
 class GameLogic:
@@ -17,12 +18,13 @@ class GameLogic:
     def __init__(
         self,
         target_song_count: int,
-        music_service: AbstractMusicServiceAdapter,
         game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
     ) -> None:
-        self.music_service = music_service
+        self.music_service = None
         self.target_song_count = target_song_count
-        self.strategy = GameStrategyFactory.create_game_strategy(game_strategy_enum, self)
+        self.strategy = GameStrategyFactory.create_game_strategy(
+            game_strategy_enum, self
+        )
         self.users: list[User] = []
 
         self.running = False
@@ -30,7 +32,7 @@ class GameLogic:
 
     def start_game(self, users: list[User]) -> None:
         """Start the game."""
-        self.music_service.authenticate()
+        self.music_service = current_adapter
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
@@ -66,7 +68,9 @@ class GameLogic:
             payload["result"] = "wrong"
         payload["message"] = f"Wrong! Song was {current_song}."
 
-        payload["other_players"] = [user.serialize() for user in self.users if user != player]
+        payload["other_players"] = [
+            user.serialize() for user in self.users if user != player
+        ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
         payload["song_list"] = [song.serialize() for song in player.song_list]
@@ -98,7 +102,8 @@ class GameLogic:
     @staticmethod
     def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
         return all(
-            earlier.release_year <= later.release_year for earlier, later in pairwise(song_list)
+            earlier.release_year <= later.release_year
+            for earlier, later in pairwise(song_list)
         )
 
     def is_game_over(self) -> bool:
