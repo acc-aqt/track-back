@@ -9,7 +9,8 @@ from game.song import Song
 from game.strategies.factory import GameStrategyEnum, GameStrategyFactory
 from game.user import User
 from music_service.error import MusicServiceError
-from music_service.spotify import current_adapter
+from music_service.abstract_adapter import AbstractMusicServiceAdapter
+
 
 
 class GameLogic:
@@ -20,22 +21,21 @@ class GameLogic:
         target_song_count: int,
         game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
     ) -> None:
-        self.music_service = None
         self.target_song_count = target_song_count
         self.strategy = GameStrategyFactory.create_game_strategy(game_strategy_enum, self)
         self.users: list[User] = []
+        
+        self.music_service: AbstractMusicServiceAdapter | None = None
 
         self.running = False
         self.winner: User | None = None
+        
+    def set_music_service(self, music_service: AbstractMusicServiceAdapter) -> None:
+        """Set the music service for the game."""
+        self.music_service = music_service
 
     def start_game(self, users: list[User]) -> None:
-        """Start the game."""
-        from music_service.spotify import current_adapter  # ensure fresh import
 
-        if current_adapter is None:
-            raise HTTPException(status_code=400, detail="Spotify not authenticated yet.")
-
-        self.music_service = current_adapter
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
@@ -73,7 +73,7 @@ class GameLogic:
             payload["result"] = "correct"
         else:
             payload["result"] = "wrong"
-        payload["message"] = f"Wrong! Song was {current_song}."
+        payload["message"] = f"Song was {current_song}."
 
         payload["other_players"] = [user.serialize() for user in self.users if user != player]
         payload["last_index"] = str(insert_index)

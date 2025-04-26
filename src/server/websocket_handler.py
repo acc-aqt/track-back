@@ -9,6 +9,7 @@ from fastapi import WebSocket
 from game.game_logic import GameLogic
 from game.user import User
 from server.connection_manager import ConnectionManager
+from server.game_sessions import game_session_manager
 
 
 async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:
@@ -20,22 +21,17 @@ class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
     def __init__(self, connection_manager: ConnectionManager) -> None:
-        self.connection_manager = (
-            connection_manager  # GameContext with game, users, sockets, etc.
-        )
+        self.connection_manager = connection_manager  # GameContext with game, users, sockets, etc.
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
-        if self.connection_manager.user_is_registered(username):
-            await send_ws_message(websocket, "welcome", f"Welcome back, {username}!")
-
-        else:
+        if not self.connection_manager.user_is_registered(username):
             self.connection_manager.register_user(username)
-            await send_ws_message(
-                websocket,
-                "welcome",
-                f"Welcome, {username}! You're connected.",
-            )
+        await send_ws_message(
+            websocket,
+            "welcome",
+            f"Welcome {username}, you're connected.",
+        )
 
         self.connection_manager.set_websocket(username, websocket)
 
@@ -50,12 +46,6 @@ class WebSocketGameHandler:
         if payload["type"] == "error":
             return
 
-        if payload.get("game_over"):
-            winner = payload["winner"]
-            await self._broadcast_game_over(winner)
-            self._terminate_process()
-            return
-
         if payload["type"] == "guess_result":
             await self._broadcast_guess_to_other_players(
                 current_player=username,
@@ -66,6 +56,10 @@ class WebSocketGameHandler:
         players_to_notify = game.strategy.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
             await self._notify_for_next_turn(player)
+
+        if payload.get("game_over"):
+            winner = payload["winner"]
+            await self._broadcast_game_over(winner)
 
     async def _notify_for_next_turn(self, player: User) -> None:
         if player.name not in self.connection_manager.get_registered_user_names():
@@ -111,7 +105,7 @@ class WebSocketGameHandler:
                             "player": current_player,
                             "result": result["result"],
                             "message": message,
-                            "next_player": result["next_player"],
+                            "next_player": result.get("next_player"),
                         }
                     )
                 )
@@ -127,4 +121,3 @@ class WebSocketGameHandler:
                     }
                 )
             )
-        print("Game over, shutting down server...")

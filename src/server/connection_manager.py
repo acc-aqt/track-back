@@ -25,7 +25,7 @@ class ConnectionManager:
         if username in self.user_connections:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="User {username} already registered",
+                detail=f"User '{username}' already registered",
             )
 
         self.user_connections[username] = None
@@ -33,7 +33,7 @@ class ConnectionManager:
         return JSONResponse(
             status_code=201,
             content={
-                "message": "User '{user_name}' registered successfully.",
+                "message": f"User '{username}' registered successfully.",
                 "user": username,
             },
         )
@@ -51,7 +51,7 @@ class ConnectionManager:
         return JSONResponse(
             status_code=200,
             content={
-                "message": "User '{user_name}' unregistered successfully.",
+                "message": "User '{username}' unregistered successfully.",
                 "user": username,
             },
         )

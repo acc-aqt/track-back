@@ -1,3 +1,0 @@
-# User preferences
-music_service = "spotify"  # either "spotify" or "applemusic"
-game_mode = "simultaneous"  # either "simultaneous" or "sequential"
