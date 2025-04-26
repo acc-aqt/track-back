@@ -92,8 +92,24 @@ class Server:
         session = game_session_manager.get_game_session(game_id)
         if not session:
             raise HTTPException(status_code=404, detail=f"Game session {game_id} not found.")
-        
+
         session.connection_manager.register_user(user_name)
+
+        # 🆕 Broadcast to all connected users
+        for ws in session.connection_manager.get_all_websockets():
+            if ws.client_state.name == "CONNECTED":  # safe check
+                await ws.send_text(
+                    json.dumps(
+                        {
+                            "type": "player_joined",
+                            "message": (
+                                f"{user_name} joined the game! There are now {len(session.connection_manager.get_registered_user_names())} players: {', '.join(session.connection_manager.get_registered_user_names())}"
+                            ),
+                            "user_name": user_name,
+                        }
+                    )
+                )
+
         return JSONResponse(content={"message": f"User {user_name} joined game {game_id}."})
 
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
