@@ -19,6 +19,8 @@ from server.game_sessions import game_session_manager
 class SpotifyAdapter(AbstractMusicServiceAdapter):
     """Interface to the Spotify API."""
 
+    service_name = "Spotify"
+
     def __init__(self) -> None:
         self.session = None
 

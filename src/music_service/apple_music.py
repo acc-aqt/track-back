@@ -13,6 +13,7 @@ OSA_SCRIPT_PATH = "osascript"
 
 class AppleMusicAdapter(AbstractMusicServiceAdapter):
     """Uses AppleScripts to interact with Apple Music."""
+    service_name = "Apple Music"
 
     def __init__(self) -> None:
         if not self.running_on_macos():

@@ -188,16 +188,17 @@ class Server:
         except WebSocketDisconnect:
             logging.info("User %s disconnected", username)
             session = game_session_manager.get_game_session(game_id)
-            connection_manager = session.connection_manager
-            game = session.game_logic
+            if session:
+                connection_manager = session.connection_manager
+                game = session.game_logic
 
-            connection_manager.unregister_user(username)
-            user_list_before = len(game.users)
-            game.users = [u for u in game.users if u.name != username]
-            user_list_after = len(game.users)
+                connection_manager.unregister_user(username)
+                user_list_before = len(game.users)
+                game.users = [u for u in game.users if u.name != username]
+                user_list_after = len(game.users)
 
-            if user_list_after < user_list_before:
-                logging.info(f"Removed {username} from game '{game_id}'.")
-                if not game.users:
-                    game_session_manager.remove_game_session(game_id)
-                    logging.info(f"Removed empty game session '{game_id}'.")
+                if user_list_after < user_list_before:
+                    logging.info(f"Removed {username} from game '{game_id}'.")
+                    if not game.users:
+                        game_session_manager.remove_game_session(game_id)
+                        logging.info(f"Removed empty game session '{game_id}'.")
