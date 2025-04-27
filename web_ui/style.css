@@ -85,7 +85,9 @@ body {
   transform: translateY(0px);
 }
 
-
+.input-group-configure-game[hidden] {
+  display: none !important;
+}
 
 
 

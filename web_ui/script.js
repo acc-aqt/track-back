@@ -272,6 +272,7 @@ function connectWebSocket () {
 
 async function listAndChooseGameSessions () {
   try {
+    document.getElementById('joinGameBtn').style.display = 'none'
     const res = await fetch(`${serverUrl}/list-sessions`)
     const data = await res.json()
 
@@ -349,10 +350,10 @@ async function configureGame () {
     alert('Please enter a username!')
     return
   }
-  const groups = document.getElementsByClassName('input-group-configure-game')
-  for (const group of groups) {
-    group.style.display = 'block'
-  }
+  const groups = document.querySelectorAll('.input-group-configure-game')
+  groups.forEach(group => {
+    group.hidden = false
+  })
   document.getElementById('configureGameBtn').style.display = 'none'
   document.getElementById('joinGameBtn').style.display = 'none'
 
@@ -364,10 +365,10 @@ async function createGame () {
   username = document.getElementById('username').value
   songCountInput = document.getElementById('targetSongCountInput').value.trim()
 
-  const groups = document.getElementsByClassName('input-group-configure-game')
-  for (const group of groups) {
-    group.style.display = 'none'
-  }
+  const groups = document.querySelectorAll('.input-group-configure-game')
+  groups.forEach(group => {
+    group.hidden = true
+  })
   document.getElementById('joinGameBtn').style.display = 'block'
 
   targetSongCount = parseInt(songCountInput)
@@ -398,7 +399,6 @@ async function createGame () {
     const stateParam = encodeURIComponent(JSON.stringify(stateObject))
 
     const loginUrl = `${serverUrl}/spotify-login?state=${stateParam}`
-    window.open(loginUrl, '_blank')
     // spotify
     document.getElementById('joinGameBtn').style.display = 'block'
     document.getElementById('startGameBtn').style.display = 'none'
@@ -429,7 +429,7 @@ async function createGame () {
 
     await joinGame()
     // apple
-    document.getElementById('joinGameBtn').style.display = 'none'
+    // document.getElementById('joinGameBtn').style.display = 'none'
     document.getElementById('startGameBtn').style.display = 'block'
   }
 }
