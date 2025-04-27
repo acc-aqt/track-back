@@ -21,6 +21,10 @@ body {
     align-items: center;
     text-align: center;
   }
+
+  h1 {
+    font-family: 'Press Start 2P', sans-serif;
+  }
   
   #controls {
   background: var(--section-main);
@@ -167,6 +171,7 @@ body {
 
 .song-details {
   flex: 1;
+  text-align: left;
 }
 
 .highlight {
