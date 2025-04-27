@@ -7,11 +7,8 @@ from game.song import Song
 
 class AbstractMusicServiceAdapter(ABC):
     """Abstract base class that defines the interface for a music service."""
-    service_name: str
 
-    @abstractmethod
-    def authenticate(self, access_token: str) -> None:
-        """Authenticate the user with the music service."""
+    service_name: str
 
     @abstractmethod
     def current_song(self) -> Song:

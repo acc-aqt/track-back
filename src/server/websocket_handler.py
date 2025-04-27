@@ -9,7 +9,6 @@ from fastapi import WebSocket
 from game.game_logic import GameLogic
 from game.user import User
 from server.connection_manager import ConnectionManager
-from server.game_sessions import game_session_manager
 
 
 async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:
@@ -21,7 +20,9 @@ class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
     def __init__(self, connection_manager: ConnectionManager) -> None:
-        self.connection_manager = connection_manager  # GameContext with game, users, sockets, etc.
+        self.connection_manager = (
+            connection_manager  # GameContext with game, users, sockets, etc.
+        )
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""

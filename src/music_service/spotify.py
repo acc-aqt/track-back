@@ -1,15 +1,16 @@
 """Implementation of the SpotifyClient class."""
 
+import json
 import os
 import sys
-import json
+
 import spotipy
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from spotipy.oauth2 import SpotifyOAuth
 
-from game.song import Song
 from game.game_logic import GameLogic
+from game.song import Song
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.error import MusicServiceError
 from music_service.utils import extract_year
@@ -25,6 +26,7 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         self.session = None
 
     def authenticate(self, access_token: str) -> None:
+        """Authenticate the Spotify session with the provided access token."""
         self.session = spotipy.Spotify(auth=access_token)
 
     def current_song(self) -> Song:
@@ -34,7 +36,9 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             print("Spotify is not playing.")
             sys.exit(1)
         song_name = playback["item"]["name"]
-        artist_names = ", ".join([artist["name"] for artist in playback["item"]["artists"]])
+        artist_names = ", ".join(
+            [artist["name"] for artist in playback["item"]["artists"]]
+        )
         release_year = extract_year(playback["item"]["album"]["release_date"])
         album_cover_url = playback["item"]["album"]["images"][-1]["url"]
 
@@ -70,7 +74,8 @@ router = APIRouter()
 user_tokens: dict[str, dict] = {}  # In-memory user token storage (user_id → token_info)
 
 
-def get_spotify_oauth(username=None):
+def get_spotify_oauth(username: str = "") -> SpotifyOAuth:
+    """Get Spotify OAuth object."""
     read_library = "user-library-read"
     read_playback = "user-read-playback-state"
     modify_playback = "user-modify-playback-state"
@@ -86,7 +91,8 @@ def get_spotify_oauth(username=None):
 
 
 @router.get("/spotify-login")
-def spotify_login(state: str = None):
+def spotify_login(state: str = "") -> RedirectResponse:
+    """This is the URL that the user will be redirected to for Spotify login."""
     sp_oauth = get_spotify_oauth()
     auth_url = sp_oauth.get_authorize_url(state=state)
 
@@ -97,7 +103,8 @@ def spotify_login(state: str = None):
 
 
 @router.get("/spotify-callback")
-def spotify_callback(request: Request):
+def spotify_callback(request: Request) -> HTMLResponse:
+    """This is the callback URL that Spotify redirects to after user authentication."""
     code = request.query_params.get("code")
     state_raw = request.query_params.get("state")
 
@@ -108,9 +115,9 @@ def spotify_callback(request: Request):
 
     try:
         state = json.loads(state_raw)
-        game_id = state["game_id"]
-        target_song_count = state["target_song_count"]
-    except Exception:
+        game_id = state.get("game_id")
+        target_song_count = state.get("target_song_count")
+    except json.JSONDecodeError:
         return HTMLResponse("❌ Failed to parse state", status_code=400)
 
     if not code:

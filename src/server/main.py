@@ -4,12 +4,11 @@ import argparse
 import logging
 import os
 
-
 from server.local_ip import get_local_ip
 from server.server import Server
 
 
-def parse_args() -> tuple[int, int]:
+def parse_args() -> int:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Start the TrackBack game server.")
     parser.add_argument("--port", type=int)
@@ -30,7 +29,6 @@ def log_server_info(port: int) -> None:
         ip = get_local_ip()
         url = f"http://{ip}:{port}"
         logging.info("\nGame server running at: %s\n", url)
-
 
 
 def main() -> None:

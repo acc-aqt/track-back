@@ -3,34 +3,38 @@
 import json
 import logging
 
-
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from game.user import User
-from music_service.spotify import router as spotify_auth_router
-from server.websocket_handler import WebSocketGameHandler
-from server.game_sessions import game_session_manager
-from game.game_logic import GameLogic
-from music_service.factory import MusicServiceFactory
-
 from pydantic import BaseModel
+
+from game.game_logic import GameLogic
+from game.user import User
+from music_service.factory import MusicServiceFactory
+from music_service.spotify import router as spotify_auth_router
+from server.game_sessions import game_session_manager
+from server.websocket_handler import WebSocketGameHandler
 
 
 class CreateGameRequest(BaseModel):
+    """Request model for creating a game session."""
+
     game_id: str
     target_song_count: int
     music_service_type: str
 
 
 class JoinGameRequest(BaseModel):
+    """Request model for joining a game session."""
+
     game_id: str
     user_name: str
 
 
 class StartGameRequest(BaseModel):
+    """Request model for starting a game session."""
+
     game_id: str
 
 
@@ -65,7 +69,7 @@ class Server:
 
         return app
 
-    async def _create_game_session(self, req: CreateGameRequest):
+    async def _create_game_session(self, req: CreateGameRequest) -> JSONResponse:
         game_id = req.game_id
         target_song_count = req.target_song_count
 
@@ -91,7 +95,9 @@ class Server:
         user_name = req.user_name
         session = game_session_manager.get_game_session(game_id)
         if not session:
-            raise HTTPException(status_code=404, detail=f"Game session {game_id} not found.")
+            raise HTTPException(
+                status_code=404, detail=f"Game session {game_id} not found."
+            )
 
         session.connection_manager.register_user(user_name)
 
@@ -110,22 +116,41 @@ class Server:
                     )
                 )
 
-        return JSONResponse(content={"message": f"User {user_name} joined game {game_id}."})
+        return JSONResponse(
+            content={"message": f"User {user_name} joined game {game_id}."}
+        )
 
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
         game_id = req.game_id
         session = game_session_manager.get_game_session(game_id)
+        if not session:
+            raise HTTPException(
+                status_code=404, detail=f"Game session {game_id} not found."
+            )
 
         connection_manager = session.connection_manager
 
+        if not connection_manager:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Connection manager for game {game_id} not found.",
+            )
+
         if len(connection_manager.get_registered_user_names()) < 1:
-            raise HTTPException(status_code=400, detail="Not enough players to start the game.")
+            raise HTTPException(
+                status_code=400, detail="Not enough players to start the game."
+            )
 
         user_names = connection_manager.get_registered_user_names()
         users = [User(name=user_name) for user_name in user_names]
 
         game = session.game_logic
+
+        if not game:
+            raise HTTPException(
+                status_code=404, detail=f"Game logic for game {game_id} not found."
+            )
 
         game.start_game(users)
 
@@ -158,9 +183,15 @@ class Server:
             },
         )
 
-    async def _websocket_endpoint(self, websocket: WebSocket, game_id: str, username: str):
+    async def _websocket_endpoint(
+        self, websocket: WebSocket, game_id: str, username: str
+    ) -> None:
         await websocket.accept()
         game_session = game_session_manager.get_game_session(game_id)
+        if not game_session:
+            await websocket.close()
+            logging.error("Game session %s not found.", game_id)
+            return
         connection_manager = game_session.connection_manager
         if connection_manager.first_player is None:
             connection_manager.first_player = username
@@ -175,6 +206,16 @@ class Server:
                 data = json.loads(raw_data)
 
                 game = game_session.game_logic
+                if not game:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "error",
+                                "message": f"Game session {game_id} not found.",
+                            }
+                        )
+                    )
+                    break
 
                 if data.get("type") == "guess":
                     index = data.get("index")
@@ -198,7 +239,7 @@ class Server:
                 user_list_after = len(game.users)
 
                 if user_list_after < user_list_before:
-                    logging.info(f"Removed {username} from game '{game_id}'.")
+                    logging.info("Removed user %s from game %s", username, game_id)
                     if not game.users:
                         game_session_manager.remove_game_session(game_id)
-                        logging.info(f"Removed empty game session '{game_id}'.")
+                        logging.info("Removed empty game session %s", game_id)
