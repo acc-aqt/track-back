@@ -275,9 +275,6 @@ async function listAndChooseGameSessions () {
       dropdown.appendChild(option)
     })
 
-    // Show the dropdown and button
-    dropdown.style.display = 'inline-block'
-    joinButton.style.display = 'inline-block'
 
     joinButton.onclick = async () => {
       const selectedGameId = dropdown.value
@@ -291,9 +288,6 @@ async function listAndChooseGameSessions () {
       gameId = selectedGameId
       await joinGame()
 
-      // Hide dropdown after join
-      dropdown.style.display = 'none'
-      joinButton.style.display = 'none'
     }
   } catch (err) {
     console.error('❌ Failed to fetch sessions:', err)
@@ -318,7 +312,6 @@ async function joinGame () {
     connectWebSocket()
     if (userHostingSpotifySession) {
       document.getElementById('controls-start').hidden = false
-      document.getElementById('startGameBtn').style.display = 'block'
     }
     document.getElementById('joinGameConfigBox').hidden = true
   } catch (err) {
@@ -352,7 +345,6 @@ async function createGame () {
   document.getElementById('gameConfigBox').hidden = true
   document.getElementById('controls-start').hidden = false
 
-  // document.getElementById('joinGameBtn').style.display = 'block'
 
   targetSongCount = parseInt(songCountInput)
 
@@ -430,9 +422,7 @@ async function createGame () {
     console.error('Successfully created apple music game')
 
     await joinGame()
-    // apple
-    // document.getElementById('joinGameBtn').style.display = 'none'
-    document.getElementById('startGameBtn').style.display = 'block'
+
   }
 }
 
