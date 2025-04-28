@@ -327,10 +327,12 @@ async function configureGame () {
     alert('Please enter a username!')
     return
   }
-  const groups = document.querySelectorAll('.input-group-configure-game')
-  groups.forEach(group => {
-    group.hidden = false
-  })
+  // const groups = document.querySelectorAll('.input-group-configure-game')
+  // groups.forEach(group => {
+  //   group.hidden = false
+  // })
+  document.getElementById('gameConfigBox').hidden = false;
+
   document.getElementById('configureGameBtn').style.display = 'none'
   document.getElementById('joinGameBtn').style.display = 'none'
 
@@ -342,10 +344,12 @@ async function createGame () {
   username = document.getElementById('username').value
   songCountInput = document.getElementById('targetSongCountInput').value.trim()
 
-  const groups = document.querySelectorAll('.input-group-configure-game')
-  groups.forEach(group => {
-    group.hidden = true
-  })
+  // const groups = document.querySelectorAll('.input-group-configure-game')
+  // groups.forEach(group => {
+  //   group.hidden = true
+  // })
+  document.getElementById('gameConfigBox').hidden = true;
+
   document.getElementById('joinGameBtn').style.display = 'block'
 
   targetSongCount = parseInt(songCountInput)
