@@ -91,6 +91,8 @@ def get_spotify_oauth() -> SpotifyOAuth:
         client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
         redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
         scope=scope,
+        cache_path=None,  # ⬅️ disables caching
+
     )
 
 
