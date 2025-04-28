@@ -1,3 +1,5 @@
+"""Module with the GameSession and GameSessionManager classes."""
+
 from game.game_logic import GameLogic  # or wherever your GameLogic class is
 from server.connection_manager import ConnectionManager
 
@@ -5,11 +7,9 @@ from server.connection_manager import ConnectionManager
 class GameSession:
     """Holds the game logic and connection manager."""
 
-    def __init__(self, game_logic: GameLogic):
+    def __init__(self, game_logic: GameLogic) -> None:
         self.game_logic = game_logic
-        self.connection_manager = (
-            ConnectionManager()
-        )  # 🔥 each game has its own connection manager
+        self.connection_manager = ConnectionManager()
 
 
 class GameSessionManager:
@@ -18,7 +18,7 @@ class GameSessionManager:
     def __init__(self) -> None:
         self.sessions: dict[str, GameSession] = {}
 
-    def add_game(self, game_id: str, game) -> None:
+    def add_game(self, game_id: str, game: GameLogic) -> None:
         """Create and store a full GameLogic instance."""
         self.sessions[game_id] = GameSession(game)
 

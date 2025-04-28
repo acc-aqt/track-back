@@ -7,6 +7,7 @@ import sys
 
 from game.song import Song
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
+from music_service.error import MusicServiceError
 
 OSA_SCRIPT_PATH = "osascript"
 
@@ -18,9 +19,9 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
 
     def __init__(self) -> None:
         if not self.running_on_macos():
-            raise RuntimeError("Apple Music is only supported on macOS!")
+            raise MusicServiceError("Apple Music is only supported on macOS!")
         if not self.music_app_is_running():
-            raise RuntimeError("Apple Music is not running!")
+            raise MusicServiceError("Apple Music is not running!")
 
     def current_song(self) -> Song:
         """Get the currently playing song."""
@@ -51,7 +52,7 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
                 separator
             )
         except ValueError as err:
-            raise RuntimeError(
+            raise MusicServiceError(
                 f"Failed to parse the current song information. "
                 f"Output was '{result.stdout}'. Check if a song is playing!"
             ) from err

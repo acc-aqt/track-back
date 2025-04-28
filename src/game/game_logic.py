@@ -18,6 +18,7 @@ class GameLogic:
     def __init__(
         self,
         target_song_count: int,
+        music_service: AbstractMusicServiceAdapter,
         game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
     ) -> None:
         self.target_song_count = target_song_count
@@ -26,14 +27,10 @@ class GameLogic:
         )
         self.users: list[User] = []
 
-        self.music_service: AbstractMusicServiceAdapter | None = None
+        self.music_service = music_service
 
         self.running = False
         self.winner: User | None = None
-
-    def set_music_service(self, music_service: AbstractMusicServiceAdapter) -> None:
-        """Set the music service for the game."""
-        self.music_service = music_service
 
     def start_game(self, users: list[User]) -> None:
         """Start the game with the given users."""
@@ -46,7 +43,8 @@ class GameLogic:
         except MusicServiceError as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to play music. Check that music service {self.music_service.service_name} is running!",
+                detail="Failed to play music. Please check if music service "
+                f"{self.music_service.service_name} is running!",
             ) from e
         self.users = users
         self.running = True
