@@ -91,6 +91,7 @@ function handleYourTurn (data) {
   document.getElementById('songListHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'
+  document.getElementById('controls-waiting-for-start').hidden = true
 
   const list = data.song_list || []
   const dummyCovers = [
@@ -225,7 +226,7 @@ function connectWebSocket () {
     } else if (type === 'error') {
       log(`🚨 Error: ${data.message}`)
     } else if (type === 'other_player_guess') {
-      log(`🧑🏽‍🎤 ${data.player} guessed: ${data.message}`)
+      log(`🧑🏽‍🎤 ${data.message}`)
     } else if (type === 'game_over') {
       log(`🏁 Game Over! Winner: ${data.winner}`)
 
@@ -283,6 +284,9 @@ async function listAndChooseGameSessions () {
       if (!selectedGameId) {
         alert('❌ Please select a session.')
         return
+      }
+      if (!userHostingSpotifySession) {
+        document.getElementById('controls-waiting-for-start').hidden = false
       }
       gameId = selectedGameId
       await joinGame()
@@ -455,6 +459,7 @@ document.getElementById('joinGameBtn').onclick = async () => {
   if (userHostingSpotifySession) {
     await joinGame()
     return
+  } else {
   }
   // Ask the user to pick one session
   await listAndChooseGameSessions()

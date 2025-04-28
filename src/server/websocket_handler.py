@@ -20,9 +20,7 @@ class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
     def __init__(self, connection_manager: ConnectionManager) -> None:
-        self.connection_manager = (
-            connection_manager  # GameContext with game, users, sockets, etc.
-        )
+        self.connection_manager = connection_manager  # GameContext with game, users, sockets, etc.
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
@@ -50,7 +48,7 @@ class WebSocketGameHandler:
         if payload["type"] == "guess_result":
             await self._broadcast_guess_to_other_players(
                 current_player=username,
-                message=f"{username} made his guess. (Guess was: {payload['result']})",
+                message=f"{username} made a guess. Guess was {payload['result']}.",
                 result=payload,
             )
 
