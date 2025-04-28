@@ -8,6 +8,8 @@ import spotipy
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from spotipy.oauth2 import SpotifyOAuth
+from spotipy.cache_handler import MemoryCacheHandler
+
 
 from game.game_logic import GameLogic
 from game.song import Song
@@ -38,9 +40,7 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             print("Spotify is not playing.")
             sys.exit(1)
         song_name = playback["item"]["name"]
-        artist_names = ", ".join(
-            [artist["name"] for artist in playback["item"]["artists"]]
-        )
+        artist_names = ", ".join([artist["name"] for artist in playback["item"]["artists"]])
         release_year = extract_year(playback["item"]["album"]["release_date"])
         album_cover_url = playback["item"]["album"]["images"][-1]["url"]
 
@@ -91,8 +91,7 @@ def get_spotify_oauth() -> SpotifyOAuth:
         client_secret=os.getenv("SPOTIPY_CLIENT_SECRET"),
         redirect_uri=os.getenv("SPOTIPY_REDIRECT_URI"),
         scope=scope,
-        cache_path=None,  # ⬅️ disables caching
-
+        cache_path=MemoryCacheHandler(),
     )
 
 
@@ -144,9 +143,7 @@ def spotify_callback(request: Request) -> HTMLResponse:
     state_raw = request.query_params.get("state")
 
     if not code or not state_raw:
-        return HTMLResponse(
-            "❌ Missing code or state in callback request", status_code=400
-        )
+        return HTMLResponse("❌ Missing code or state in callback request", status_code=400)
 
     try:
         state = json.loads(state_raw)
