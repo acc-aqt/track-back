@@ -2,6 +2,7 @@
 
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.apple_music import AppleMusicAdapter
+from music_service.mock import DummyMusicService
 from music_service.spotify import SpotifyAdapter
 
 
@@ -22,5 +23,8 @@ class MusicServiceFactory:
 
         if provider_name == "applemusic":
             return AppleMusicAdapter()
+
+        if provider_name == "mock":
+            return DummyMusicService()
 
         raise MusicServiceError(f"Invalid music service: '{provider_name}'")

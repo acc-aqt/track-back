@@ -1,5 +1,7 @@
 """Module with the GameSession and GameSessionManager classes."""
 
+from fastapi import HTTPException, status
+
 from game.game_logic import GameLogic  # or wherever your GameLogic class is
 from server.connection_manager import ConnectionManager
 
@@ -20,6 +22,11 @@ class GameSessionManager:
 
     def add_game(self, game_id: str, game: GameLogic) -> None:
         """Create and store a full GameLogic instance."""
+        if game_id in self.sessions:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Session '{game_id}' already exists. Choose different ID.",
+            )
         self.sessions[game_id] = GameSession(game)
 
     def get_game_session(self, game_id: str) -> GameSession | None:

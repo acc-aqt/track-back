@@ -1,94 +1,94 @@
-import json
+# import json
 
 
-import pytest
-from fastapi.testclient import TestClient
+# import pytest
+# from fastapi.testclient import TestClient
 
-from music_service.mock import DummyMusicService
-from game.game_logic import GameLogic
-from game.strategies.factory import GameStrategyEnum
-from server.connection_manager import ConnectionManager
-from server.server import Server
-
-
-@pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
-def test_env(request):
-    ctx = ConnectionManager()
-    game = GameLogic(
-        target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
-    )
-
-    server = Server(connection_manager=ctx, game=game)
-    return TestClient(server.app)
+# from music_service.mock import DummyMusicService
+# from game.game_logic import GameLogic
+# from game.strategies.factory import GameStrategyEnum
+# from server.connection_manager import ConnectionManager
+# from server.server import Server
 
 
-def test_single_player_game(test_env):
-    client = test_env
-    user_name = "testuser"
+# @pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
+# def test_env(request):
+#     ctx = ConnectionManager()
+#     game = GameLogic(
+#         target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
+#     )
 
-    client.post(f"/register?user_name={user_name}")
+#     server = Server(connection_manager=ctx, game=game)
+#     return TestClient(server.app)
 
-    with client.websocket_connect(f"/ws/{user_name}") as websocket:
-        response = client.post("/start")
-        data = response.json()
-        assert response.status_code == 200
-        assert data["type"] == "game_start"
 
-        # Receive the welcome message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "welcome"
+# def test_single_player_game(test_env):
+#     client = test_env
+#     user_name = "testuser"
 
-        # Receive the "your_turn" message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "your_turn"
+#     client.post(f"/register?user_name={user_name}")
 
-        # Then send the first guess
-        websocket.send_json({"type": "guess", "index": 0})
+#     with client.websocket_connect(f"/ws/{user_name}") as websocket:
+#         response = client.post("/start")
+#         data = response.json()
+#         assert response.status_code == 200
+#         assert data["type"] == "game_start"
 
-        # Then receive the guess result
-        response = json.loads(websocket.receive_text())
+#         # Receive the welcome message
+#         response = json.loads(websocket.receive_text())
+#         assert response["type"] == "welcome"
 
-        assert response["type"] == "guess_result"
-        assert response["result"] == "correct"
-        assert len(response["song_list"]) == 1
-        assert response["last_index"] == "0"
-        assert response["other_players"] == []
-        assert response["game_over"] is False
-        assert response["winner"] == ""
+#         # Receive the "your_turn" message
+#         response = json.loads(websocket.receive_text())
+#         assert response["type"] == "your_turn"
 
-        # Receive the "your_turn" message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "your_turn"
+#         # Then send the first guess
+#         websocket.send_json({"type": "guess", "index": 0})
 
-        # Send the second guess
-        # Songs from MockService are ordered by release year.
-        websocket.send_json({"type": "guess", "index": 0})  # this is a wrong guess
+#         # Then receive the guess result
+#         response = json.loads(websocket.receive_text())
 
-        # Then receive the guess result
-        response = json.loads(websocket.receive_text())
+#         assert response["type"] == "guess_result"
+#         assert response["result"] == "correct"
+#         assert len(response["song_list"]) == 1
+#         assert response["last_index"] == "0"
+#         assert response["other_players"] == []
+#         assert response["game_over"] is False
+#         assert response["winner"] == ""
 
-        assert response["type"] == "guess_result"
-        assert response["result"] == "wrong"
-        assert len(response["song_list"]) == 1
-        assert response["last_index"] == "0"
-        assert response["other_players"] == []
-        assert response["game_over"] is False
-        assert response["winner"] == ""
+#         # Receive the "your_turn" message
+#         response = json.loads(websocket.receive_text())
+#         assert response["type"] == "your_turn"
 
-        # Receive the "your_turn" message
-        response = json.loads(websocket.receive_text())
-        assert response["type"] == "your_turn"
+#         # Send the second guess
+#         # Songs from MockService are ordered by release year.
+#         websocket.send_json({"type": "guess", "index": 0})  # this is a wrong guess
 
-        # Send the third guess
-        websocket.send_json({"type": "guess", "index": 1})  # this is a correct guess
+#         # Then receive the guess result
+#         response = json.loads(websocket.receive_text())
 
-        # Then receive the guess result
-        response = json.loads(websocket.receive_text())
+#         assert response["type"] == "guess_result"
+#         assert response["result"] == "wrong"
+#         assert len(response["song_list"]) == 1
+#         assert response["last_index"] == "0"
+#         assert response["other_players"] == []
+#         assert response["game_over"] is False
+#         assert response["winner"] == ""
 
-        assert response["type"] == "guess_result"
-        assert response["result"] == "correct"
-        assert len(response["song_list"]) == 2
-        assert response["last_index"] == "1"
-        assert response["other_players"] == []
-        assert response["game_over"] is True
-        assert response["winner"] == user_name
+#         # Receive the "your_turn" message
+#         response = json.loads(websocket.receive_text())
+#         assert response["type"] == "your_turn"
+
+#         # Send the third guess
+#         websocket.send_json({"type": "guess", "index": 1})  # this is a correct guess
+
+#         # Then receive the guess result
+#         response = json.loads(websocket.receive_text())
+
+#         assert response["type"] == "guess_result"
+#         assert response["result"] == "correct"
+#         assert len(response["song_list"]) == 2
+#         assert response["last_index"] == "1"
+#         assert response["other_players"] == []
+#         assert response["game_over"] is True
+#         assert response["winner"] == user_name

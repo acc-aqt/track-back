@@ -83,7 +83,9 @@ class Server:
         )
         game_session_manager.add_game(game_id, game)
 
-        return JSONResponse(content={"message": f"Game session {game_id} created."})
+        return JSONResponse(
+            status_code=201, content={"message": f"Game session {game_id} created."}
+        )
 
     @exception_handling
     async def _list_joinable_game_sessions(self) -> JSONResponse:
