@@ -172,3 +172,6 @@ web_ui/server_config.js
 web_ui/server_config.js.temp
 web_ui/server_config.js.tmp
 sync_repo.sh
+.DS_Store
+web_ui/.DS_Store
+web_ui/dummy-cover/.DS_Store
