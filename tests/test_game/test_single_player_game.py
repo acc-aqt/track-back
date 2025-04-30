@@ -32,8 +32,11 @@ def test_single_player_game(test_env):
     game.handle_player_turn(test_user.name, 0)
     assert len(test_user.song_list) == 1
     assert game.is_game_over() is False
+    assert game.winner is None
+
 
     # user makes correct guess (songs from mock are delived with increasing release year)
     game.handle_player_turn(test_user.name, 1)
     assert len(test_user.song_list) == 2
     assert game.is_game_over() is True
+    assert game.winner == test_user
