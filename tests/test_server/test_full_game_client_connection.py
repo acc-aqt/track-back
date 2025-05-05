@@ -3,18 +3,9 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from game.game_logic import GameLogic
-from game.strategies.factory import GameStrategyEnum
-from music_service.mock import DummyMusicService
-from server.connection_manager import ConnectionManager
 from server.server import Server
 from server.websocket_handler import WebSocketGameHandler
 from server.game_sessions import game_session_manager
-
-WebSocketGameHandler._terminate_process = lambda self: print(
-    "Terminating (stubbed)"
-)  # not actually killing the process within Tet
-
 
 @pytest.fixture
 def client():
@@ -30,7 +21,7 @@ def test_full_game_client_connection(client: TestClient):
     payload = {
         "game_id": game_id,
         "target_song_count": 2,
-        "music_service_type": "mock",  # or "spotify" depending on your app config
+        "music_service_type": "mock",
     }
 
     response = client.post("/create", json=payload)
@@ -70,7 +61,7 @@ def test_full_game_client_connection(client: TestClient):
     response = client.post("/join", json=payload)
     assert response.status_code == 409
 
-    # scones user joining the game session
+    # second user joining the game session
 
     test_user_2 = "testuser2"
 
@@ -106,7 +97,6 @@ def test_full_game_client_connection(client: TestClient):
         # Player1: Send the first guess
         ws1.send_json({"type": "guess", "index": 0})
         response = json.loads(ws1.receive_text())
-        print(response)
 
         assert response["type"] == "guess_result"
         assert response["result"] == "correct"
@@ -179,12 +169,3 @@ def test_full_game_client_connection(client: TestClient):
         assert response["winner"] == test_user_2
 
 
-# def test_websocket_disconnect_cleans_user():
-#     client, ctx = test_env
-#     username = "disconnect_test"
-
-#     with client.websocket_connect(f"/ws/{username}") as websocket:
-#         assert username in ctx.user_connections
-
-#     # After exiting context manager, disconnect happens
-#     assert username not in ctx.user_connections

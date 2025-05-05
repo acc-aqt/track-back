@@ -28,6 +28,13 @@ class SequentialStrategy(AbstractGameStrategy):
         self.current_player_index = (self.current_player_index + 1) % len(
             self.game.users
         )
+
+        # skip non active players
+        while not self._get_current_player().is_active:
+            self.current_player_index = (self.current_player_index + 1) % len(
+                self.game.users
+            )
+
         self.game.music_service.next_track()
         return {"next_player": self._get_current_player().name}
 

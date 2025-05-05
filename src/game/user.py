@@ -10,6 +10,7 @@ class User:
         """User has name and song list (release year ascending)."""
         self.name = name
         self.song_list = []  # type: list[Song]
+        self.is_active = True
 
     def add_song(self, index: int, song: Song) -> None:
         """Add a song to the song_list of the user."""

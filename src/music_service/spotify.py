@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+from datetime import datetime
 
 import spotipy
 from fastapi import APIRouter, Request
@@ -14,7 +15,6 @@ from game.game_logic import GameLogic
 from game.song import Song
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.error import MusicServiceError
-from music_service.utils import extract_year
 from server.game_sessions import game_session_manager
 
 
@@ -182,3 +182,14 @@ def spotify_callback(request: Request) -> HTMLResponse:
         content=f"✅ Logged in as <b>{username}</b>. "
         "You can now close this tab and return to the game."
     )
+
+
+def extract_year(date_str: str) -> int:
+    """Extract the year from a date and handle different date formats."""
+    formats = ["%Y-%m-%d", "%Y-%m", "%Y"]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt).year
+        except ValueError:
+            continue
+    raise ValueError(f"Unknown date format: {date_str}")

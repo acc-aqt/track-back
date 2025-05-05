@@ -1,0 +1,4 @@
+[run]
+omit =
+    src/music_service/apple_music.py
+    src/music_service/spotify.py

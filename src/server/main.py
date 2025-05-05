@@ -29,7 +29,6 @@ def parse_args() -> tuple[int, int]:
 
 def main() -> None:
     """Parse args and start the server."""
-
     port, log_level = parse_args()
     logging.basicConfig(level=log_level)
     server = Server()

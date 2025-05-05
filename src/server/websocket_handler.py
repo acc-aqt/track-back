@@ -1,10 +1,8 @@
 """Contains the WebSocket handler for the game server."""
 
 import json
-import os
-import signal
 
-from fastapi import WebSocket
+from fastapi import HTTPException, WebSocket
 
 from game.game_logic import GameLogic
 from game.user import User
@@ -63,36 +61,22 @@ class WebSocketGameHandler:
             await self._broadcast_game_over(winner)
 
     async def _notify_for_next_turn(self, player: User) -> None:
-        if player.name not in self.connection_manager.get_registered_user_names():
-            for ws in self.connection_manager.get_all_websockets():
-                await ws.send_text(
-                    json.dumps(
-                        {
-                            "type": "error",
-                            "message": f"Player {player.name} has disconnected.",
-                        }
-                    )
+        if websocket := self.connection_manager.get_websocket(player.name):
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "your_turn",
+                        "message": "New round! Make your guess!",
+                        "next_player": player.name,
+                        "song_list": [song.serialize() for song in player.song_list],
+                    }
                 )
-            return
-
-        websocket: WebSocket | None = self.connection_manager.get_websocket(player.name)
-        if not websocket:
-            return
-
-        await websocket.send_text(
-            json.dumps(
-                {
-                    "type": "your_turn",
-                    "message": "New round! Make your guess!",
-                    "next_player": player.name,
-                    "song_list": [song.serialize() for song in player.song_list],
-                }
             )
-        )
-
-    def _terminate_process(self) -> None:
-        """Terminate the process gracefully."""
-        os.kill(os.getpid(), signal.SIGINT)
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No WebSocket for player {player.name}!",
+            )
 
     async def _broadcast_guess_to_other_players(
         self, current_player: str, message: str, result: dict[str, str]

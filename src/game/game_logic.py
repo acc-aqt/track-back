@@ -115,3 +115,10 @@ class GameLogic:
     def is_game_over(self) -> bool:
         """Return True if the game is over."""
         return not self.running
+
+    def get_user(self, username: str) -> User | None:
+        """Return the user with the given username."""
+        for user in self.users:
+            if user.name == username:
+                return user
+        return None

@@ -9,7 +9,8 @@ from server.connection_manager import ConnectionManager
 class GameSession:
     """Holds the game logic and connection manager."""
 
-    def __init__(self, game_logic: GameLogic) -> None:
+    def __init__(self, game_id: str, game_logic: GameLogic) -> None:
+        self.game_id = game_id
         self.game_logic = game_logic
         self.connection_manager = ConnectionManager()
 
@@ -27,7 +28,7 @@ class GameSessionManager:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Session '{game_id}' already exists. Choose different ID.",
             )
-        self.sessions[game_id] = GameSession(game)
+        self.sessions[game_id] = GameSession(game_id, game)
 
     def get_game_session(self, game_id: str) -> GameSession | None:
         """Retrieve the game session by ID."""

@@ -30,7 +30,11 @@ class SimultaneousStrategy(AbstractGameStrategy):
         """Only when every user has guessed, the game will skip to the next track."""
         self.users_already_guessed.add(username)
 
-        if len(self.users_already_guessed) == len(self.game.users):
+        active_users = {user.name for user in self.game.users if user.is_active}
+
+        missing_users = active_users - self.users_already_guessed
+
+        if not missing_users:
             self.game.music_service.next_track()
             self.users_already_guessed.clear()
 

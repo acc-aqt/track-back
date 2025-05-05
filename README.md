@@ -51,21 +51,15 @@ pip install .
 - Spotify Premium account
 - A registered app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
    1. Log in and create a new app
-   2. Set a **redirect URI** (e.g. `http://localhost:8888/callback`)
+   2. Set a **redirect URI**. The path must be `/spotify-callback` for the Spotify login flow in this app to work, e.g. `https://your-domain.com/spotify-callback`.
    3. Copy your **Client ID** and **Client Secret**
    4. Add authorized users under **Edit Settings > User Management**
 
 #### 2.1.2 Setup
 
 1. Copy `.env.example` to `.env`, and fill in your spotify credentials (see 2.1.).
-2. In `config.toml`, set:
-
-```toml
-music_service = "spotify"
-```
-
-3. Open the Spotify app and log in with a registered account (see 2.1.1).
-4. Select a playlist to use in the game.
+2. Open the Spotify app and log in with a registered account (see 2.1.1).
+3. Select a playlist to use in the game.
 
 ---
 
@@ -77,13 +71,7 @@ music_service = "spotify"
 
 #### 2.2.2 Setup
 
-1. In `config.toml`, set:
-
-```toml
-music_service = "applemusic"
-```
-
-2. Open the Music app and select a playlist.
+- Open the Music app and select a playlist.
 
 > Note: Apple Music integration uses AppleScript under the hood and only works on macOS.
 
