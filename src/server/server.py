@@ -115,19 +115,19 @@ class Server:
                     detail=f"User {user_name} not found in game session {game_id}.",
                 )
             if user_to_reconnect.is_active:
+                joinable_user_names = ", ".join(
+                    [
+                        user.name
+                        for user in session.game_logic.users
+                        if not user.is_active
+                    ]
+                )
                 raise HTTPException(
                     status_code=409,
-                    detail=f"User {user_name} already connected to game session "
-                    f"{game_id}. Only one of the following users can be connected: "
-                    f"{
-                        ', '.join(
-                            [
-                                user.name
-                                for user in session.game_logic.users
-                                if not user.is_active
-                            ]
-                        )
-                    }",
+                    detail=f"User {user_name} already connected to "
+                    f"game session {game_id}."
+                    f"Only one of the following users can be connected: "
+                    f"{joinable_user_names}",
                 )
             user_to_reconnect.is_active = True
             session.connection_manager.register_user(user_name)
