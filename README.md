@@ -87,6 +87,31 @@ track-back-server
 
 > Note: Call `track-back-server -h` to display help and information about optional arguments.
 
+## 3.1 Run with HTTPS (Optional)
+
+To serve the game securely via HTTPS, you can run the server with an SSL certificate.
+
+Step 1: Generate a self-signed certificate
+
+You can use OpenSSL to create a key and certificate:
+
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout key.pem -out cert.pem -days 365
+```
+
+This will generate two files:
+- key.pem: Your private key
+- cert.pem: Your public certificate
+
+> Note: Self-signed certificates will show browser warnings unless manually trusted. For production, use certificates from a trusted CA like Let’s Encrypt.
+
+Step 2: Add SSL paths to .env
+
+Copy `.env.example` to `.env`, and fill in the paths to your key.pem and cert.pem files.
+
+If both variables are set, the server will automatically start with SSL enabled.
+
 ---
 
 ## 4. Play the game in the browser

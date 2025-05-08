@@ -35,8 +35,8 @@ def main() -> None:
     logging.basicConfig(level=log_level)
 
     load_dotenv()
-    server = Server()
 
+    server = Server()
     server.run(port=port)
 
 
