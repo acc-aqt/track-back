@@ -42,4 +42,6 @@ class SimultaneousStrategy(AbstractGameStrategy):
 
     def get_players_to_notify_for_next_turn(self) -> list[User]:
         """Return a list of players to notify for the next turn."""
-        return self.game.users if len(self.users_already_guessed) == 0 else []
+        if len(self.users_already_guessed) == 0:
+            return [user for user in self.game.users if user.is_active]
+        return []

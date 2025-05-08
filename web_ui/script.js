@@ -324,12 +324,7 @@ async function joinGame () {
       body: JSON.stringify({ game_id: gameId, user_name: username })
     })
     if (!res.ok) {
-      const errorMsg = data.detail?.error || data.detail || 'Unknown error'
-      const stack = data.detail?.stacktrace || ''
-      log(`❌ Server-Exception: ${errorMsg}`)
-      if (stack) {
-        log('Stacktrace:\n', stack)
-      }
+      log(`❌ Failed to join game: ${data.detail}`)
       return false
     }
     const data = await res.json()
