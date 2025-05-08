@@ -175,3 +175,5 @@ sync_repo.sh
 .DS_Store
 web_ui/.DS_Store
 web_ui/dummy-cover/.DS_Store
+cert.pem
+key.pem

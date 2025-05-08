@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from typing import Any
 
 import uvicorn
@@ -47,7 +48,21 @@ class Server:
 
     def run(self, port: int) -> None:
         """Start the Uvicorn server."""
-        uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
+        ssl_keyfile = os.getenv("SSL_KEYFILE")
+        ssl_certfile = os.getenv("SSL_CERTFILE")
+
+        if ssl_keyfile and ssl_certfile:
+            logging.info("Running server with SSL.")
+            uvicorn.run(
+                self.app,
+                host="0.0.0.0",  # noqa: S104
+                port=port,
+                ssl_keyfile=ssl_keyfile,
+                ssl_certfile=ssl_certfile,
+            )
+        else:
+            logging.info("Running server without SSL.")
+            uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
