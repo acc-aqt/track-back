@@ -3,15 +3,47 @@ let gameId
 let username
 let userHostingSpotifySession = false
 
-function getServerUrl () {
-  const configValue =
-    (window.TRACK_BACK_CONFIG || {}).TRACK_BACK_SERVER_URL || ''
+let serverUrl = ''
 
-  return configValue || ''
+function loadScript (url, onSuccess, onError) {
+  const script = document.createElement('script')
+  script.src = url
+  script.onload = onSuccess
+  script.onerror = onError
+  document.head.appendChild(script)
+}
+
+// Called only if config file is successfully loaded
+// Get serverurl by user input if server_config.js does not exist.
+loadScript(
+  'server_config.js',
+  () => {
+    console.log('✅ Loaded server_config.js')
+    serverUrl = window.TRACK_BACK_CONFIG?.TRACK_BACK_SERVER_URL || ''
+    document.getElementById('controls-server').hidden = true
+    startApp()
+  },
+  () => {
+    console.error('❌ Failed to load config file!')
+    document.getElementById('controls-server').hidden = false
+    const input = document.getElementById('server')
+    serverUrl = input?.value?.trim()?.replace(/\/+$/, '') || ''
+    startApp()
+  }
+)
+
+function getServerUrl () {
+  if (window.TRACK_BACK_CONFIG?.TRACK_BACK_SERVER_URL) {
+    return window.TRACK_BACK_CONFIG.TRACK_BACK_SERVER_URL
+  }
+
+  // fallback: dynamic value from input field
+  const input = document.getElementById('server')
+  return input?.value?.trim()?.replace(/\/+$/, '') || ''
 }
 
 function startApp () {
-  serverUrl = getServerUrl()
+  console.log('🌐 Using server URL:', serverUrl)
 }
 
 let currentGuessSong = null
