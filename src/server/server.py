@@ -15,7 +15,6 @@ from game.user import User
 from music_service.factory import MusicServiceFactory
 from music_service.spotify import router as spotify_auth_router
 from server.game_sessions import GameSession, game_session_manager
-from server.utils import exception_handling
 from server.websocket_handler import WebSocketGameHandler
 
 
@@ -71,7 +70,6 @@ class Server:
 
         return app
 
-    @exception_handling
     async def _create_game_session(self, req: CreateGameRequest) -> JSONResponse:
         game_id = req.game_id
         target_song_count = req.target_song_count
@@ -88,7 +86,6 @@ class Server:
             status_code=201, content={"message": f"Game session {game_id} created."}
         )
 
-    @exception_handling
     async def _list_joinable_game_sessions(self) -> JSONResponse:
         joinable_session_ids = [
             session_id
@@ -98,7 +95,6 @@ class Server:
         ]
         return JSONResponse(content={"sessions": joinable_session_ids})
 
-    @exception_handling
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
         game_id = req.game_id
         user_name = req.user_name
@@ -189,7 +185,6 @@ class Server:
                 continue
             await ws.send_text(json.dumps(message))
 
-    @exception_handling
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
         game_id = req.game_id
@@ -242,7 +237,6 @@ class Server:
             },
         )
 
-    @exception_handling
     async def _websocket_endpoint(
         self, websocket: WebSocket, game_id: str, username: str
     ) -> None:
