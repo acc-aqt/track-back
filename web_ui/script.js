@@ -323,11 +323,13 @@ async function joinGame () {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ game_id: gameId, user_name: username })
     })
+
+    const data = await res.json()
+
     if (!res.ok) {
       log(`❌ Failed to join game: ${data.detail}`)
       return false
     }
-    const data = await res.json()
 
     log(`✅ Joined game: ${gameId}`)
     connectWebSocket()
@@ -426,6 +428,8 @@ async function createGame () {
           music_service_type: musicServiceType
         })
       })
+      const data = await res.json()
+
       if (!res.ok) {
         const errorMsg = data.detail?.error || data.detail || 'Unknown error'
         const stack = data.detail?.stacktrace || ''
