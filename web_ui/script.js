@@ -1,7 +1,6 @@
 let socket
 let gameId
 let username
-let songCount = 0
 let userHostingSpotifySession = false
 
 function getServerUrl () {
@@ -116,7 +115,9 @@ function handleYourTurn (data) {
 
   document.getElementById('newSongContainer').style.display = 'block'
 
-  document.getElementById('songCount').textContent = `Song count: ${songCount}`
+  document.getElementById(
+    'songCount'
+  ).textContent = `Song count: ${data.song_list.length}`
 
   document.getElementById('songTimeline').innerHTML = list
     .map(s => buildSongEntry(s))
@@ -128,10 +129,9 @@ function handleYourTurn (data) {
 function handleGuessResult (data) {
   if (data.result === 'correct') {
     log(`✅ Guess was correct: ${data.message}`)
-    songCount += 1
     document.getElementById(
       'songCount'
-    ).textContent = `Song count: ${songCount}`
+    ).textContent = `Song count: ${data.song_list.length}`
   } else {
     log(`❌ Guess was wrong: ${data.message}`)
   }
