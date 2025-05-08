@@ -105,25 +105,23 @@ class Server:
             )
         if session.game_logic.running:
             user_to_reconnect = session.game_logic.get_user(user_name)
+            joinable_user_names = ", ".join(
+                [user.name for user in session.game_logic.users if not user.is_active]
+            )
             if not user_to_reconnect:
                 raise HTTPException(
                     status_code=409,
-                    detail=f"User {user_name} not found in game session {game_id}.",
+                    detail=f"User '{user_name}' is not member in game session "
+                    f"{game_id}. Only one of the following users can be connected: "
+                    f"{joinable_user_names}.",
                 )
             if user_to_reconnect.is_active:
-                joinable_user_names = ", ".join(
-                    [
-                        user.name
-                        for user in session.game_logic.users
-                        if not user.is_active
-                    ]
-                )
                 raise HTTPException(
                     status_code=409,
-                    detail=f"User {user_name} already connected to "
-                    f"game session {game_id}."
+                    detail=f"User '{user_name}' is already connected to "
+                    f"game session {game_id}. "
                     f"Only one of the following users can be connected: "
-                    f"{joinable_user_names}",
+                    f"{joinable_user_names}.",
                 )
             user_to_reconnect.is_active = True
             session.connection_manager.register_user(user_name)
@@ -140,7 +138,7 @@ class Server:
                 "message": (
                     f"{user_name} re-joined the game! "
                     f"There are now {number_of_users} players: "
-                    f"{user_names_string}"
+                    f"{user_names_string}."
                 ),
                 "song_list": [song.serialize() for song in user_to_reconnect.song_list],
                 "user_name": user_name,
@@ -165,7 +163,7 @@ class Server:
             "message": (
                 f"{user_name} joined the game! "
                 f"There are now {number_of_users} players: "
-                f"{user_names_string}"
+                f"{user_names_string}."
             ),
             "user_name": user_name,
         }
@@ -313,7 +311,11 @@ class Server:
 
         await self._broadcast_to_all_connected_users(
             game_session,
-            {"type": "user_disconnected", "message": f"{username} disconnected."},
+            {
+                "type": "user_disconnected",
+                "message": f"{username} disconnected. "
+                f"{username} can try to re-join the game.",
+            },
         )
 
         game_id = game_session.game_id

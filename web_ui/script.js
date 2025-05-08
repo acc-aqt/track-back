@@ -255,7 +255,9 @@ function connectWebSocket () {
   }
 
   socket.onclose = () => {
-    log('❌ Connection closed.')
+    log(
+      '❌ Connection closed. You can try to reconnect (using the same username).'
+    )
   }
 }
 
