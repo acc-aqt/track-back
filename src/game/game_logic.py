@@ -37,10 +37,6 @@ class GameLogic:
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
-            raise HTTPException(status_code=500, detail="Failed to play music") from e
-        try:
-            self.music_service.start_playback()
-        except MusicServiceError as e:
             raise HTTPException(
                 status_code=500,
                 detail="Failed to play music. Please check if music service "

@@ -2,7 +2,6 @@
 
 import json
 import os
-import sys
 from datetime import datetime
 
 import spotipy
@@ -36,8 +35,7 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
             raise MusicServiceError("Spotify session is not yet authenticated.")
         playback = self.session.current_playback()
         if playback["is_playing"] is False:
-            print("Spotify is not playing.")
-            sys.exit(1)
+            raise MusicServiceError("Spotify is not playing.")
         song_name = playback["item"]["name"]
         artist_names = ", ".join(
             [artist["name"] for artist in playback["item"]["artists"]]
@@ -59,7 +57,6 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         try:
             self.session.start_playback()
         except spotipy.exceptions.SpotifyException:
-            print("Probably song is already plaing, skip to next...")
             try:
                 self.session.next_track()
             except spotipy.exceptions.SpotifyException as e:
