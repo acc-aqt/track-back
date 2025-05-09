@@ -2,7 +2,7 @@
 
 **TrackBack** is a music-based game where players must sort currently playing songs by their year of release.
 
-[Watch the demo](https://youtube.com/shorts/5E3Vtzxa9SE?feature=shared).
+Watch the demo video [here](https://youtube.com/shorts/5E3Vtzxa9SE?feature=shared).
 
 You can play using your own playlists — it currently supports **Spotify** and **Apple Music**, and is built for easy extension to other music services.
 
