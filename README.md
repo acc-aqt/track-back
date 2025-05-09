@@ -87,7 +87,7 @@ track-back-server
 
 > Note: Call `track-back-server -h` to display help and information about optional arguments.
 
-## 3.1 Run with HTTPS (Optional)
+#### Run with HTTPS (Optional)
 
 To serve the game securely via HTTPS, you can run the server with an SSL certificate.
 
