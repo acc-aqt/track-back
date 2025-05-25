@@ -304,6 +304,8 @@ class Server:
                 if data.get("type") == "guess":
                     index = data.get("index")
                     await handler.handle_guess(websocket, username, index, game)
+                elif data.get("type") == "ping":
+                    logging.info("Received ping from %s", username)
                 else:
                     await websocket.send_text("Unknown message type.")
 
