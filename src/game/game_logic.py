@@ -1,4 +1,4 @@
-"""Contains the TrackBackGame class that implements the game logic."""
+"""Contains the GameLogic class that implements the game logic."""
 
 from itertools import pairwise
 from typing import Any

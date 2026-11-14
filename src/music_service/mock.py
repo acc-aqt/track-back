@@ -37,7 +37,7 @@ class DummyMusicService(AbstractMusicServiceAdapter):
         self.playlist_index = 0
 
     def next_track(self) -> None:
-        """Skip to next track. Songs are orderer by release year."""
+        """Skip to next track. Songs are ordered by release year."""
         self.playlist_index += 1
         if self.playlist_index >= len(self.playlist):
             self.playlist_index = 0  # Loop back around

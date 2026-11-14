@@ -1,4 +1,4 @@
-"""Implementation of the SpotifyClient class."""
+"""Implementation of the SpotifyAdapter class and the Spotify login routes."""
 
 import html
 import json

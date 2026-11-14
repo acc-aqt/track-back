@@ -1,1 +1,1 @@
-"""Package containg the interfaces for music services."""
+"""Package containing the interfaces for music services."""

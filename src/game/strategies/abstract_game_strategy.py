@@ -1,4 +1,4 @@
-"""Implements the interface for the game mode strategies tht can be injected."""
+"""Implements the interface for the game mode strategies that can be injected."""
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any

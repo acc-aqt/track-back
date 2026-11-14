@@ -15,7 +15,7 @@ class ConnectionManager:
         return username in self.user_connections
 
     def get_registered_user_names(self) -> list[str]:
-        """Get a lis of registered usernames."""
+        """Get a list of registered usernames."""
         return list(self.user_connections.keys())
 
     def register_user(self, username: str) -> JSONResponse:
