@@ -10,6 +10,8 @@ from game.user import User
 from music_service.error import MusicServiceError
 from server.connection_manager import ConnectionManager
 
+logger = logging.getLogger(__name__)
+
 
 async def send_ws_message(ws: WebSocket, msg_type: str, message: str) -> None:
     """Send a message to the WebSocket client."""
@@ -77,7 +79,7 @@ class WebSocketGameHandler:
                 )
             )
         else:
-            logging.warning(
+            logger.warning(
                 "Player %s has no WebSocket; they are notified on reconnect.",
                 player.name,
             )

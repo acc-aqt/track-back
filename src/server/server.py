@@ -25,6 +25,8 @@ from server.names import (
 )
 from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
+logger = logging.getLogger(__name__)
+
 UserName = Annotated[str, Field(max_length=USER_NAME_MAX_LENGTH, pattern=NAME_PATTERN)]
 GameId = Annotated[str, Field(max_length=GAME_ID_MAX_LENGTH, pattern=NAME_PATTERN)]
 
@@ -62,7 +64,7 @@ class Server:
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
         if ssl_keyfile and ssl_certfile:
-            logging.info("Running server with SSL.")
+            logger.info("Running server with SSL.")
             uvicorn.run(
                 self.app,
                 host="0.0.0.0",  # noqa: S104
@@ -71,7 +73,7 @@ class Server:
                 ssl_certfile=ssl_certfile,
             )
         else:
-            logging.info("Running server without SSL.")
+            logger.info("Running server without SSL.")
             uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
 
     def create_app(self) -> FastAPI:
@@ -272,7 +274,7 @@ class Server:
         game_session = game_session_manager.get_game_session(game_id)
         if not game_session:
             await websocket.close()
-            logging.error("Game session %s not found.", game_id)
+            logger.error("Game session %s not found.", game_id)
             return
 
         connection_manager = game_session.connection_manager
@@ -337,7 +339,7 @@ class Server:
                 return
             await handler.handle_guess(websocket, username, index, game)
         elif data.get("type") == "ping":
-            logging.debug("Received ping from %s", username)
+            logger.debug("Received ping from %s", username)
         else:
             await send_ws_message(websocket, "error", "Unknown message type.")
 
@@ -364,4 +366,4 @@ class Server:
         game_id = game_session.game_id
         if not connection_manager.user_connections:
             game_session_manager.remove_game_session(game_id)
-            logging.info("Removed empty game session %s", game_id)
+            logger.info("Removed empty game session %s", game_id)

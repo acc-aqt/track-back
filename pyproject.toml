@@ -27,8 +27,8 @@ test = ["pytest", "pytest-asyncio", "coverage", "pytest-cov"]
 lint = [
   "black",
   "isort",
-  "ruff",
-  "mypy",
+  "ruff==0.17.5",
+  "mypy==2.4.1",
   "pylint",
   "docstrfmt"
 ]
