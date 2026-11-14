@@ -48,16 +48,13 @@ line_length = 88
 [tool.black]
 line-length = 88
 preview = true
-target-version = ["py312"]
+target-version = ["py311"]
  
 [tool.ruff]
 line-length = 88
 fix = true
-target-version = "py312"
+target-version = "py311"
 
-[tool.pylint.format]
-max-line-length = 79
- 
 [tool.ruff.format]
 docstring-code-format = true
  
@@ -100,7 +97,7 @@ ignore = [
 unfixable = ["ERA001", "F841"] # commented code
  
 [tool.ruff.lint.isort]
-known-first-party = ["my_package"]
+known-first-party = ["game", "music_service", "server"]
  
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["PLR2004", "S101"]
@@ -120,7 +117,7 @@ max-line-length = 88
 strict = true
 show_error_codes = true
 show_error_context = true
-python_version = "3.12"  # makes code compatible with 3.12 upwards
+python_version = "3.11"
 ignore_missing_imports = true
  
 [tool.pydocstringformatter]
@@ -128,9 +125,6 @@ style = "numpydoc"
 write = true
 max-line-length = 88
  
-[tool.docstrfmt]
-files = ["CHANGELOG.rst", "docs/**/*.rst"]
-
 [tool.coverage.run]
 branch = true
 

@@ -76,7 +76,7 @@ class Server:
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
-        app = FastAPI()
+        app = FastAPI(title="TrackBack", version="0.1.0")
 
         app.add_middleware(
             CORSMiddleware,
