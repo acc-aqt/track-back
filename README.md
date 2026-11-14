@@ -1,5 +1,7 @@
 # 🎵 TrackBack
 
+[![Tests](https://github.com/acc-aqt/track-back/actions/workflows/test.yml/badge.svg)](https://github.com/acc-aqt/track-back/actions/workflows/test.yml)
+
 **TrackBack** is a music-based game where players must sort currently playing songs by their year of release.
 
 Watch the demo video [here](https://youtube.com/shorts/5E3Vtzxa9SE?feature=shared).
@@ -7,6 +9,8 @@ Watch the demo video [here](https://youtube.com/shorts/5E3Vtzxa9SE?feature=share
 You can play using your own playlists — it currently supports **Spotify** and **Apple Music**, and is built for easy extension to other music services.
 
 The game consists of a **Python-based server** and a [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) as frontend.
+
+> **Intended use / security:** TrackBack is a party game for friends on a local network. There are no accounts or authentication: anyone who can reach the server can create, list and join game sessions. Don't expose the server to the public internet unless you're fine with that.
 
 ---
 
@@ -43,6 +47,16 @@ cd track-back
 pip install .
 ```
 
+### 1.3 Configure
+
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+`.env` holds your Spotify credentials (see 2.1.2) and, optionally, the SSL paths for HTTPS (see 3). Leave the values empty for features you don't use.
+
 ---
 
 ## 2. Connect to a music service
@@ -50,7 +64,7 @@ pip install .
 ### 2.1 Spotify
 
 #### 2.1.1 Requirements
-- Spotify Premium account
+- Spotify Premium account (Spotify only allows playback control for Premium accounts)
 - A registered app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
    1. Log in and create a new app
    2. Set a **redirect URI**. The path must be `/spotify-callback` for the Spotify login flow in this app to work, e.g. `https://your-domain.com/spotify-callback`.
@@ -59,7 +73,7 @@ pip install .
 
 #### 2.1.2 Setup
 
-1. Copy `.env.example` to `.env`, and fill in your spotify credentials (see 2.1.).
+1. Fill in `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` in your `.env` (see 1.3) with the values from 2.1.1.
 2. Open the Spotify app and log in with a registered account (see 2.1.1).
 3. Select a playlist to use in the game.
 
@@ -69,13 +83,19 @@ pip install .
 
 #### 2.2.1 Requirements
 - macOS Catalina (10.15+)
-- Music app installed and running
+- Music app installed and running **on the same Mac as the game server**
 
 #### 2.2.2 Setup
 
-- Open the Music app and select a playlist.
+1. Open the Music app and select a playlist. Shuffle works well.
+2. Start the server (see 3) and create a game with **Apple Music**.
+3. On the first game, macOS asks whether your terminal may control **Music** and **System Events**. Allow both. You can change this later under **System Settings > Privacy & Security > Automation**.
 
-> Note: Apple Music integration uses AppleScript under the hood and only works on macOS.
+How it works: the server talks to the Music app via AppleScript. It starts playback, reads the title, artist and **Year** field of the current track, and skips to the next track after each round.
+
+> Notes:
+> - The release year comes from the track's **Year** field in your library. Tracks without a year count as year 0, so check your playlist's metadata.
+> - Apple Music doesn't provide album covers to the game, so placeholder covers are shown.
 
 ---
 
@@ -108,9 +128,7 @@ This will generate two files:
 
 > Note: Self-signed certificates will show browser warnings unless manually trusted. For production, use certificates from a trusted CA like Let’s Encrypt.
 
-Step 2: Add SSL paths to .env
-
-Copy `.env.example` to `.env`, and fill in the paths to your key.pem and cert.pem files.
+Step 2: Set `SSL_KEYFILE` and `SSL_CERTFILE` in your `.env` (see 1.3) to the paths of `key.pem` and `cert.pem`.
 
 If both variables are set, the server will automatically start with SSL enabled.
 
@@ -118,22 +136,47 @@ If both variables are set, the server will automatically start with SSL enabled.
 
 ## 4. Play the game in the browser
 
-Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) (or launch it locally by opening `web_ui/index.html`).
+Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html), or open `web_ui/index.html` locally. (The `index.html` in the repo root only redirects the GitHub Pages root to the Web UI.)
 
-1. Enter the **Server URL** and a **username**
-2. Click **Connect** to join
-3. Click **Start Game** to begin once all players are connected
+If the page doesn't come with a preconfigured server, it first shows a **Server** field. Enter your server's address, e.g. `http://localhost:4200` or `http://<your-lan-ip>:4200`.
 
-> Note: The server URL should look like `http://localhost:4200` or your network IP.
+Every player enters a **Username** (up to 20 letters, digits, `_`, `-` and single spaces).
+
+### 4.1 Host a game
+
+1. Click **Configure new Game Session**.
+2. In **Game Setup**, choose the music service, a **Game Session Name** (defaults to `Game-by-<username>`) and the **Target Song Count**: the first player whose timeline reaches it wins.
+3. Click **Create new Game Session**.
+   - **Spotify:** a Spotify login opens in a new tab. Log in, close the tab, and click **Join the new game session** in the game.
+   - **Apple Music:** the session is created and you join it directly.
+4. Wait until everyone has joined, then click **All players connected? Start!**
+
+### 4.2 Join a game
+
+1. Click **Join a Game**.
+2. Pick the session from the list and click **Join Selected Session**.
+3. Wait for the host to start the game.
+
+### 4.3 Play
+
+- Each round, a song plays and a new card appears above your timeline. Drag it to the position where it belongs by release year.
+- Correct guesses stay in your timeline. A wrong guess is shown briefly at the position you chose, then removed.
+- The first player to reach the target song count wins.
+- If you lose your connection, join the same session again with the same username to continue.
+
+> The **Dummy Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
 
 ## 5. Development setup (not necessary to run the game)
 
 For code development and testing:
 
 ```bash
-make setup-venv   # Sets up .venv/ virtual environment
-make install      # Installs in "editable" mode
-make test         # Runs tests
+make create-venv           # Creates .venv/ and installs the package with test and lint extras
+source .venv/bin/activate  # Activates the virtual environment in your shell
+make test                  # Runs the tests with coverage
+make lint                  # Runs formatters, ruff, mypy and pylint on src/
+make run                   # Starts the game server
+make openapi               # Regenerates docs/openapi.json
 ```
 
 ---
@@ -141,4 +184,3 @@ make test         # Runs tests
 ## License
 
 MIT License
-
