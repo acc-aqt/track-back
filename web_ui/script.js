@@ -1,3 +1,5 @@
+'use strict'
+
 let socket
 let gameId
 let username
@@ -6,9 +8,12 @@ let userHostingSpotifySession = false
 let serverUrl = ''
 
 let pingInterval = null
-let reconnectTimeout = null
 let reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 10
+
+const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
+const USER_NAME_MAX_LENGTH = 20
+const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
 function loadScript (url, onSuccess, onError) {
   const script = document.createElement('script')
@@ -29,7 +34,7 @@ loadScript(
     startApp()
   },
   () => {
-    console.error('❌ Failed to load config file!')
+    console.info('No server_config.js found, asking for the server URL.')
     document.getElementById('controls-server').hidden = false
     const input = document.getElementById('server')
     serverUrl = input?.value?.trim()?.replace(/\/+$/, '') || ''
@@ -49,6 +54,11 @@ function getServerUrl () {
 
 function startApp () {
   console.log('🌐 Using server URL:', serverUrl)
+}
+
+const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1', '']
+if (!LOCAL_HOSTNAMES.includes(window.location.hostname)) {
+  document.querySelector('#musicServiceDropdown option[value="mock"]')?.remove()
 }
 
 let currentGuessSong = null
@@ -75,43 +85,62 @@ targetSongCountInput.addEventListener('input', () => {
   }
 })
 
-const buildSongEntry = (song, id = '', extra = '') => {
-  return `
-    <div class="song-entry ${extra}" ${id ? `id="${id}"` : ''}>
-      <img src="${
-        song.album_cover_url
-      }" alt="cover" class="song-cover" onerror="this.src='dummy-cover/cover1.png'" />
-      <div class="song-details">
-        <strong>${song.title}</strong> (${song.release_year})<br />
-        by ${song.artist}
-      </div>
-    </div>
-  `
+const isValidUsername = name =>
+  name.length <= USER_NAME_MAX_LENGTH && NAME_PATTERN.test(name)
+
+const readUsername = () => {
+  const name = document.getElementById('username').value.trim()
+  if (!name) {
+    alert('Please enter a username!')
+    return null
+  }
+  if (!isValidUsername(name)) {
+    alert(
+      `Usernames can have up to ${USER_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+    )
+    return null
+  }
+  return name
 }
 
-const buildSongListHtml = (list, newSong) => {
-  const entries = list.map(
-    (s, i) => `
-    <div class="song-entry" draggable="false" data-index="${i}">
-      <img src="${s.album_cover_url}" alt="cover" class="song-cover" onerror="this.src='dummy-cover/cover1.png'" />
-      <div class="song-details">
-        <strong>${s.title}</strong> (${s.release_year})<br />
-        by ${s.artist}
-      </div>
-    </div>
-  `
+const describeHttpError = data => {
+  const detail = data?.detail
+  if (Array.isArray(detail)) {
+    return detail.map(d => d.msg).join('; ')
+  }
+  return detail || 'Unknown error'
+}
+
+const handleHttpError = (data, prefix = '❌ Server error') => {
+  log(`${prefix}: ${describeHttpError(data)}`)
+}
+
+const buildSongEntry = (song, extraClass = '') => {
+  const entry = document.createElement('div')
+  entry.className = extraClass ? `song-entry ${extraClass}` : 'song-entry'
+
+  const cover = document.createElement('img')
+  cover.className = 'song-cover'
+  cover.alt = 'cover'
+  cover.onerror = () => {
+    cover.onerror = null
+    cover.src = FALLBACK_COVER
+  }
+  cover.src = song.album_cover_url || FALLBACK_COVER
+
+  const details = document.createElement('div')
+  details.className = 'song-details'
+  const title = document.createElement('strong')
+  title.textContent = song.title
+  details.append(
+    title,
+    ` (${song.release_year})`,
+    document.createElement('br'),
+    `by ${song.artist}`
   )
 
-  const newEntry = `
-    <div class="song-entry highlight" id="new-song">
-      <img src="${newSong.album_cover_url}" alt="cover" class="song-cover"  onerror="this.src='dummy-cover/cover1.png'" />
-      <div class="song-details">
-        <strong>Drag the song to the right place in the timeline.</strong>
-      </div>
-    </div>
-  `
-
-  return newEntry + entries.join('')
+  entry.append(cover, details)
+  return entry
 }
 
 function handleYourTurn (data) {
@@ -131,12 +160,12 @@ function handleYourTurn (data) {
 
   const list = data.song_list || []
   const dummyCovers = [
-    'dummy-cover/cover1.png',
-    'dummy-cover/cover2.png',
-    'dummy-cover/cover3.png',
-    'dummy-cover/cover4.png',
-    'dummy-cover/cover5.png',
-    'dummy-cover/cover6.png'
+    'dummy-cover/cover1.webp',
+    'dummy-cover/cover2.webp',
+    'dummy-cover/cover3.webp',
+    'dummy-cover/cover4.webp',
+    'dummy-cover/cover5.webp',
+    'dummy-cover/cover6.webp'
   ]
   const randomCover =
     dummyCovers[Math.floor(Math.random() * dummyCovers.length)]
@@ -156,9 +185,9 @@ function handleYourTurn (data) {
     'songCount'
   ).textContent = `Song count: ${data.song_list.length}`
 
-  document.getElementById('songTimeline').innerHTML = list
-    .map(s => buildSongEntry(s))
-    .join('')
+  document
+    .getElementById('songTimeline')
+    .replaceChildren(...list.map(s => buildSongEntry(s)))
 
   setupDragDrop()
 }
@@ -181,27 +210,17 @@ function handleGuessResult (data) {
   document.getElementById('newSongContainer').style.display = 'none'
 
   // Update the timeline first (without the guess)
-  timeline.innerHTML = list.map(s => buildSongEntry(s)).join('')
+  timeline.replaceChildren(...list.map(s => buildSongEntry(s)))
 
   // If the guess was wrong, insert the incorrect guess at the user's chosen position
   if (data.result === 'wrong') {
     const wrongSong = data.last_song || {}
-    const guessedIndex = data.last_index ?? 0
+    const guessedIndex = Number(data.last_index ?? 0)
 
-    const wrongSongHTML = `
-          <div class="song-entry wrong-guess">
-            <span class="wrong-label"></span>
-            <img src="${wrongSong.album_cover_url}" alt="cover" class="song-cover" onerror="this.src='dummy-cover/cover1.png'" />
-            <div class="song-details">
-              <strong>${wrongSong.title}</strong> (${wrongSong.release_year})<br />
-              by ${wrongSong.artist}
-            </div>
-          </div>
-        `
-
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = wrongSongHTML
-    const wrongSongEl = tempDiv.firstElementChild
+    const wrongSongEl = buildSongEntry(wrongSong, 'wrong-guess')
+    const wrongLabel = document.createElement('span')
+    wrongLabel.className = 'wrong-label'
+    wrongSongEl.prepend(wrongLabel)
 
     const children = timeline.children
 
@@ -211,7 +230,7 @@ function handleGuessResult (data) {
       timeline.appendChild(wrongSongEl)
     }
 
-    // Fade out and remove after 5 seconds
+    // Fade out and remove after WRONG_GUESS_DISPLAY_TIME
     setTimeout(() => {
       wrongSongEl.classList.add('fade-out')
       setTimeout(() => {
@@ -233,9 +252,11 @@ function handleGuessResult (data) {
 }
 
 function connectWebSocket () {
-  let urlObj = new URL(serverUrl)
+  const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${gameId}/${username}`
+  const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${encodeURIComponent(
+    gameId
+  )}/${encodeURIComponent(username)}`
 
   socket = new WebSocket(wsUrl)
 
@@ -285,9 +306,15 @@ function connectWebSocket () {
         document.getElementById('newSongContainer').style.display = 'none'
         const winnerHeader = document.getElementById('winnerHeader')
         const winnerIsYou = data.winner === username
-        winnerHeader.innerHTML = winnerIsYou
-          ? '🎉&thinsp;You win!&thinsp;🎉<br />👩🏻‍🎤&thinsp;🏆'
-          : `Game over.<br />${data.winner} won the game.`
+        winnerHeader.replaceChildren(
+          ...(winnerIsYou
+            ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
+            : [
+                'Game over.',
+                document.createElement('br'),
+                `${data.winner} won the game.`
+              ])
+        )
 
         winnerHeader.style.display = 'block'
       } else if (type === 'user_disconnected') {
@@ -308,10 +335,10 @@ function connectWebSocket () {
 
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++
-      reconnectTimeout = setTimeout(() => {
+      setTimeout(() => {
         log(`🔁 Reconnecting attempt ${reconnectAttempts}...`)
         connectWebSocket()
-      }, 2000 * reconnectAttempts) // Exponential backoff
+      }, 2000 * reconnectAttempts) // Linear backoff
     } else {
       log('❌ Max reconnect attempts reached. Please reload the page.')
     }
@@ -331,12 +358,7 @@ async function listAndChooseGameSessions () {
     const res = await fetch(`${serverUrl}/list-sessions`)
     const data = await res.json()
     if (!res.ok) {
-      const errorMsg = data.detail?.error || data.detail || 'Unknown error'
-      const stack = data.detail?.stacktrace || ''
-      log(`❌ Server-Exception: ${errorMsg}`)
-      if (stack) {
-        log('Stacktrace:\n', stack)
-      }
+      handleHttpError(data)
       return
     }
 
@@ -366,11 +388,9 @@ async function listAndChooseGameSessions () {
         alert('❌ Please select a session.')
         return
       }
-      if (!userHostingSpotifySession) {
-      }
       gameId = selectedGameId
-      sucess = await joinGame()
-      if (sucess) {
+      const success = await joinGame()
+      if (success) {
         document.getElementById('controls-waiting-for-start').hidden = false
       }
     }
@@ -382,7 +402,10 @@ async function listAndChooseGameSessions () {
 
 async function joinGame () {
   try {
-    username = document.getElementById('username').value
+    username = readUsername()
+    if (!username) {
+      return false
+    }
     const res = await fetch(`${serverUrl}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -392,7 +415,7 @@ async function joinGame () {
     const data = await res.json()
 
     if (!res.ok) {
-      log(`❌ Failed to join game: ${data.detail}`)
+      handleHttpError(data, '❌ Failed to join game')
       return false
     }
 
@@ -410,10 +433,8 @@ async function joinGame () {
 }
 
 async function configureGame () {
-  username = document.getElementById('username').value
-
+  username = readUsername()
   if (!username) {
-    alert('Please enter a username!')
     return
   }
   document.getElementById('gameConfigBox').hidden = false
@@ -425,31 +446,28 @@ async function configureGame () {
 
 async function createGame () {
   serverUrl = getServerUrl()
-  username = document.getElementById('username').value
-  songCountInput = document.getElementById('targetSongCountInput').value.trim()
-
-  // const groups = document.querySelectorAll('.input-group-configure-game')
-  // groups.forEach(group => {
-  //   group.hidden = true
-  // })
-
-  targetSongCount = parseInt(songCountInput)
+  username = readUsername()
+  if (!username) {
+    return
+  }
+  const songCountInput = document
+    .getElementById('targetSongCountInput')
+    .value.trim()
+  const targetSongCount = parseInt(songCountInput)
 
   if (isNaN(targetSongCount) || targetSongCount <= 0) {
     alert('⚠️ Please enter a valid number greater than 0 for songs!')
     return
   }
 
-  const gameIdInput = document.getElementById('gameIdInput').value.trim()
+  gameId = document.getElementById('gameIdInput').value.trim()
 
-  gameId = encodeURIComponent(gameIdInput)
-
-  if (!gameId || !username) {
-    alert('Please enter both a username and a game ID!')
+  if (!gameId) {
+    alert('Please enter a game ID!')
     return
   }
 
-  musicServiceType = document.getElementById('musicServiceDropdown').value
+  const musicServiceType = document.getElementById('musicServiceDropdown').value
 
   if (musicServiceType === 'spotify') {
     // ✨ Spotify: first login
@@ -461,7 +479,6 @@ async function createGame () {
     const stateParam = encodeURIComponent(JSON.stringify(stateObject))
 
     const loginUrl = `${serverUrl}/spotify-login?state=${stateParam}`
-    // spotify
 
     document.getElementById('joinGameBtn').innerHTML =
       'After login to Spotify: 📻&thinsp;🔑<br>Join the new game session 👋🏻'
@@ -496,19 +513,13 @@ async function createGame () {
       const data = await res.json()
 
       if (!res.ok) {
-        const errorMsg = data.detail?.error || data.detail || 'Unknown error'
-        const stack = data.detail?.stacktrace || ''
-        log(`❌ Server-Exception: ${errorMsg}`)
-        if (stack) {
-          log('Stacktrace:\n', stack)
-        }
+        handleHttpError(data, '❌ Failed to create game')
         return
       }
     } catch (err) {
       console.error('❌ Failed to create music game:', err)
       return
     }
-    console.error('Successfully created music game')
     document.getElementById('gameConfigBox').hidden = true
     document.getElementById('controls-start').hidden = false
 
@@ -521,10 +532,8 @@ document.getElementById('createGameBtn').onclick = () => createGame()
 
 document.getElementById('joinGameBtn').onclick = async () => {
   serverUrl = getServerUrl()
-  username = document.getElementById('username').value
-
+  username = readUsername()
   if (!username) {
-    alert('Please enter a username!')
     return
   }
 
@@ -532,12 +541,7 @@ document.getElementById('joinGameBtn').onclick = async () => {
   const data = await res.json()
 
   if (!res.ok) {
-    const errorMsg = data.detail?.error || data.detail || 'Unknown error'
-    const stack = data.detail?.stacktrace || ''
-    log(`❌ Server-Exception: ${errorMsg}`)
-    if (stack) {
-      log('Stacktrace:\n', stack)
-    }
+    handleHttpError(data)
     return
   }
 
@@ -551,7 +555,6 @@ document.getElementById('joinGameBtn').onclick = async () => {
   if (userHostingSpotifySession) {
     await joinGame()
     return
-  } else {
   }
   // Ask the user to pick one session
   await listAndChooseGameSessions()
@@ -568,12 +571,7 @@ document.getElementById('startGameBtn').onclick = async () => {
     })
     const data = await res.json()
     if (!res.ok) {
-      const errorMsg = data.detail?.error || data.detail || 'Unknown error'
-      const stack = data.detail?.stacktrace || ''
-      log(`❌ Server-Exception: ${errorMsg}`)
-      if (stack) {
-        log('Stacktrace:\n', stack)
-      }
+      handleHttpError(data, '❌ Failed to start game')
       return
     }
 
@@ -605,7 +603,6 @@ const setupDragDrop = () => {
     onAdd: evt => {
       if (evt.item.id === 'new-song') {
         const newIndex = evt.newIndex
-        // log(`📤 Guess submitted: insert at index ${newIndex}`)
 
         // Remove the dragged song from the timeline immediately
         evt.item.remove()
