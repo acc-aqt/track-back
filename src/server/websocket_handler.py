@@ -1,11 +1,13 @@
 """Contains the WebSocket handler for the game server."""
 
 import json
+import logging
 
-from fastapi import HTTPException, WebSocket
+from fastapi import WebSocket
 
 from game.game_logic import GameLogic
 from game.user import User
+from music_service.error import MusicServiceError
 from server.connection_manager import ConnectionManager
 
 
@@ -38,7 +40,11 @@ class WebSocketGameHandler:
         self, websocket: WebSocket, username: str, index: int, game: GameLogic
     ) -> None:
         """Handle a guess from a player."""
-        payload = game.handle_player_turn(username, index)
+        try:
+            payload = game.handle_player_turn(username, index)
+        except MusicServiceError as e:
+            await send_ws_message(websocket, "error", str(e))
+            return
 
         # Send result to the player who guessed
         await websocket.send_text(json.dumps(payload))
@@ -73,9 +79,9 @@ class WebSocketGameHandler:
                 )
             )
         else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"No WebSocket for player {player.name}!",
+            logging.warning(
+                "Player %s has no WebSocket; they are notified on reconnect.",
+                player.name,
             )
 
     async def _broadcast_guess_to_other_players(

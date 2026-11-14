@@ -13,10 +13,11 @@ from pydantic import BaseModel
 
 from game.game_logic import GameLogic
 from game.user import User
+from music_service.error import MusicServiceError
 from music_service.factory import MusicServiceFactory
 from music_service.spotify import router as spotify_auth_router
 from server.game_sessions import GameSession, game_session_manager
-from server.websocket_handler import WebSocketGameHandler
+from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
 
 class CreateGameRequest(BaseModel):
@@ -90,7 +91,10 @@ class Server:
         target_song_count = req.target_song_count
 
         music_service_type = req.music_service_type
-        music_service = MusicServiceFactory.create_music_service(music_service_type)
+        try:
+            music_service = MusicServiceFactory.create_music_service(music_service_type)
+        except MusicServiceError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
         game = GameLogic(
             target_song_count=target_song_count, music_service=music_service
@@ -261,59 +265,70 @@ class Server:
             return
 
         connection_manager = game_session.connection_manager
-        if connection_manager.first_player is None:
-            connection_manager.first_player = username
-            logging.info("First player: %s", connection_manager.first_player)
-
         handler = WebSocketGameHandler(connection_manager)
         await handler.handle_connection(websocket, username)
 
         player = game_session.game_logic.get_user(username)
 
         if (
-            game_session.game_logic.running
+            player
+            and game_session.game_logic.running
             and player
             in game_session.game_logic.strategy.get_players_to_notify_for_next_turn()
         ):
-            if ws := connection_manager.get_websocket(username):
-                await ws.send_text(
-                    json.dumps(
-                        {
-                            "type": "your_turn",
-                            "message": "It's your turn!",
-                            "next_player": username,
-                            "song_list": [
-                                song.serialize() for song in player.song_list
-                            ],
-                        }
-                    )
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "your_turn",
+                        "message": "It's your turn!",
+                        "next_player": username,
+                        "song_list": [song.serialize() for song in player.song_list],
+                    }
                 )
-            else:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"{username} is not connected via WebSocket.",
-                )
+            )
 
         try:
             while True:
                 raw_data = await websocket.receive_text()
-                data = json.loads(raw_data)
-
-                game = game_session.game_logic
-
-                if data.get("type") == "guess":
-                    index = data.get("index")
-                    await handler.handle_guess(websocket, username, index, game)
-                elif data.get("type") == "ping":
-                    logging.info("Received ping from %s", username)
-                else:
-                    await websocket.send_text("Unknown message type.")
-
-                if game.winner is not None:
+                await self._handle_message(
+                    websocket, username, raw_data, handler, game_session.game_logic
+                )
+                if game_session.game_logic.winner is not None:
                     game_session_manager.remove_game_session(game_id)
 
         except WebSocketDisconnect:
             await self.handle_disconnection(username, game_session)
+
+    @staticmethod
+    async def _handle_message(
+        websocket: WebSocket,
+        username: str,
+        raw_data: str,
+        handler: WebSocketGameHandler,
+        game: GameLogic,
+    ) -> None:
+        """Parse one client message and dispatch it."""
+        try:
+            data = json.loads(raw_data)
+        except json.JSONDecodeError:
+            await send_ws_message(websocket, "error", "Invalid JSON.")
+            return
+        if not isinstance(data, dict):
+            await send_ws_message(websocket, "error", "Expected an object.")
+            return
+
+        if data.get("type") == "guess":
+            index = data.get("index")
+            if not isinstance(index, int) or isinstance(index, bool):
+                await send_ws_message(
+                    websocket, "error", "Guess index must be an integer."
+                )
+                return
+            await handler.handle_guess(websocket, username, index, game)
+        elif data.get("type") == "ping":
+            logging.debug("Received ping from %s", username)
+        else:
+            await send_ws_message(websocket, "error", "Unknown message type.")
 
     async def handle_disconnection(
         self, username: str, game_session: GameSession

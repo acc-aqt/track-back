@@ -10,8 +10,6 @@ class ConnectionManager:
     def __init__(self) -> None:
         self.user_connections: dict[str, WebSocket | None] = {}
 
-        self.first_player: str | None = None
-
     def user_is_registered(self, username: str) -> bool:
         """Check if a user is already registered."""
         return username in self.user_connections
@@ -51,7 +49,7 @@ class ConnectionManager:
         return JSONResponse(
             status_code=200,
             content={
-                "message": "User '{username}' unregistered successfully.",
+                "message": f"User '{username}' unregistered successfully.",
                 "user": username,
             },
         )

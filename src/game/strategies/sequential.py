@@ -24,16 +24,18 @@ class SequentialStrategy(AbstractGameStrategy):
         return None
 
     def handle_turn_progression(self, _: str) -> dict[str, Any]:
-        """Skip to next track and to the next player."""
-        self.current_player_index = (self.current_player_index + 1) % len(
-            self.game.users
-        )
+        """Skip to next track and to the next active player.
 
-        # skip non active players
-        while not self._get_current_player().is_active:
-            self.current_player_index = (self.current_player_index + 1) % len(
-                self.game.users
-            )
+        If no player is active, advance to the next player in order.
+        """
+        user_count = len(self.game.users)
+        next_index = (self.current_player_index + 1) % user_count
+        for offset in range(user_count):
+            candidate = (self.current_player_index + 1 + offset) % user_count
+            if self.game.users[candidate].is_active:
+                next_index = candidate
+                break
+        self.current_player_index = next_index
 
         self.game.music_service.next_track()
         return {"next_player": self._get_current_player().name}

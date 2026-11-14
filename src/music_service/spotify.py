@@ -34,6 +34,10 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         if not self.session:
             raise MusicServiceError("Spotify session is not yet authenticated.")
         playback = self.session.current_playback()
+        if not playback or not playback.get("item"):
+            raise MusicServiceError(
+                "No active Spotify playback. Start playing on a Spotify device."
+            )
         if playback["is_playing"] is False:
             raise MusicServiceError("Spotify is not playing.")
         song_name = playback["item"]["name"]
