@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from music_service.error import MusicServiceError
@@ -107,3 +108,52 @@ def test_music_service_failure_during_guess_is_reported(client: TestClient):
         response = json.loads(ws.receive_text())
         assert response["type"] == "error"
         assert "No active Spotify playback" in response["message"]
+
+
+@pytest.mark.parametrize(
+    "user_name",
+    ["<b>x</b>", "<img src=x onerror=alert(1)>", "", " padded", "a" * 21, "semi;colon"],
+)
+def test_join_rejects_invalid_user_names(client: TestClient, user_name: str):
+    client.post(
+        "/create",
+        json={"game_id": "names", "target_song_count": 2, "music_service_type": "mock"},
+    )
+    response = client.post("/join", json={"game_id": "names", "user_name": user_name})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("user_name", ["Alex", "Jörg", "dj-max_2", "Anna Lena"])
+def test_join_accepts_valid_user_names(client: TestClient, user_name: str):
+    client.post(
+        "/create",
+        json={"game_id": "names", "target_song_count": 2, "music_service_type": "mock"},
+    )
+    response = client.post("/join", json={"game_id": "names", "user_name": user_name})
+    assert response.status_code == 200
+
+
+def test_create_rejects_markup_in_game_id(client: TestClient):
+    response = client.post(
+        "/create",
+        json={
+            "game_id": "<script>",
+            "target_song_count": 2,
+            "music_service_type": "mock",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_websocket_rejects_invalid_user_name(client: TestClient):
+    game_id = "ws-names"
+    client.post(
+        "/create",
+        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
+    )
+    with (
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect(f"/ws/{game_id}/%3Cimg%20src%3Dx%3E") as ws,
+    ):
+        ws.receive_text()
+    assert game_session_manager.get_game_session(game_id).connection_manager.user_connections == {}

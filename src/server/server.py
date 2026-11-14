@@ -3,13 +3,13 @@
 import json
 import logging
 import os
-from typing import Any
+from typing import Annotated, Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from game.game_logic import GameLogic
 from game.user import User
@@ -17,13 +17,22 @@ from music_service.error import MusicServiceError
 from music_service.factory import MusicServiceFactory
 from music_service.spotify import router as spotify_auth_router
 from server.game_sessions import GameSession, game_session_manager
+from server.names import (
+    GAME_ID_MAX_LENGTH,
+    NAME_PATTERN,
+    USER_NAME_MAX_LENGTH,
+    is_valid_name,
+)
 from server.websocket_handler import WebSocketGameHandler, send_ws_message
+
+UserName = Annotated[str, Field(max_length=USER_NAME_MAX_LENGTH, pattern=NAME_PATTERN)]
+GameId = Annotated[str, Field(max_length=GAME_ID_MAX_LENGTH, pattern=NAME_PATTERN)]
 
 
 class CreateGameRequest(BaseModel):
     """Request model for creating a game session."""
 
-    game_id: str
+    game_id: GameId
     target_song_count: int
     music_service_type: str
 
@@ -32,7 +41,7 @@ class JoinGameRequest(BaseModel):
     """Request model for joining a game session."""
 
     game_id: str
-    user_name: str
+    user_name: UserName
 
 
 class StartGameRequest(BaseModel):
@@ -72,7 +81,6 @@ class Server:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
-            allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
@@ -258,6 +266,9 @@ class Server:
         self, websocket: WebSocket, game_id: str, username: str
     ) -> None:
         await websocket.accept()
+        if not is_valid_name(username, USER_NAME_MAX_LENGTH):
+            await websocket.close(code=1008, reason="Invalid user name.")
+            return
         game_session = game_session_manager.get_game_session(game_id)
         if not game_session:
             await websocket.close()
