@@ -309,7 +309,7 @@ class Server:
                 else:
                     await websocket.send_text("Unknown message type.")
 
-                if not game.running:
+                if game.winner is not None:
                     game_session_manager.remove_game_session(game_id)
 
         except WebSocketDisconnect:
