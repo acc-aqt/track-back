@@ -7,10 +7,12 @@ from game.user import User
 from music_service.apple_music import AppleMusicAdapter
 
 
-@pytest.mark.skipif(not AppleMusicAdapter.running_on_macos(), reason="Test only runs on macOS")
 @pytest.mark.skipif(
-    not AppleMusicAdapter.music_app_is_running(),
-    reason="Apple Music is not running",
+    not (
+        AppleMusicAdapter.running_on_macos()
+        and AppleMusicAdapter.music_app_is_running()
+    ),
+    reason="Needs macOS with Apple Music running",
 )
 def test_full_game_one_round() -> None:
     """Test a full game with one round."""

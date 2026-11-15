@@ -26,7 +26,7 @@ class GameStrategyFactory:
         game_mode: GameStrategyEnum,
         game_instance: "GameLogic",
     ) -> AbstractGameStrategy:
-        """Create a music service adapter based on the provided name."""
+        """Create a game strategy for the given game mode."""
         if game_mode == GameStrategyEnum.SIMULTANEOUS:
             return SimultaneousStrategy(game_instance)
 

@@ -1,3 +1,6 @@
+import threading
+
+
 from game.user import User
 from music_service.mock import DummyMusicService
 from game.game_logic import GameLogic
@@ -61,3 +64,28 @@ def test_two_players_sequential_game():
     assert len(player2.song_list) == 2
     assert game.is_game_over() is True
     assert game.winner == player2
+
+
+def test_turn_progression_terminates_when_all_players_inactive():
+    game = GameLogic(
+        target_song_count=5,
+        music_service=DummyMusicService(),
+        game_strategy_enum=GameStrategyEnum.SEQUENTIAL,
+    )
+    player1 = User("player1")
+    player2 = User("player2")
+    game.start_game(users=[player1, player2])
+    player1.is_active = False
+    player2.is_active = False
+
+    result: dict = {}
+    worker = threading.Thread(
+        target=lambda: result.update(game.handle_player_turn(player1.name, 0)),
+        daemon=True,
+    )
+    worker.start()
+    worker.join(timeout=2)
+
+    assert not worker.is_alive(), "turn progression looped forever"
+    assert result["type"] == "guess_result"
+    assert result["next_player"] == player2.name

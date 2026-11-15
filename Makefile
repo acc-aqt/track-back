@@ -26,14 +26,8 @@ create-venv:
 	@./.venv/bin/pip install -U pip
 	@./.venv/bin/pip install -e ".[test,lint]"
 
-.PHONY: setup-venv
-setup-venv: create-venv
-	@echo "activating virtual environment ..."
-	@. .venv/bin/activate
-
 .PHONY: install
 install:          ## Install the project in dev mode.
-	@echo "Don't forget to run 'make setup-venv' if you got errors."
 	$(ENV_PREFIX)pip install -e .[test]
 
 
@@ -60,5 +54,10 @@ lint: ## Run linters (optionally specify LINT_PATH=<path>)
 test:
 	$(ENV_PREFIX)pytest tests --cov=src --cov-report=html
 
-run:              ## Run main.py
-	$(ENV_PREFIX)python src/main.py
+.PHONY: run
+run:              ## Start the game server
+	$(ENV_PREFIX)track-back-server
+
+.PHONY: openapi
+openapi:          ## Regenerate docs/openapi.json
+	$(ENV_PREFIX)python -c "import json; from server.server import Server; print(json.dumps(Server().app.openapi(), indent=2))" > docs/openapi.json

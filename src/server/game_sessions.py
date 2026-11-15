@@ -2,7 +2,7 @@
 
 from fastapi import HTTPException, status
 
-from game.game_logic import GameLogic  # or wherever your GameLogic class is
+from game.game_logic import GameLogic
 from server.connection_manager import ConnectionManager
 
 

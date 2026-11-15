@@ -2,12 +2,9 @@
 
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.apple_music import AppleMusicAdapter
+from music_service.error import MusicServiceError
 from music_service.mock import DummyMusicService
 from music_service.spotify import SpotifyAdapter
-
-
-class MusicServiceError(Exception):
-    """Base class for exceptions in this module."""
 
 
 class MusicServiceFactory:

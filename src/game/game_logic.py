@@ -1,4 +1,4 @@
-"""Contains the TrackBackGame class that implements the game logic."""
+"""Contains the GameLogic class that implements the game logic."""
 
 from itertools import pairwise
 from typing import Any
@@ -58,6 +58,11 @@ class GameLogic:
             return validation
 
         player = next(user for user in self.users if user.name == username)
+        if not 0 <= insert_index <= len(player.song_list):
+            payload["type"] = "error"
+            payload["message"] = f"Invalid position {insert_index}."
+            return payload
+
         current_song = self.music_service.current_song()
 
         payload["type"] = "guess_result"

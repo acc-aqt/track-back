@@ -1,4 +1,4 @@
-"""Implementation of the AppleMusicClient class."""
+"""Implementation of the AppleMusicAdapter class."""
 
 # pylint: disable=line-too-long
 

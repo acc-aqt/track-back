@@ -3,26 +3,38 @@
 import json
 import logging
 import os
-from typing import Any
+from typing import Annotated, Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from game.game_logic import GameLogic
 from game.user import User
+from music_service.error import MusicServiceError
 from music_service.factory import MusicServiceFactory
 from music_service.spotify import router as spotify_auth_router
 from server.game_sessions import GameSession, game_session_manager
-from server.websocket_handler import WebSocketGameHandler
+from server.names import (
+    GAME_ID_MAX_LENGTH,
+    NAME_PATTERN,
+    USER_NAME_MAX_LENGTH,
+    is_valid_name,
+)
+from server.websocket_handler import WebSocketGameHandler, send_ws_message
+
+logger = logging.getLogger(__name__)
+
+UserName = Annotated[str, Field(max_length=USER_NAME_MAX_LENGTH, pattern=NAME_PATTERN)]
+GameId = Annotated[str, Field(max_length=GAME_ID_MAX_LENGTH, pattern=NAME_PATTERN)]
 
 
 class CreateGameRequest(BaseModel):
     """Request model for creating a game session."""
 
-    game_id: str
+    game_id: GameId
     target_song_count: int
     music_service_type: str
 
@@ -31,7 +43,7 @@ class JoinGameRequest(BaseModel):
     """Request model for joining a game session."""
 
     game_id: str
-    user_name: str
+    user_name: UserName
 
 
 class StartGameRequest(BaseModel):
@@ -52,7 +64,7 @@ class Server:
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
         if ssl_keyfile and ssl_certfile:
-            logging.info("Running server with SSL.")
+            logger.info("Running server with SSL.")
             uvicorn.run(
                 self.app,
                 host="0.0.0.0",  # noqa: S104
@@ -61,17 +73,16 @@ class Server:
                 ssl_certfile=ssl_certfile,
             )
         else:
-            logging.info("Running server without SSL.")
+            logger.info("Running server without SSL.")
             uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
-        app = FastAPI()
+        app = FastAPI(title="TrackBack", version="0.1.0")
 
         app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
-            allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
@@ -90,7 +101,10 @@ class Server:
         target_song_count = req.target_song_count
 
         music_service_type = req.music_service_type
-        music_service = MusicServiceFactory.create_music_service(music_service_type)
+        try:
+            music_service = MusicServiceFactory.create_music_service(music_service_type)
+        except MusicServiceError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
         game = GameLogic(
             target_song_count=target_song_count, music_service=music_service
@@ -254,66 +268,80 @@ class Server:
         self, websocket: WebSocket, game_id: str, username: str
     ) -> None:
         await websocket.accept()
+        if not is_valid_name(username, USER_NAME_MAX_LENGTH):
+            await websocket.close(code=1008, reason="Invalid user name.")
+            return
         game_session = game_session_manager.get_game_session(game_id)
         if not game_session:
             await websocket.close()
-            logging.error("Game session %s not found.", game_id)
+            logger.error("Game session %s not found.", game_id)
             return
 
         connection_manager = game_session.connection_manager
-        if connection_manager.first_player is None:
-            connection_manager.first_player = username
-            logging.info("First player: %s", connection_manager.first_player)
-
         handler = WebSocketGameHandler(connection_manager)
         await handler.handle_connection(websocket, username)
 
         player = game_session.game_logic.get_user(username)
 
         if (
-            game_session.game_logic.running
+            player
+            and game_session.game_logic.running
             and player
             in game_session.game_logic.strategy.get_players_to_notify_for_next_turn()
         ):
-            if ws := connection_manager.get_websocket(username):
-                await ws.send_text(
-                    json.dumps(
-                        {
-                            "type": "your_turn",
-                            "message": "It's your turn!",
-                            "next_player": username,
-                            "song_list": [
-                                song.serialize() for song in player.song_list
-                            ],
-                        }
-                    )
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "type": "your_turn",
+                        "message": "It's your turn!",
+                        "next_player": username,
+                        "song_list": [song.serialize() for song in player.song_list],
+                    }
                 )
-            else:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"{username} is not connected via WebSocket.",
-                )
+            )
 
         try:
             while True:
                 raw_data = await websocket.receive_text()
-                data = json.loads(raw_data)
-
-                game = game_session.game_logic
-
-                if data.get("type") == "guess":
-                    index = data.get("index")
-                    await handler.handle_guess(websocket, username, index, game)
-                elif data.get("type") == "ping":
-                    logging.info("Received ping from %s", username)
-                else:
-                    await websocket.send_text("Unknown message type.")
-
-                if not game.running:
+                await self._handle_message(
+                    websocket, username, raw_data, handler, game_session.game_logic
+                )
+                if game_session.game_logic.winner is not None:
                     game_session_manager.remove_game_session(game_id)
 
         except WebSocketDisconnect:
             await self.handle_disconnection(username, game_session)
+
+    @staticmethod
+    async def _handle_message(
+        websocket: WebSocket,
+        username: str,
+        raw_data: str,
+        handler: WebSocketGameHandler,
+        game: GameLogic,
+    ) -> None:
+        """Parse one client message and dispatch it."""
+        try:
+            data = json.loads(raw_data)
+        except json.JSONDecodeError:
+            await send_ws_message(websocket, "error", "Invalid JSON.")
+            return
+        if not isinstance(data, dict):
+            await send_ws_message(websocket, "error", "Expected an object.")
+            return
+
+        if data.get("type") == "guess":
+            index = data.get("index")
+            if not isinstance(index, int) or isinstance(index, bool):
+                await send_ws_message(
+                    websocket, "error", "Guess index must be an integer."
+                )
+                return
+            await handler.handle_guess(websocket, username, index, game)
+        elif data.get("type") == "ping":
+            logger.debug("Received ping from %s", username)
+        else:
+            await send_ws_message(websocket, "error", "Unknown message type.")
 
     async def handle_disconnection(
         self, username: str, game_session: GameSession
@@ -338,4 +366,4 @@ class Server:
         game_id = game_session.game_id
         if not connection_manager.user_connections:
             game_session_manager.remove_game_session(game_id)
-            logging.info("Removed empty game session %s", game_id)
+            logger.info("Removed empty game session %s", game_id)

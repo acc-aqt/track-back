@@ -1,4 +1,4 @@
-"""Tests for the TrackBackGame class."""
+"""Tests for GameLogic.verify_choice."""
 
 import pytest
 

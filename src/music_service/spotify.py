@@ -1,5 +1,6 @@
-"""Implementation of the SpotifyClient class."""
+"""Implementation of the SpotifyAdapter class and the Spotify login routes."""
 
+import html
 import json
 import os
 from datetime import datetime
@@ -15,6 +16,7 @@ from game.song import Song
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.error import MusicServiceError
 from server.game_sessions import game_session_manager
+from server.names import GAME_ID_MAX_LENGTH, is_valid_name
 
 
 class SpotifyAdapter(AbstractMusicServiceAdapter):
@@ -34,6 +36,10 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         if not self.session:
             raise MusicServiceError("Spotify session is not yet authenticated.")
         playback = self.session.current_playback()
+        if not playback or not playback.get("item"):
+            raise MusicServiceError(
+                "No active Spotify playback. Start playing on a Spotify device."
+            )
         if playback["is_playing"] is False:
             raise MusicServiceError("Spotify is not playing.")
         song_name = playback["item"]["name"]
@@ -152,8 +158,8 @@ def spotify_callback(request: Request) -> HTMLResponse:
     except json.JSONDecodeError:
         return HTMLResponse("❌ Failed to parse state", status_code=400)
 
-    if not game_id:
-        return HTMLResponse("❌ Missing game_id (state)", status_code=400)
+    if not game_id or not is_valid_name(str(game_id), GAME_ID_MAX_LENGTH):
+        return HTMLResponse("❌ Missing or invalid game_id (state)", status_code=400)
     if not target_song_count:
         return HTMLResponse("❌ Missing target_song_count", status_code=400)
 
@@ -176,7 +182,7 @@ def spotify_callback(request: Request) -> HTMLResponse:
     game_session_manager.add_game(game_id, game)
 
     return HTMLResponse(
-        content=f"✅ Logged in as <b>{username}</b>. "
+        content=f"✅ Logged in as <b>{html.escape(username)}</b>. "
         "You can now close this tab and return to the game."
     )
 
