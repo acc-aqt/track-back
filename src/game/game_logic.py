@@ -91,7 +91,6 @@ class GameLogic:
 
         payload["game_over"] = False
         payload["winner"] = ""
-        payload["player"] = player.name
 
         progression = self.strategy.handle_turn_progression(username)
         payload.update(progression)
