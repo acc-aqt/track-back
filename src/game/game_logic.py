@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from game.messages import MessageType
 from game.song import Song
 from game.strategies.factory import GameStrategyEnum, GameStrategyFactory
 from game.user import User
@@ -49,7 +50,7 @@ class GameLogic:
         """Handle a player's turn."""
         payload: dict[str, Any] = {}
         if not self.running:
-            payload["type"] = "error"
+            payload["type"] = MessageType.ERROR
             payload["message"] = "Game not running."
             return payload
 
@@ -59,13 +60,13 @@ class GameLogic:
 
         player = next(user for user in self.users if user.name == username)
         if not 0 <= insert_index <= len(player.song_list):
-            payload["type"] = "error"
+            payload["type"] = MessageType.ERROR
             payload["message"] = f"Invalid position {insert_index}."
             return payload
 
         current_song = self.music_service.current_song()
 
-        payload["type"] = "guess_result"
+        payload["type"] = MessageType.GUESS_RESULT
         payload["player"] = username
 
         if self.verify_choice(player.song_list, insert_index, current_song):

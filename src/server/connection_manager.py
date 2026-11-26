@@ -1,7 +1,11 @@
 """Contains the ConnectionManager class, which handles user connections."""
 
+import json
+from typing import Any
+
 from fastapi import HTTPException, WebSocket, status
 from fastapi.responses import JSONResponse
+from starlette.websockets import WebSocketState
 
 
 class ConnectionManager:
@@ -54,9 +58,17 @@ class ConnectionManager:
             },
         )
 
-    def get_all_websockets(self) -> list[WebSocket]:
-        """Get all WebSocket connections."""
-        return [websocket for websocket in self.user_connections.values() if websocket]
+    async def broadcast(
+        self, message: dict[str, Any], exclude: str | None = None
+    ) -> None:
+        """Send a message to every connected user except the excluded one."""
+        text = json.dumps(message)
+        for username, websocket in list(self.user_connections.items()):
+            if username == exclude or websocket is None:
+                continue
+            if websocket.client_state != WebSocketState.CONNECTED:
+                continue
+            await websocket.send_text(text)
 
     def set_websocket(self, username: str, websocket: WebSocket) -> None:
         """Set the WebSocket connection for a user."""

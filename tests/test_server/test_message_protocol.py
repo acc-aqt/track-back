@@ -1,4 +1,7 @@
+"""Tests pinning the WebSocket messages the server sends."""
+
 import json
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -18,11 +21,12 @@ YESTERDAY = {
 
 @pytest.fixture
 def client() -> TestClient:
+    """Return a client for a fresh server."""
     return TestClient(Server().app)
 
 
 @pytest.fixture(autouse=True)
-def _clear_sessions():
+def _clear_sessions() -> Iterator[None]:
     yield
     game_session_manager.sessions.clear()
 
@@ -50,7 +54,8 @@ def _join(client: TestClient, game_id: str, user: str) -> None:
     assert response.status_code == 200
 
 
-def test_join_is_broadcast_to_connected_players(client: TestClient):
+def test_join_is_broadcast_to_connected_players(client: TestClient) -> None:
+    """A join is announced to players already connected."""
     game_id = "join-broadcast"
     _create(client, game_id)
     _join(client, game_id, "alice")
@@ -68,7 +73,8 @@ def test_join_is_broadcast_to_connected_players(client: TestClient):
         }
 
 
-def test_start_and_next_round_send_your_turn(client: TestClient):
+def test_start_and_next_round_send_your_turn(client: TestClient) -> None:
+    """Start and round completion send your_turn with the timeline."""
     game_id = "your-turn"
     _create(client, game_id)
     _join(client, game_id, "alice")
@@ -113,7 +119,8 @@ def test_start_and_next_round_send_your_turn(client: TestClient):
         assert _receive(ws2)["type"] == "your_turn"
 
 
-def test_game_over_is_broadcast_to_every_player(client: TestClient):
+def test_game_over_is_broadcast_to_every_player(client: TestClient) -> None:
+    """The winning guess ends the game for every player."""
     game_id = "game-over"
     _create(client, game_id)
     _join(client, game_id, "alice")
@@ -151,7 +158,8 @@ def test_game_over_is_broadcast_to_every_player(client: TestClient):
         assert _receive_until(ws2, "game_over") == game_over
 
 
-def test_disconnect_and_rejoin_are_broadcast(client: TestClient):
+def test_disconnect_and_rejoin_are_broadcast(client: TestClient) -> None:
+    """Disconnect and rejoin are announced; the rejoiner gets a card."""
     game_id = "rejoin"
     _create(client, game_id)
     _join(client, game_id, "alice")
@@ -187,3 +195,18 @@ def test_disconnect_and_rejoin_are_broadcast(client: TestClient):
                 "next_player": "bob",
                 "song_list": [],
             }
+
+
+@pytest.mark.parametrize("message_type", [["guess"], {"a": 1}, None, 3])
+def test_non_string_message_type_is_unknown(
+    client: TestClient, message_type: object
+) -> None:
+    """A non-string message type is rejected as unknown."""
+    game_id = "odd-type"
+    _create(client, game_id)
+    _join(client, game_id, "solo")
+
+    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+        _receive(ws)
+        ws.send_json({"type": message_type})
+        assert _receive(ws) == {"type": "error", "message": "Unknown message type."}
