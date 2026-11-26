@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from game.game_logic import GameLogic
 from game.user import User
 from music_service.error import MusicServiceError
-from music_service.factory import MusicServiceFactory
+from music_service.selection import MUSIC_SERVICES, MusicServiceType
 from music_service.spotify import router as spotify_auth_router
 from server.game_sessions import GameSession, game_session_manager
 from server.names import (
@@ -36,7 +36,7 @@ class CreateGameRequest(BaseModel):
 
     game_id: GameId
     target_song_count: int
-    music_service_type: str
+    music_service_type: MusicServiceType
 
 
 class JoinGameRequest(BaseModel):
@@ -100,9 +100,8 @@ class Server:
         game_id = req.game_id
         target_song_count = req.target_song_count
 
-        music_service_type = req.music_service_type
         try:
-            music_service = MusicServiceFactory.create_music_service(music_service_type)
+            music_service = MUSIC_SERVICES[req.music_service_type]()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
