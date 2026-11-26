@@ -85,10 +85,7 @@ router = APIRouter()
 
 def get_spotify_oauth() -> SpotifyOAuth:
     """Get Spotify OAuth object."""
-    read_library = "user-library-read"
-    read_playback = "user-read-playback-state"
-    modify_playback = "user-modify-playback-state"
-    scope = f"{read_library},{read_playback},{modify_playback}"
+    scope = "user-read-playback-state,user-modify-playback-state"
 
     return SpotifyOAuth(
         client_id=os.getenv("SPOTIPY_CLIENT_ID"),

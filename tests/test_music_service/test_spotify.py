@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
@@ -95,3 +96,21 @@ def test_callback_rejects_invalid_game_id(callback_client: TestClient):
     )
     assert response.status_code == 400
     assert game_session_manager.sessions == {}
+
+
+def test_login_asks_only_for_playback_permissions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The Spotify login requests playback scopes and no library access."""
+    monkeypatch.setenv("SPOTIPY_CLIENT_ID", "client-id")
+    monkeypatch.setenv("SPOTIPY_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("SPOTIPY_REDIRECT_URI", "http://localhost/spotify-callback")
+    client = TestClient(Server().app)
+
+    response = client.get("/spotify-login", follow_redirects=False)
+
+    scopes = parse_qs(urlparse(response.headers["location"]).query)["scope"][0]
+    assert set(scopes.split()) == {
+        "user-read-playback-state",
+        "user-modify-playback-state",
+    }
