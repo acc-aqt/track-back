@@ -242,3 +242,19 @@ def test_creating_an_existing_session_is_a_conflict(client: TestClient) -> None:
     assert response.json() == {
         "detail": "Session 'taken' already exists. Choose different ID."
     }
+
+
+@pytest.mark.parametrize("target_song_count", [0, -1])
+def test_create_rejects_target_song_count_below_one(
+    client: TestClient, target_song_count: int
+) -> None:
+    response = client.post(
+        "/create",
+        json={
+            "game_id": "too-few-songs",
+            "target_song_count": target_song_count,
+            "music_service_type": "mock",
+        },
+    )
+    assert response.status_code == 422
+    assert game_session_manager.get_game_session("too-few-songs") is None

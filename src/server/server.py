@@ -28,6 +28,7 @@ from server.names import (
     GAME_ID_MAX_LENGTH,
     NAME_PATTERN,
     USER_NAME_MAX_LENGTH,
+    TargetSongCount,
     is_valid_name,
 )
 from server.spotify_login import router as spotify_auth_router
@@ -50,7 +51,7 @@ class CreateGameRequest(BaseModel):
     """Request model for creating a game session."""
 
     game_id: GameId
-    target_song_count: int
+    target_song_count: TargetSongCount
     music_service_type: MusicServiceType
 
 
