@@ -3,8 +3,7 @@
 from itertools import pairwise
 from typing import Any
 
-from fastapi import HTTPException
-
+from game.errors import MusicPlaybackError
 from game.song import Song
 from game.strategies.factory import GameStrategyEnum, GameStrategyFactory
 from game.user import User
@@ -37,11 +36,7 @@ class GameLogic:
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to play music. Please check if music service "
-                f"{self.music_service.service_name} is running!",
-            ) from e
+            raise MusicPlaybackError(self.music_service.service_name) from e
         self.users = users
         self.running = True
 
