@@ -4,11 +4,11 @@ import json
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+import spotipy
 from fastapi.testclient import TestClient
 
 from server import spotify_login
 from server.game_sessions import game_session_manager
-from server.server import Server
 
 
 class FakeOAuth:
@@ -25,14 +25,13 @@ class FakeSpotifyProfile:
 
 
 @pytest.fixture
-def callback_client(monkeypatch: pytest.MonkeyPatch):
+def callback_client(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> TestClient:
     monkeypatch.setattr(spotify_login, "get_spotify_oauth", FakeOAuth)
-    monkeypatch.setattr(spotify_login.spotipy, "Spotify", FakeSpotifyProfile)
-    yield TestClient(Server().app)
-    game_session_manager.sessions.clear()
+    monkeypatch.setattr(spotipy, "Spotify", FakeSpotifyProfile)
+    return client
 
 
-def test_callback_escapes_spotify_user_id(callback_client: TestClient):
+def test_callback_escapes_spotify_user_id(callback_client: TestClient) -> None:
     state = json.dumps({"game_id": "spotify-game", "target_song_count": 3})
     response = callback_client.get(
         "/spotify-callback", params={"code": "abc", "state": state}
@@ -43,7 +42,7 @@ def test_callback_escapes_spotify_user_id(callback_client: TestClient):
     assert game_session_manager.get_game_session("spotify-game") is not None
 
 
-def test_callback_rejects_invalid_game_id(callback_client: TestClient):
+def test_callback_rejects_invalid_game_id(callback_client: TestClient) -> None:
     state = json.dumps({"game_id": "<b>x</b>", "target_song_count": 3})
     response = callback_client.get(
         "/spotify-callback", params={"code": "abc", "state": state}
@@ -68,13 +67,12 @@ def test_callback_rejects_target_song_count_below_one(
 
 
 def test_login_asks_only_for_playback_permissions(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
 ) -> None:
     """The Spotify login requests playback scopes and no library access."""
     monkeypatch.setenv("SPOTIPY_CLIENT_ID", "client-id")
     monkeypatch.setenv("SPOTIPY_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("SPOTIPY_REDIRECT_URI", "http://localhost/spotify-callback")
-    client = TestClient(Server().app)
 
     response = client.get("/spotify-login", follow_redirects=False)
 
