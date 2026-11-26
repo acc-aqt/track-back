@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, Any
 
+from game.messages import MessageType
 from game.user import User
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ class SimultaneousRound:
         """Only users who haven't guessed yet can make a guess."""
         if username in self.users_already_guessed:
             return {
-                "type": "error",
+                "type": MessageType.ERROR,
                 "message": f"{username} has already guessed this song.",
             }
         return None

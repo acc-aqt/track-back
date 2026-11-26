@@ -4,6 +4,7 @@ from itertools import pairwise
 from typing import Any
 
 from game.errors import MusicPlaybackError
+from game.messages import MessageType
 from game.simultaneous_round import SimultaneousRound
 from game.song import Song
 from game.user import User
@@ -41,7 +42,7 @@ class GameLogic:
         """Handle a player's turn."""
         payload: dict[str, Any] = {}
         if not self.running:
-            payload["type"] = "error"
+            payload["type"] = MessageType.ERROR
             payload["message"] = "Game not running."
             return payload
 
@@ -51,13 +52,13 @@ class GameLogic:
 
         player = next(user for user in self.users if user.name == username)
         if not 0 <= insert_index <= len(player.song_list):
-            payload["type"] = "error"
+            payload["type"] = MessageType.ERROR
             payload["message"] = f"Invalid position {insert_index}."
             return payload
 
         current_song = self.music_service.current_song()
 
-        payload["type"] = "guess_result"
+        payload["type"] = MessageType.GUESS_RESULT
         payload["player"] = username
 
         if self.verify_choice(player.song_list, insert_index, current_song):
