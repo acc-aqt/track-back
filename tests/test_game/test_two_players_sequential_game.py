@@ -2,7 +2,7 @@ import threading
 
 
 from game.user import User
-from music_service.mock import DummyMusicService
+from music_service.mock import MockMusicService
 from game.game_logic import GameLogic
 from game.strategies.factory import GameStrategyEnum
 
@@ -10,7 +10,7 @@ from game.strategies.factory import GameStrategyEnum
 def test_two_players_sequential_game():
     game = GameLogic(
         target_song_count=2,
-        music_service=DummyMusicService(),
+        music_service=MockMusicService(),
         game_strategy_enum=GameStrategyEnum.SEQUENTIAL,
     )
     assert game.running is False
@@ -69,7 +69,7 @@ def test_two_players_sequential_game():
 def test_turn_progression_terminates_when_all_players_inactive():
     game = GameLogic(
         target_song_count=5,
-        music_service=DummyMusicService(),
+        music_service=MockMusicService(),
         game_strategy_enum=GameStrategyEnum.SEQUENTIAL,
     )
     player1 = User("player1")

@@ -1,6 +1,6 @@
 import pytest
 from game.user import User
-from music_service.mock import DummyMusicService
+from music_service.mock import MockMusicService
 from game.game_logic import GameLogic
 from game.strategies.factory import GameStrategyEnum
 
@@ -8,7 +8,7 @@ from game.strategies.factory import GameStrategyEnum
 @pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
 def test_env(request):
     game = GameLogic(
-        target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
+        target_song_count=2, music_service=MockMusicService(), game_strategy_enum=request.param
     )
 
     return game
