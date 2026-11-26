@@ -102,6 +102,7 @@ def test_full_game_client_connection(client: TestClient):
         assert response["result"] == "correct"
         assert len(response["song_list"]) == 1
         assert response["last_index"] == "0"
+        assert response["last_song"]["release_year"] == 1965
         assert len(response["other_players"]) == 1
         assert response["game_over"] is False
         assert response["winner"] == ""

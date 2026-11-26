@@ -16,7 +16,7 @@ class User:
         """Add a song to the song_list of the user."""
         self.song_list.insert(index, song)
 
-    def serialize(self) -> dict[str, str | list[dict[str, str]]]:
+    def serialize(self) -> dict[str, str | list[dict[str, str | int]]]:
         """Serialize the user object to a dictionary."""
         return {
             "name": self.name,
