@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
 import uvicorn
@@ -13,10 +14,10 @@ from pydantic import BaseModel, Field
 
 from game.errors import GameAlreadyRunningError, MusicPlaybackError
 from game.game_logic import GameLogic
+from game.messages import MessageType, your_turn_message
 from game.user import User
 from music_service.error import MusicServiceError
-from music_service.factory import MusicServiceFactory
-from music_service.spotify import router as spotify_auth_router
+from music_service.selection import MUSIC_SERVICES, MusicServiceType
 from server.errors import (
     PlayersNotConnectedError,
     SessionAlreadyExistsError,
@@ -30,6 +31,7 @@ from server.names import (
     USER_NAME_MAX_LENGTH,
     is_valid_name,
 )
+from server.spotify_login import router as spotify_auth_router
 from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,7 @@ class CreateGameRequest(BaseModel):
 
     game_id: GameId
     target_song_count: int
-    music_service_type: str
+    music_service_type: MusicServiceType
 
 
 class JoinGameRequest(BaseModel):
@@ -66,6 +68,44 @@ class StartGameRequest(BaseModel):
     """Request model for starting a game session."""
 
     game_id: str
+
+
+ClientMessageHandler = Callable[
+    [WebSocket, str, dict[str, Any], WebSocketGameHandler, GameLogic],
+    Awaitable[None],
+]
+
+
+async def _handle_guess_message(
+    websocket: WebSocket,
+    username: str,
+    data: dict[str, Any],
+    handler: WebSocketGameHandler,
+    game: GameLogic,
+) -> None:
+    index = data.get("index")
+    if not isinstance(index, int) or isinstance(index, bool):
+        await send_ws_message(
+            websocket, MessageType.ERROR, "Guess index must be an integer."
+        )
+        return
+    await handler.handle_guess(websocket, username, index, game)
+
+
+async def _handle_ping_message(
+    _websocket: WebSocket,
+    username: str,
+    _data: dict[str, Any],
+    _handler: WebSocketGameHandler,
+    _game: GameLogic,
+) -> None:
+    logger.debug("Received ping from %s", username)
+
+
+CLIENT_MESSAGE_HANDLERS: dict[str, ClientMessageHandler] = {
+    "guess": _handle_guess_message,
+    "ping": _handle_ping_message,
+}
 
 
 class Server:
@@ -126,9 +166,8 @@ class Server:
         game_id = req.game_id
         target_song_count = req.target_song_count
 
-        music_service_type = req.music_service_type
         try:
-            music_service = MusicServiceFactory.create_music_service(music_service_type)
+            music_service = MUSIC_SERVICES[req.music_service_type]()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -189,7 +228,7 @@ class Server:
             )
 
             player_rejoined_message = {
-                "type": "player_rejoined",
+                "type": MessageType.PLAYER_REJOINED,
                 "message": (
                     f"{user_name} re-joined the game! "
                     f"There are now {number_of_users} players: "
@@ -200,9 +239,7 @@ class Server:
                 "next_player": user_name,
             }
 
-            await self._broadcast_to_all_connected_users(
-                session, player_rejoined_message
-            )
+            await session.connection_manager.broadcast(player_rejoined_message)
             return JSONResponse(
                 content={"message": f"User {user_name} re-joined game {game_id}."}
             )
@@ -214,7 +251,7 @@ class Server:
             session.connection_manager.get_registered_user_names()
         )
         player_joined_message = {
-            "type": "player_joined",
+            "type": MessageType.PLAYER_JOINED,
             "message": (
                 f"{user_name} joined the game! "
                 f"There are now {number_of_users} players: "
@@ -223,20 +260,11 @@ class Server:
             "user_name": user_name,
         }
 
-        await self._broadcast_to_all_connected_users(session, player_joined_message)
+        await session.connection_manager.broadcast(player_joined_message)
 
         return JSONResponse(
             content={"message": f"User {user_name} joined game {game_id}."}
         )
-
-    async def _broadcast_to_all_connected_users(
-        self, session: GameSession, message: dict[str, Any]
-    ) -> None:
-        """Broadcast a message to all connected users in the game session."""
-        for ws in session.connection_manager.get_all_websockets():
-            if ws.client_state.name != "CONNECTED":
-                continue
-            await ws.send_text(json.dumps(message))
 
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
@@ -270,16 +298,7 @@ class Server:
             ws = connection_manager.get_websocket(player.name)
             if ws is None:
                 continue
-            await ws.send_text(
-                json.dumps(
-                    {
-                        "type": "your_turn",
-                        "message": "It's your turn!",
-                        "next_player": player.name,
-                        "song_list": [song.serialize() for song in player.song_list],
-                    }
-                )
-            )
+            await ws.send_text(json.dumps(your_turn_message(player)))
 
         return JSONResponse(content={"message": f"Game {game_id} started."})
 
@@ -300,24 +319,15 @@ class Server:
         handler = WebSocketGameHandler(connection_manager)
         await handler.handle_connection(websocket, username)
 
-        player = game_session.game_logic.get_user(username)
-
-        if (
-            player
-            and game_session.game_logic.running
-            and player
-            in game_session.game_logic.round.get_players_to_notify_for_next_turn()
-        ):
-            await websocket.send_text(
-                json.dumps(
-                    {
-                        "type": "your_turn",
-                        "message": "It's your turn!",
-                        "next_player": username,
-                        "song_list": [song.serialize() for song in player.song_list],
-                    }
-                )
-            )
+        game = game_session.game_logic
+        players_owed_turn = (
+            game.round.get_players_to_notify_for_next_turn() if game.running else []
+        )
+        player = next(
+            (user for user in players_owed_turn if user.name == username), None
+        )
+        if player:
+            await websocket.send_text(json.dumps(your_turn_message(player)))
 
         try:
             while True:
@@ -343,24 +353,22 @@ class Server:
         try:
             data = json.loads(raw_data)
         except json.JSONDecodeError:
-            await send_ws_message(websocket, "error", "Invalid JSON.")
+            await send_ws_message(websocket, MessageType.ERROR, "Invalid JSON.")
             return
         if not isinstance(data, dict):
-            await send_ws_message(websocket, "error", "Expected an object.")
+            await send_ws_message(websocket, MessageType.ERROR, "Expected an object.")
             return
 
-        if data.get("type") == "guess":
-            index = data.get("index")
-            if not isinstance(index, int) or isinstance(index, bool):
-                await send_ws_message(
-                    websocket, "error", "Guess index must be an integer."
-                )
-                return
-            await handler.handle_guess(websocket, username, index, game)
-        elif data.get("type") == "ping":
-            logger.debug("Received ping from %s", username)
-        else:
-            await send_ws_message(websocket, "error", "Unknown message type.")
+        message_type = data.get("type")
+        client_handler = (
+            CLIENT_MESSAGE_HANDLERS.get(message_type)
+            if isinstance(message_type, str)
+            else None
+        )
+        if client_handler is None:
+            await send_ws_message(websocket, MessageType.ERROR, "Unknown message type.")
+            return
+        await client_handler(websocket, username, data, handler, game)
 
     async def handle_disconnection(
         self, username: str, game_session: GameSession
@@ -373,10 +381,9 @@ class Server:
         if inactive_user := game_session.game_logic.get_user(username):
             inactive_user.is_active = False
 
-        await self._broadcast_to_all_connected_users(
-            game_session,
+        await connection_manager.broadcast(
             {
-                "type": "user_disconnected",
+                "type": MessageType.USER_DISCONNECTED,
                 "message": f"{username} disconnected. "
                 f"{username} can try to re-join the game.",
             },

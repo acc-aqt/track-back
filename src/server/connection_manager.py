@@ -1,7 +1,8 @@
 """Contains the ConnectionManager class, which handles user connections."""
 
+import json
 from enum import Enum
-from typing import Protocol
+from typing import Any, Protocol
 
 from server.errors import UserAlreadyRegisteredError, UserNotRegisteredError
 
@@ -44,9 +45,17 @@ class ConnectionManager:
         self._ensure_registered(username)
         self.user_connections.pop(username)
 
-    def get_all_websockets(self) -> list[ClientConnection]:
-        """Get all WebSocket connections."""
-        return [websocket for websocket in self.user_connections.values() if websocket]
+    async def broadcast(
+        self, message: dict[str, Any], exclude: str | None = None
+    ) -> None:
+        """Send a message to every connected user except the excluded one."""
+        text = json.dumps(message)
+        for username, websocket in list(self.user_connections.items()):
+            if username == exclude or websocket is None:
+                continue
+            if websocket.client_state.name != "CONNECTED":
+                continue
+            await websocket.send_text(text)
 
     def get_unconnected_user_names(self) -> list[str]:
         """Get the registered usernames without a live connection."""

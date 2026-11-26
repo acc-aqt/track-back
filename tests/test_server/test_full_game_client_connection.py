@@ -16,7 +16,6 @@ def client():
 
 def test_full_game_client_connection(client: TestClient):
 
-    # create a new game session
     game_id = "test-session-123"
     payload = {
         "game_id": game_id,
@@ -83,7 +82,6 @@ def test_full_game_client_connection(client: TestClient):
         response = json.loads(ws2.receive_text())
         assert response["type"] == "welcome"
 
-        # start game
         response = client.post("/start", json={"game_id": game_id})
         assert response.status_code == 200
         assert "type" not in response.json()
@@ -102,6 +100,7 @@ def test_full_game_client_connection(client: TestClient):
         assert response["result"] == "correct"
         assert len(response["song_list"]) == 1
         assert response["last_index"] == "0"
+        assert response["last_song"]["release_year"] == 1965
         assert len(response["other_players"]) == 1
         assert response["game_over"] is False
         assert response["winner"] == ""
@@ -150,14 +149,13 @@ def test_full_game_client_connection(client: TestClient):
         assert response["game_over"] is False
         assert response["winner"] == ""
 
-        #        # Player2: Receive guess from Player 1
+        # Player2: Receive guess from Player 1
         response = json.loads(ws2.receive_text())
         assert response["type"] == "other_player_guess"
 
         # Player2: Send the second guess --> correct --> wins
         ws2.send_json({"type": "guess", "index": 1})
 
-        # Then receive the guess result
         response = json.loads(ws2.receive_text())
 
         assert response["type"] == "guess_result"
