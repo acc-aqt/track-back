@@ -1,20 +1,24 @@
-import sys
-import logging
-from server.main import parse_args
-import pytest
-from unittest import mock
 import importlib
+import logging
+import sys
+from unittest import mock
+
+import pytest
+
+from server.main import parse_args
 
 
 @pytest.mark.parametrize(
-    "argv, expected_port, expected_log_level",
+    ("argv", "expected_port", "expected_log_level"),
     [
         (["main.py", "--port", "5000", "--log-level", "DEBUG"], 5000, logging.DEBUG),
         (["main.py", "--log-level", "WARNING"], 4200, logging.WARNING),
         (["main.py"], 4200, logging.INFO),
     ],
 )
-def test_parse_args(argv, expected_port, expected_log_level):
+def test_parse_args(
+    argv: list[str], expected_port: int, expected_log_level: int
+) -> None:
     # Arrange
     sys.argv = argv
 
@@ -25,7 +29,7 @@ def test_parse_args(argv, expected_port, expected_log_level):
     assert log_level == expected_log_level
 
 
-def test_main_runs_server(monkeypatch):
+def test_main_runs_server(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     sys.argv = ["server/main.py", "--port", "4321", "--log-level", "DEBUG"]
 

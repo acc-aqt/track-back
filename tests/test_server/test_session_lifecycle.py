@@ -1,51 +1,32 @@
 import json
+from collections.abc import Callable
 
 import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from music_service.error import MusicServiceError
-from server.game_sessions import game_session_manager
-from server.server import Server
+from server.game_sessions import GameSession, game_session_manager
 
 
-@pytest.fixture
-def client():
-    return TestClient(Server().app)
-
-
-@pytest.fixture(autouse=True)
-def _clear_sessions():
-    yield
-    game_session_manager.sessions.clear()
-
-
-def _create_and_join(client: TestClient, game_id: str, user: str) -> None:
-    response = client.post(
-        "/create",
-        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
-    )
-    assert response.status_code == 201
-    response = client.post("/join", json={"game_id": game_id, "user_name": user})
-    assert response.status_code == 200
-
-
-def test_ping_before_start_keeps_session_alive(client: TestClient):
+def test_ping_before_start_keeps_session_alive(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
     game_id = "ping-before-start"
-    _create_and_join(client, game_id, "host")
+    create_and_join(game_id, "host")
 
     with client.websocket_connect(f"/ws/{game_id}/host") as ws:
-        assert json.loads(ws.receive_text())["type"] == "welcome"
+        assert ws.receive_json()["type"] == "welcome"
 
         ws.send_json({"type": "ping"})
         ws.send_json({"type": "ping"})
 
         response = client.post("/start", json={"game_id": game_id})
         assert response.status_code == 200
-        assert json.loads(ws.receive_text())["type"] == "your_turn"
+        assert ws.receive_json()["type"] == "your_turn"
 
 
-def test_create_with_unknown_music_service_is_rejected(client: TestClient):
+def test_create_with_unknown_music_service_is_rejected(client: TestClient) -> None:
     response = client.post(
         "/create",
         json={
@@ -73,39 +54,44 @@ def test_create_with_unknown_music_service_is_rejected(client: TestClient):
     ],
 )
 def test_malformed_message_gets_error_and_socket_stays_usable(
-    client: TestClient, bad_message: str
-):
+    client: TestClient, create_and_join: Callable[..., None], bad_message: str
+) -> None:
     game_id = "malformed-message"
-    _create_and_join(client, game_id, "solo")
+    create_and_join(game_id, "solo")
 
     with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
-        assert json.loads(ws.receive_text())["type"] == "welcome"
+        assert ws.receive_json()["type"] == "welcome"
         assert client.post("/start", json={"game_id": game_id}).status_code == 200
-        assert json.loads(ws.receive_text())["type"] == "your_turn"
+        assert ws.receive_json()["type"] == "your_turn"
 
         ws.send_text(bad_message)
-        assert json.loads(ws.receive_text())["type"] == "error"
+        assert ws.receive_json()["type"] == "error"
 
         ws.send_json({"type": "guess", "index": 0})
-        assert json.loads(ws.receive_text())["type"] == "guess_result"
+        assert ws.receive_json()["type"] == "guess_result"
 
 
-def test_music_service_failure_during_guess_is_reported(client: TestClient):
+def test_music_service_failure_during_guess_is_reported(
+    client: TestClient,
+    create_and_join: Callable[..., None],
+    get_session: Callable[[str], GameSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     game_id = "music-service-failure"
-    _create_and_join(client, game_id, "solo")
-    music_service = game_session_manager.get_game_session(game_id).game_logic.music_service
+    create_and_join(game_id, "solo")
+    music_service = get_session(game_id).game_logic.music_service
 
     def broken_current_song() -> None:
         raise MusicServiceError("No active Spotify playback.")
 
     with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
-        assert json.loads(ws.receive_text())["type"] == "welcome"
+        assert ws.receive_json()["type"] == "welcome"
         assert client.post("/start", json={"game_id": game_id}).status_code == 200
-        assert json.loads(ws.receive_text())["type"] == "your_turn"
+        assert ws.receive_json()["type"] == "your_turn"
 
-        music_service.current_song = broken_current_song
+        monkeypatch.setattr(music_service, "current_song", broken_current_song)
         ws.send_json({"type": "guess", "index": 0})
-        response = json.loads(ws.receive_text())
+        response = ws.receive_json()
         assert response["type"] == "error"
         assert "No active Spotify playback" in response["message"]
 
@@ -114,26 +100,24 @@ def test_music_service_failure_during_guess_is_reported(client: TestClient):
     "user_name",
     ["<b>x</b>", "<img src=x onerror=alert(1)>", "", " padded", "a" * 21, "semi;colon"],
 )
-def test_join_rejects_invalid_user_names(client: TestClient, user_name: str):
-    client.post(
-        "/create",
-        json={"game_id": "names", "target_song_count": 2, "music_service_type": "mock"},
-    )
+def test_join_rejects_invalid_user_names(
+    client: TestClient, create_game: Callable[[str], None], user_name: str
+) -> None:
+    create_game("names")
     response = client.post("/join", json={"game_id": "names", "user_name": user_name})
     assert response.status_code == 422
 
 
 @pytest.mark.parametrize("user_name", ["Alex", "Jörg", "dj-max_2", "Anna Lena"])
-def test_join_accepts_valid_user_names(client: TestClient, user_name: str):
-    client.post(
-        "/create",
-        json={"game_id": "names", "target_song_count": 2, "music_service_type": "mock"},
-    )
+def test_join_accepts_valid_user_names(
+    client: TestClient, create_game: Callable[[str], None], user_name: str
+) -> None:
+    create_game("names")
     response = client.post("/join", json={"game_id": "names", "user_name": user_name})
     assert response.status_code == 200
 
 
-def test_create_rejects_markup_in_game_id(client: TestClient):
+def test_create_rejects_markup_in_game_id(client: TestClient) -> None:
     response = client.post(
         "/create",
         json={
@@ -145,15 +129,16 @@ def test_create_rejects_markup_in_game_id(client: TestClient):
     assert response.status_code == 422
 
 
-def test_websocket_rejects_invalid_user_name(client: TestClient):
+def test_websocket_rejects_invalid_user_name(
+    client: TestClient,
+    create_game: Callable[[str], None],
+    get_session: Callable[[str], GameSession],
+) -> None:
     game_id = "ws-names"
-    client.post(
-        "/create",
-        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
-    )
+    create_game(game_id)
     with (
         pytest.raises(WebSocketDisconnect),
         client.websocket_connect(f"/ws/{game_id}/%3Cimg%20src%3Dx%3E") as ws,
     ):
         ws.receive_text()
-    assert game_session_manager.get_game_session(game_id).connection_manager.user_connections == {}
+    assert get_session(game_id).connection_manager.user_connections == {}

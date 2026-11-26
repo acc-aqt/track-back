@@ -1,13 +1,12 @@
 import threading
 
-
-from game.user import User
-from music_service.mock import DummyMusicService
 from game.game_logic import GameLogic
 from game.strategies.factory import GameStrategyEnum
+from game.user import User
+from music_service.mock import DummyMusicService
 
 
-def test_two_players_sequential_game():
+def test_two_players_sequential_game() -> None:
     game = GameLogic(
         target_song_count=2,
         music_service=DummyMusicService(),
@@ -20,36 +19,33 @@ def test_two_players_sequential_game():
 
     game.start_game(users=[player1, player2])
     assert game.is_game_over() is False
-    assert len(player1.song_list) == 0 
+    assert len(player1.song_list) == 0
     assert len(player2.song_list) == 0
-
 
     # Player1: Send the first guess
     game.handle_player_turn(player1.name, 0)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 0
     assert game.is_game_over() is False
-    
+
     # Player1: Make another guess --> not his turn
     game.handle_player_turn(player1.name, 1)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 0
     assert game.is_game_over() is False
-    
+
     # Player2: Send his first guess
     game.handle_player_turn(player2.name, 0)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 1
     assert game.is_game_over() is False
 
-    
     # Player2: Make another guess --> not his turn
     game.handle_player_turn(player2.name, 0)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 1
     assert game.is_game_over() is False
 
-    
     # Player1: Make incorrect guess
     game.handle_player_turn(player1.name, 0)
     assert len(player1.song_list) == 1
@@ -57,7 +53,6 @@ def test_two_players_sequential_game():
     assert game.is_game_over() is False
     assert game.winner is None
 
-    
     # Player2: Make correct guess
     game.handle_player_turn(player2.name, 1)
     assert len(player1.song_list) == 1
@@ -66,7 +61,7 @@ def test_two_players_sequential_game():
     assert game.winner == player2
 
 
-def test_turn_progression_terminates_when_all_players_inactive():
+def test_turn_progression_terminates_when_all_players_inactive() -> None:
     game = GameLogic(
         target_song_count=5,
         music_service=DummyMusicService(),
@@ -78,7 +73,7 @@ def test_turn_progression_terminates_when_all_players_inactive():
     player1.is_active = False
     player2.is_active = False
 
-    result: dict = {}
+    result: dict[str, object] = {}
     worker = threading.Thread(
         target=lambda: result.update(game.handle_player_turn(player1.name, 0)),
         daemon=True,

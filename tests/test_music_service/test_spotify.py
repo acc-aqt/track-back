@@ -2,13 +2,13 @@ import json
 from typing import Any
 
 import pytest
+import spotipy
 from fastapi.testclient import TestClient
 
 from music_service import spotify
 from music_service.error import MusicServiceError
 from music_service.spotify import SpotifyAdapter
 from server.game_sessions import game_session_manager
-from server.server import Server
 
 
 class FakeSpotify:
@@ -21,21 +21,21 @@ class FakeSpotify:
 
 def _adapter_with(playback: dict[str, Any] | None) -> SpotifyAdapter:
     adapter = SpotifyAdapter()
-    adapter.session = FakeSpotify(playback)  # type: ignore[assignment]
+    adapter.session = FakeSpotify(playback)
     return adapter
 
 
-def test_current_song_without_active_device_raises_music_service_error():
+def test_current_song_without_active_device_raises_music_service_error() -> None:
     with pytest.raises(MusicServiceError):
         _adapter_with(None).current_song()
 
 
-def test_current_song_without_item_raises_music_service_error():
+def test_current_song_without_item_raises_music_service_error() -> None:
     with pytest.raises(MusicServiceError):
         _adapter_with({"is_playing": True, "item": None}).current_song()
 
 
-def test_current_song_reads_track_metadata():
+def test_current_song_reads_track_metadata() -> None:
     playback = {
         "is_playing": True,
         "item": {
@@ -70,14 +70,13 @@ class FakeSpotifyProfile:
 
 
 @pytest.fixture
-def callback_client(monkeypatch: pytest.MonkeyPatch):
+def callback_client(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> TestClient:
     monkeypatch.setattr(spotify, "get_spotify_oauth", FakeOAuth)
-    monkeypatch.setattr(spotify.spotipy, "Spotify", FakeSpotifyProfile)
-    yield TestClient(Server().app)
-    game_session_manager.sessions.clear()
+    monkeypatch.setattr(spotipy, "Spotify", FakeSpotifyProfile)
+    return client
 
 
-def test_callback_escapes_spotify_user_id(callback_client: TestClient):
+def test_callback_escapes_spotify_user_id(callback_client: TestClient) -> None:
     state = json.dumps({"game_id": "spotify-game", "target_song_count": 3})
     response = callback_client.get(
         "/spotify-callback", params={"code": "abc", "state": state}
@@ -88,7 +87,7 @@ def test_callback_escapes_spotify_user_id(callback_client: TestClient):
     assert game_session_manager.get_game_session("spotify-game") is not None
 
 
-def test_callback_rejects_invalid_game_id(callback_client: TestClient):
+def test_callback_rejects_invalid_game_id(callback_client: TestClient) -> None:
     state = json.dumps({"game_id": "<b>x</b>", "target_song_count": 3})
     response = callback_client.get(
         "/spotify-callback", params={"code": "abc", "state": state}
