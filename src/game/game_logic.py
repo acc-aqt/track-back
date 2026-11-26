@@ -3,11 +3,10 @@
 from itertools import pairwise
 from typing import Any
 
-from fastapi import HTTPException
-
+from game.errors import MusicPlaybackError
 from game.messages import MessageType
+from game.simultaneous_round import SimultaneousRound
 from game.song import Song
-from game.strategies.factory import GameStrategyEnum, GameStrategyFactory
 from game.user import User
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.error import MusicServiceError
@@ -20,12 +19,9 @@ class GameLogic:
         self,
         target_song_count: int,
         music_service: AbstractMusicServiceAdapter,
-        game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
     ) -> None:
         self.target_song_count = target_song_count
-        self.strategy = GameStrategyFactory.create_game_strategy(
-            game_strategy_enum, self
-        )
+        self.round = SimultaneousRound(self)
         self.users: list[User] = []
 
         self.music_service = music_service
@@ -38,11 +34,7 @@ class GameLogic:
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to play music. Please check if music service "
-                f"{self.music_service.service_name} is running!",
-            ) from e
+            raise MusicPlaybackError(self.music_service.service_name) from e
         self.users = users
         self.running = True
 
@@ -54,7 +46,7 @@ class GameLogic:
             payload["message"] = "Game not running."
             return payload
 
-        validation = self.strategy.validate_turn(username)
+        validation = self.round.validate_turn(username)
         if validation:
             return validation
 
@@ -92,9 +84,8 @@ class GameLogic:
 
         payload["game_over"] = False
         payload["winner"] = ""
-        payload["player"] = player.name
 
-        progression = self.strategy.handle_turn_progression(username)
+        progression = self.round.handle_turn_progression(username)
         payload.update(progression)
 
         return payload

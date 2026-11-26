@@ -1,14 +1,12 @@
 from game.user import User
-from music_service.mock import DummyMusicService
+from music_service.mock import MockMusicService
 from game.game_logic import GameLogic
-from game.strategies.factory import GameStrategyEnum
 
 
 def test_two_players_simulteneous_game():
     game = GameLogic(
         target_song_count=3,
-        music_service=DummyMusicService(),
-        game_strategy_enum=GameStrategyEnum.SIMULTANEOUS,
+        music_service=MockMusicService(),
     )
     assert game.running is False
 

@@ -23,7 +23,6 @@ function loadScript (url, onSuccess, onError) {
   document.head.appendChild(script)
 }
 
-// Called only if config file is successfully loaded
 // Get serverurl by user input if server_config.js does not exist.
 loadScript(
   'server_config.js',
@@ -65,8 +64,8 @@ let currentGuessSong = null
 let pauseAfterGuess = false
 let queuedTurn = null
 
-const WRONG_GUESS_DISPLAY_TIME = 2000 // How long the wrong guess stays visible
-const FADE_DURATION = 1000 // Duration of fade-out animation
+const WRONG_GUESS_DISPLAY_TIME = 2000
+const FADE_DURATION = 1000
 
 const log = msg => {
   const logBox = document.getElementById('log')
@@ -79,9 +78,8 @@ const targetSongCountInput = document.getElementById('targetSongCountInput')
 targetSongCountInput.addEventListener('input', () => {
   let value = targetSongCountInput.value.trim()
 
-  // Only allow positive integers
   if (!/^\d+$/.test(value) || parseInt(value) <= 0) {
-    targetSongCountInput.value = '' // Clear invalid input
+    targetSongCountInput.value = ''
   }
 })
 
@@ -206,13 +204,11 @@ function handleGuessResult (data) {
 
   const timeline = document.getElementById('songTimeline')
 
-  // Always clear the new song container
   document.getElementById('newSongContainer').style.display = 'none'
 
   // Update the timeline first (without the guess)
   timeline.replaceChildren(...list.map(s => buildSongEntry(s)))
 
-  // If the guess was wrong, insert the incorrect guess at the user's chosen position
   if (data.result === 'wrong') {
     const wrongSong = data.last_song || {}
     const guessedIndex = Number(data.last_index ?? 0)
@@ -230,7 +226,6 @@ function handleGuessResult (data) {
       timeline.appendChild(wrongSongEl)
     }
 
-    // Fade out and remove after WRONG_GUESS_DISPLAY_TIME
     setTimeout(() => {
       wrongSongEl.classList.add('fade-out')
       setTimeout(() => {
@@ -304,7 +299,7 @@ function connectWebSocket () {
     document.getElementById('game').style.display = 'block'
     log('🔌 Connected to game session.')
 
-    reconnectAttempts = 0 // Reset attempt counter
+    reconnectAttempts = 0
 
     // Start keepalive ping
     pingInterval = setInterval(() => {
@@ -370,7 +365,6 @@ async function listAndChooseGameSessions () {
     const dropdown = document.getElementById('sessionDropdown')
     const joinButton = document.getElementById('joinSelectedSessionBtn')
 
-    // Clear previous options
     dropdown.innerHTML = ''
 
     if (sessions.length === 0) {
@@ -378,7 +372,6 @@ async function listAndChooseGameSessions () {
       return
     }
 
-    // Fill the dropdown
     sessions.forEach((sessionId, index) => {
       const option = document.createElement('option')
       option.value = sessionId
@@ -560,7 +553,6 @@ document.getElementById('joinGameBtn').onclick = async () => {
     await joinGame()
     return
   }
-  // Ask the user to pick one session
   await listAndChooseGameSessions()
 }
 
@@ -608,13 +600,10 @@ const setupDragDrop = () => {
       if (evt.item.id === 'new-song') {
         const newIndex = evt.newIndex
 
-        // Remove the dragged song from the timeline immediately
         evt.item.remove()
 
-        // Send the guess to the server
         socket.send(JSON.stringify({ type: 'guess', index: newIndex }))
 
-        // Disable dragging
         Sortable.get(timeline).option('disabled', true)
         Sortable.get(newSongContainer).option('disabled', true)
       }

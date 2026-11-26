@@ -17,7 +17,7 @@ class Song:
         """Return a string representation of the song's metadata."""
         return f"'{self.title}' by {self.artist} ({self.release_year})"
 
-    def serialize(self) -> dict[str, str]:
+    def serialize(self) -> dict[str, str | int]:
         """Serialize the song to a dictionary."""
         return asdict(self)
 

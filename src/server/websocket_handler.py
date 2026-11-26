@@ -64,7 +64,7 @@ class WebSocketGameHandler:
                 exclude=username,
             )
 
-        players_to_notify = game.strategy.get_players_to_notify_for_next_turn()
+        players_to_notify = game.round.get_players_to_notify_for_next_turn()
         for player in players_to_notify:
             await self._notify_for_next_turn(player)
 

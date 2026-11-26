@@ -16,7 +16,6 @@ def client():
 
 def test_connecting_users(client: TestClient):
 
-    # create a new game session
     game_id = "session-test-connecting-users"
     payload = {
         "game_id": game_id,
@@ -78,7 +77,6 @@ def test_connecting_users(client: TestClient):
 
 def test_disconnecting_users(client: TestClient):
 
-    # create a new game session
     game_id = "session-test-disconnecting-users"
     payload = {
         "game_id": game_id,
@@ -139,7 +137,6 @@ def test_disconnecting_users(client: TestClient):
 
 def test_reconnect_after_disconnect(client: TestClient):
 
-    # create a new game session
     game_id = "session-test-reconnect-after-disconnect"
     payload = {
         "game_id": game_id,
