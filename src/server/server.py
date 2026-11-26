@@ -281,14 +281,14 @@ class Server:
         handler = WebSocketGameHandler(connection_manager)
         await handler.handle_connection(websocket, username)
 
-        player = game_session.game_logic.get_user(username)
-
-        if (
-            player
-            and game_session.game_logic.running
-            and player
-            in game_session.game_logic.strategy.get_players_to_notify_for_next_turn()
-        ):
+        game = game_session.game_logic
+        players_owed_turn = (
+            game.strategy.get_players_to_notify_for_next_turn() if game.running else []
+        )
+        player = next(
+            (user for user in players_owed_turn if user.name == username), None
+        )
+        if player:
             await websocket.send_text(
                 json.dumps(
                     {
