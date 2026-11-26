@@ -235,7 +235,7 @@ class Server:
 
         game.start_game(users)
 
-        players_to_notify = game.strategy.get_players_to_notify_for_next_turn()
+        players_to_notify = game.round.get_players_to_notify_for_next_turn()
 
         for player in players_to_notify:
             ws = connection_manager.get_websocket(player.name)
@@ -287,7 +287,7 @@ class Server:
             player
             and game_session.game_logic.running
             and player
-            in game_session.game_logic.strategy.get_players_to_notify_for_next_turn()
+            in game_session.game_logic.round.get_players_to_notify_for_next_turn()
         ):
             await websocket.send_text(
                 json.dumps(
