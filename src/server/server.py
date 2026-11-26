@@ -15,8 +15,7 @@ from game.errors import MusicPlaybackError
 from game.game_logic import GameLogic
 from game.user import User
 from music_service.error import MusicServiceError
-from music_service.factory import MusicServiceFactory
-from music_service.spotify import router as spotify_auth_router
+from music_service.selection import MUSIC_SERVICES, MusicServiceType
 from server.errors import (
     SessionAlreadyExistsError,
     UserAlreadyRegisteredError,
@@ -29,6 +28,7 @@ from server.names import (
     USER_NAME_MAX_LENGTH,
     is_valid_name,
 )
+from server.spotify_login import router as spotify_auth_router
 from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class CreateGameRequest(BaseModel):
 
     game_id: GameId
     target_song_count: int
-    music_service_type: str
+    music_service_type: MusicServiceType
 
 
 class JoinGameRequest(BaseModel):
@@ -123,9 +123,8 @@ class Server:
         game_id = req.game_id
         target_song_count = req.target_song_count
 
-        music_service_type = req.music_service_type
         try:
-            music_service = MusicServiceFactory.create_music_service(music_service_type)
+            music_service = MUSIC_SERVICES[req.music_service_type]()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 

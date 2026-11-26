@@ -202,8 +202,7 @@
             "title": "Target Song Count"
           },
           "music_service_type": {
-            "type": "string",
-            "title": "Music Service Type"
+            "$ref": "#/components/schemas/MusicServiceType"
           }
         },
         "type": "object",
@@ -248,6 +247,16 @@
         ],
         "title": "JoinGameRequest",
         "description": "Request model for joining a game session."
+      },
+      "MusicServiceType": {
+        "type": "string",
+        "enum": [
+          "spotify",
+          "applemusic",
+          "mock"
+        ],
+        "title": "MusicServiceType",
+        "description": "Music services a game can be created with."
       },
       "StartGameRequest": {
         "properties": {
