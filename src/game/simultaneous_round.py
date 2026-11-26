@@ -1,20 +1,18 @@
-"""Contains the SimultaneousStrategy class."""
+"""Contains the SimultaneousRound class."""
 
 from typing import TYPE_CHECKING, Any
 
 from game.user import User
 
-from .abstract_game_strategy import AbstractGameStrategy
-
 if TYPE_CHECKING:
     from game.game_logic import GameLogic
 
 
-class SimultaneousStrategy(AbstractGameStrategy):
-    """Implements the game mode where all players guess on the same songs."""
+class SimultaneousRound:
+    """Implements rounds in which all players guess on the same song."""
 
     def __init__(self, game: "GameLogic") -> None:
-        super().__init__(game)
+        self.game = game
         self.users_already_guessed: set[str] = set()
 
     def validate_turn(self, username: str) -> dict[str, str] | None:

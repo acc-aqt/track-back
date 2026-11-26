@@ -4,8 +4,8 @@ from itertools import pairwise
 from typing import Any
 
 from game.errors import MusicPlaybackError
+from game.simultaneous_round import SimultaneousRound
 from game.song import Song
-from game.strategies.factory import GameStrategyEnum, GameStrategyFactory
 from game.user import User
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 from music_service.error import MusicServiceError
@@ -18,12 +18,9 @@ class GameLogic:
         self,
         target_song_count: int,
         music_service: AbstractMusicServiceAdapter,
-        game_strategy_enum: GameStrategyEnum = GameStrategyEnum.SIMULTANEOUS,
     ) -> None:
         self.target_song_count = target_song_count
-        self.strategy = GameStrategyFactory.create_game_strategy(
-            game_strategy_enum, self
-        )
+        self.round = SimultaneousRound(self)
         self.users: list[User] = []
 
         self.music_service = music_service
@@ -48,7 +45,7 @@ class GameLogic:
             payload["message"] = "Game not running."
             return payload
 
-        validation = self.strategy.validate_turn(username)
+        validation = self.round.validate_turn(username)
         if validation:
             return validation
 
@@ -88,7 +85,7 @@ class GameLogic:
         payload["winner"] = ""
         payload["player"] = player.name
 
-        progression = self.strategy.handle_turn_progression(username)
+        progression = self.round.handle_turn_progression(username)
         payload.update(progression)
 
         return payload
