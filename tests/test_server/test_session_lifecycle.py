@@ -187,3 +187,58 @@ def test_websocket_rejects_invalid_user_name(client: TestClient):
     ):
         ws.receive_text()
     assert game_session_manager.get_game_session(game_id).connection_manager.user_connections == {}
+
+
+def test_playback_failure_on_start_is_reported_as_server_error(
+    client: TestClient,
+) -> None:
+    """A failed playback start is a 500 and leaves the game startable."""
+    game_id = "playback-failure"
+    _create_and_join(client, game_id, "solo")
+    session = game_session_manager.get_game_session(game_id)
+    music_service = session.game_logic.music_service
+    working_start_playback = music_service.start_playback
+
+    def broken_start_playback() -> None:
+        raise MusicServiceError("No active device.")
+
+    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+        assert json.loads(ws.receive_text())["type"] == "welcome"
+
+        music_service.start_playback = broken_start_playback
+        response = client.post("/start", json={"game_id": game_id})
+        assert response.status_code == 500
+        assert response.json() == {
+            "detail": "Failed to play music. Please check if music service "
+            "Dummy Music Service is running!"
+        }
+
+        music_service.start_playback = working_start_playback
+        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert json.loads(ws.receive_text())["type"] == "your_turn"
+
+
+def test_joining_twice_before_start_is_a_conflict(client: TestClient) -> None:
+    """Joining under a registered name before start is a 409."""
+    game_id = "double-join"
+    _create_and_join(client, game_id, "alex")
+
+    response = client.post("/join", json={"game_id": game_id, "user_name": "alex"})
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "User 'alex' already registered"}
+
+
+def test_creating_an_existing_session_is_a_conflict(client: TestClient) -> None:
+    """Creating a session with a taken ID is a 409."""
+    _create_and_join(client, "taken", "alex")
+
+    response = client.post(
+        "/create",
+        json={"game_id": "taken", "target_song_count": 2, "music_service_type": "mock"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "Session 'taken' already exists. Choose different ID."
+    }
