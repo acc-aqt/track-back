@@ -235,7 +235,7 @@ class Server:
 
         game.start_game(users)
 
-        players_to_notify = game.strategy.get_players_to_notify_for_next_turn()
+        players_to_notify = game.round.get_players_to_notify_for_next_turn()
 
         for player in players_to_notify:
             ws = connection_manager.get_websocket(player.name)
@@ -283,7 +283,7 @@ class Server:
 
         game = game_session.game_logic
         players_owed_turn = (
-            game.strategy.get_players_to_notify_for_next_turn() if game.running else []
+            game.round.get_players_to_notify_for_next_turn() if game.running else []
         )
         player = next(
             (user for user in players_owed_turn if user.name == username), None
