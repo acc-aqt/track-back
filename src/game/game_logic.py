@@ -83,7 +83,6 @@ class GameLogic:
 
         payload["game_over"] = False
         payload["winner"] = ""
-        payload["player"] = player.name
 
         progression = self.round.handle_turn_progression(username)
         payload.update(progression)

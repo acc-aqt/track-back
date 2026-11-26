@@ -1,12 +1,12 @@
 import pytest
 from game.user import User
-from music_service.mock import DummyMusicService
+from music_service.mock import MockMusicService
 from game.game_logic import GameLogic
 
 
 @pytest.fixture
 def test_env():
-    game = GameLogic(target_song_count=2, music_service=DummyMusicService())
+    game = GameLogic(target_song_count=2, music_service=MockMusicService())
 
     return game
 
