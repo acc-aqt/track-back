@@ -15,7 +15,6 @@ from game.game_logic import GameLogic
 from game.user import User
 from music_service.error import MusicServiceError
 from music_service.selection import MUSIC_SERVICES, MusicServiceType
-from music_service.spotify import router as spotify_auth_router
 from server.game_sessions import GameSession, game_session_manager
 from server.names import (
     GAME_ID_MAX_LENGTH,
@@ -23,6 +22,7 @@ from server.names import (
     USER_NAME_MAX_LENGTH,
     is_valid_name,
 )
+from server.spotify_login import router as spotify_auth_router
 from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
 logger = logging.getLogger(__name__)
