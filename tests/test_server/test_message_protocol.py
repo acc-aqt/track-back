@@ -1,15 +1,11 @@
 """Tests pinning the WebSocket messages the server sends."""
 
-import json
-from collections.abc import Iterator
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
-
-from server.game_sessions import game_session_manager
-from server.server import Server
 
 YESTERDAY = {
     "title": "Yesterday",
@@ -19,20 +15,9 @@ YESTERDAY = {
 }
 
 
-@pytest.fixture
-def client() -> TestClient:
-    """Return a client for a fresh server."""
-    return TestClient(Server().app)
-
-
-@pytest.fixture(autouse=True)
-def _clear_sessions() -> Iterator[None]:
-    yield
-    game_session_manager.sessions.clear()
-
-
 def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
-    return json.loads(ws.receive_text())
+    message: dict[str, Any] = ws.receive_json()
+    return message
 
 
 def _receive_until(ws: WebSocketTestSession, msg_type: str) -> dict[str, Any]:
@@ -41,24 +26,17 @@ def _receive_until(ws: WebSocketTestSession, msg_type: str) -> dict[str, Any]:
     return message
 
 
-def _create(client: TestClient, game_id: str) -> None:
-    response = client.post(
-        "/create",
-        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
-    )
-    assert response.status_code == 201
-
-
 def _join(client: TestClient, game_id: str, user: str) -> None:
     response = client.post("/join", json={"game_id": game_id, "user_name": user})
     assert response.status_code == 200
 
 
-def test_join_is_broadcast_to_connected_players(client: TestClient) -> None:
+def test_join_is_broadcast_to_connected_players(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
     """A join is announced to players already connected."""
     game_id = "join-broadcast"
-    _create(client, game_id)
-    _join(client, game_id, "alice")
+    create_and_join(game_id, "alice")
 
     with client.websocket_connect(f"/ws/{game_id}/alice") as ws:
         assert _receive(ws) == {
@@ -73,12 +51,12 @@ def test_join_is_broadcast_to_connected_players(client: TestClient) -> None:
         }
 
 
-def test_start_and_next_round_send_your_turn(client: TestClient) -> None:
+def test_start_and_next_round_send_your_turn(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
     """Start and round completion send your_turn with the timeline."""
     game_id = "your-turn"
-    _create(client, game_id)
-    _join(client, game_id, "alice")
-    _join(client, game_id, "bob")
+    create_and_join(game_id, "alice", "bob")
 
     with (
         client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
@@ -119,12 +97,12 @@ def test_start_and_next_round_send_your_turn(client: TestClient) -> None:
         assert _receive(ws2)["type"] == "your_turn"
 
 
-def test_game_over_is_broadcast_to_every_player(client: TestClient) -> None:
+def test_game_over_is_broadcast_to_every_player(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
     """The winning guess ends the game for every player."""
     game_id = "game-over"
-    _create(client, game_id)
-    _join(client, game_id, "alice")
-    _join(client, game_id, "bob")
+    create_and_join(game_id, "alice", "bob")
 
     with (
         client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
@@ -158,12 +136,12 @@ def test_game_over_is_broadcast_to_every_player(client: TestClient) -> None:
         assert _receive_until(ws2, "game_over") == game_over
 
 
-def test_disconnect_and_rejoin_are_broadcast(client: TestClient) -> None:
+def test_disconnect_and_rejoin_are_broadcast(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
     """Disconnect and rejoin are announced; the rejoiner gets a card."""
     game_id = "rejoin"
-    _create(client, game_id)
-    _join(client, game_id, "alice")
-    _join(client, game_id, "bob")
+    create_and_join(game_id, "alice", "bob")
 
     with client.websocket_connect(f"/ws/{game_id}/alice") as ws1:
         _receive(ws1)
@@ -199,12 +177,13 @@ def test_disconnect_and_rejoin_are_broadcast(client: TestClient) -> None:
 
 @pytest.mark.parametrize("message_type", [["guess"], {"a": 1}, None, 3])
 def test_non_string_message_type_is_unknown(
-    client: TestClient, message_type: object
+    client: TestClient,
+    create_and_join: Callable[..., None],
+    message_type: object,
 ) -> None:
     """A non-string message type is rejected as unknown."""
     game_id = "odd-type"
-    _create(client, game_id)
-    _join(client, game_id, "solo")
+    create_and_join(game_id, "solo")
 
     with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
         _receive(ws)
