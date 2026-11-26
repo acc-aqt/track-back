@@ -25,12 +25,8 @@ track-back-server = "server.main:main"
 test = ["pytest", "pytest-asyncio", "coverage", "pytest-cov"]
 
 lint = [
-  "black",
-  "isort",
   "ruff==0.17.5",
   "mypy==2.4.1",
-  "pylint",
-  "docstrfmt"
 ]
 
 [tool.setuptools]
@@ -41,18 +37,8 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 
-[tool.isort]
-profile = "black"
-line_length = 88
- 
-[tool.black]
-line-length = 88
-preview = true
-target-version = ["py311"]
- 
 [tool.ruff]
 line-length = 88
-fix = true
 target-version = "py311"
 
 [tool.ruff.format]
@@ -92,7 +78,7 @@ ignore = [
   "TD003", # missing issue/link
   "PD011", # Use `.to_numpy()` instead of `.values`
   "PT011", # pytest.raises is too broad
-  "E501",  # line length --> blacks job
+  "E501",  # line length is the formatter's job
 ]
 unfixable = ["ERA001", "F841"] # commented code
  
@@ -100,18 +86,10 @@ unfixable = ["ERA001", "F841"] # commented code
 known-first-party = ["game", "music_service", "server"]
  
 [tool.ruff.lint.per-file-ignores]
-"tests/*.py" = ["PLR2004", "S101"]
+"tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "PLR2004", "S101"]
  
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
- 
-[tool.pylint.MISCELLANEOUS]
-notes = '''''' # disables listing of todos
- 
-[tool.pylint."MESSAGES CONTROL"]
-disable = [
-  "too-few-public-methods"] 
-max-line-length = 88
  
 [tool.mypy]
 strict = true
@@ -120,13 +98,11 @@ show_error_context = true
 python_version = "3.11"
 ignore_missing_imports = true
  
-[tool.pydocstringformatter]
-style = "numpydoc"
-write = true
-max-line-length = 88
- 
 [tool.coverage.run]
 branch = true
 
 [tool.coverage.report]
 fail_under = 50
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"

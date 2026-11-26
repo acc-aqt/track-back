@@ -29,7 +29,7 @@ def test_full_game_one_round() -> None:
 
     game.handle_player_turn("Elton", 0)
 
-    assert game.is_game_over() == True
+    assert game.is_game_over() is True
 
     winner = game.winner
 

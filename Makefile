@@ -32,23 +32,15 @@ install:          ## Install the project in dev mode.
 
 
 .PHONY: lint
-lint: ## Run linters (optionally specify LINT_PATH=<path>)
-	@LINT_TARGET=$(LINT_PATH); \
-	if [ -z "$$LINT_TARGET" ]; then LINT_TARGET=src; fi; \
-	echo "Running isort..."; \
-	$(ENV_PREFIX)isort $$LINT_TARGET; \
-	echo "Running docstrfmt..."; \
-	$(ENV_PREFIX)docstrfmt $$LINT_TARGET; \
-	echo "Running black..."; \
-	$(ENV_PREFIX)black $$LINT_TARGET; \
-	echo "Running ruff format..."; \
-	$(ENV_PREFIX)ruff format $$LINT_TARGET; \
-	echo "Running ruff check..."; \
-	$(ENV_PREFIX)ruff check $$LINT_TARGET; \
-	echo "Running mypy..."; \
-	$(ENV_PREFIX)mypy $$LINT_TARGET; \
-	echo "Running pylint..."; \
-	$(ENV_PREFIX)pylint $$LINT_TARGET
+lint:             ## Check linting, formatting and types (same as CI, modifies nothing)
+	$(ENV_PREFIX)ruff check src tests --no-fix
+	$(ENV_PREFIX)ruff format --check src tests
+	$(ENV_PREFIX)mypy src tests
+
+.PHONY: format
+format:           ## Apply ruff fixes and formatting
+	$(ENV_PREFIX)ruff check src tests --fix
+	$(ENV_PREFIX)ruff format src tests
 
 .PHONY: test
 test:

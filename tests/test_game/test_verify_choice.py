@@ -2,9 +2,8 @@
 
 import pytest
 
-from game.song import Song
 from game.game_logic import GameLogic
-from game.user import User
+from game.song import Song
 
 song_70s = Song("Bohemian Rhapsody", "Queen", 1975)
 song_80s = Song("Hier kommt Alex", "Die Toten Hosen", 1988)
@@ -82,7 +81,7 @@ song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
     ],
 )
 def test_verify_choice(
-    song_list: list[User],
+    song_list: list[Song],
     index: int,
     selected_song: Song,
     expected_result: bool,
