@@ -291,8 +291,6 @@ function connectWebSocket () {
         log(`👋🏻 ${data.message}`)
       } else if (type === 'player_joined') {
         log(`👋🏻 ${data.message}`)
-      } else if (type === 'game_start') {
-        log(`🎮 ${data.message}`)
       } else if (type === 'player_rejoined' && data.user_name === username) {
         handleYourTurn(data)
       } else if (type === 'player_rejoined' && data.user_name !== username) {

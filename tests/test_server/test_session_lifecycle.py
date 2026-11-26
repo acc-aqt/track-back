@@ -212,3 +212,57 @@ def test_creating_an_existing_session_is_a_conflict(client: TestClient) -> None:
     assert response.json() == {
         "detail": "Session 'taken' already exists. Choose different ID."
     }
+
+
+def test_starting_a_running_game_is_a_conflict_and_keeps_timelines(
+    client: TestClient,
+) -> None:
+    """A second Start is a 409 and does not wipe the timelines."""
+    game_id = "restart"
+    _create_and_join(client, game_id, "solo")
+
+    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+        assert json.loads(ws.receive_text())["type"] == "welcome"
+        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert json.loads(ws.receive_text())["type"] == "your_turn"
+        ws.send_json({"type": "guess", "index": 0})
+        assert len(json.loads(ws.receive_text())["song_list"]) == 1
+        assert len(json.loads(ws.receive_text())["song_list"]) == 1
+
+        response = client.post("/start", json={"game_id": game_id})
+        assert response.status_code == 409
+        assert response.json() == {"detail": f"Game {game_id} is already running."}
+
+        ws.send_json({"type": "guess", "index": 1})
+        result = json.loads(ws.receive_text())
+        assert result["type"] == "guess_result"
+        assert len(result["song_list"]) == 2
+
+
+def test_starting_with_unconnected_players_is_a_conflict_and_retryable(
+    client: TestClient,
+) -> None:
+    """Start names the unconnected players, leaves the game not running."""
+    game_id = "half-start"
+    _create_and_join(client, game_id, "alex")
+    for user in ("bo", "cy"):
+        client.post("/join", json={"game_id": game_id, "user_name": user})
+
+    with client.websocket_connect(f"/ws/{game_id}/alex") as ws_alex:
+        assert json.loads(ws_alex.receive_text())["type"] == "welcome"
+
+        response = client.post("/start", json={"game_id": game_id})
+        assert response.status_code == 409
+        assert response.json() == {"detail": "Players not connected: bo, cy."}
+        assert client.get("/list-sessions").json() == {"sessions": [game_id]}
+
+        with (
+            client.websocket_connect(f"/ws/{game_id}/bo") as ws_bo,
+            client.websocket_connect(f"/ws/{game_id}/cy") as ws_cy,
+        ):
+            response = client.post("/start", json={"game_id": game_id})
+            assert response.status_code == 200
+            assert response.json() == {"message": f"Game {game_id} started."}
+            for ws in (ws_bo, ws_cy):
+                assert json.loads(ws.receive_text())["type"] == "welcome"
+                assert json.loads(ws.receive_text())["type"] == "your_turn"
