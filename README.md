@@ -174,7 +174,8 @@ For code development and testing:
 make create-venv           # Creates .venv/ and installs the package with test and lint extras
 source .venv/bin/activate  # Activates the virtual environment in your shell
 make test                  # Runs the tests with coverage
-make lint                  # Runs formatters, ruff, mypy and pylint on src/
+make lint                  # Checks ruff lint, ruff format and mypy on src/ and tests/ (same as CI)
+make format                # Applies ruff fixes and formatting
 make run                   # Starts the game server
 make openapi               # Regenerates docs/openapi.json
 ```
