@@ -6,16 +6,22 @@ import os
 from typing import Annotated, Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from game.errors import MusicPlaybackError
 from game.game_logic import GameLogic
 from game.user import User
 from music_service.error import MusicServiceError
 from music_service.factory import MusicServiceFactory
 from music_service.spotify import router as spotify_auth_router
+from server.errors import (
+    SessionAlreadyExistsError,
+    UserAlreadyRegisteredError,
+    UserNotRegisteredError,
+)
 from server.game_sessions import GameSession, game_session_manager
 from server.names import (
     GAME_ID_MAX_LENGTH,
@@ -29,6 +35,13 @@ logger = logging.getLogger(__name__)
 
 UserName = Annotated[str, Field(max_length=USER_NAME_MAX_LENGTH, pattern=NAME_PATTERN)]
 GameId = Annotated[str, Field(max_length=GAME_ID_MAX_LENGTH, pattern=NAME_PATTERN)]
+
+DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
+    MusicPlaybackError: 500,
+    SessionAlreadyExistsError: 409,
+    UserAlreadyRegisteredError: 409,
+    UserNotRegisteredError: 404,
+}
 
 
 class CreateGameRequest(BaseModel):
@@ -94,7 +107,17 @@ class Server:
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
         app.include_router(spotify_auth_router)
 
+        for error_type in DOMAIN_ERROR_STATUS_CODES:
+            app.add_exception_handler(error_type, self._domain_error_response)
+
         return app
+
+    @staticmethod
+    async def _domain_error_response(_request: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=DOMAIN_ERROR_STATUS_CODES[type(exc)],
+            content={"detail": str(exc)},
+        )
 
     async def _create_game_session(self, req: CreateGameRequest) -> JSONResponse:
         game_id = req.game_id
@@ -235,7 +258,7 @@ class Server:
 
         game.start_game(users)
 
-        players_to_notify = game.strategy.get_players_to_notify_for_next_turn()
+        players_to_notify = game.round.get_players_to_notify_for_next_turn()
 
         for player in players_to_notify:
             ws = connection_manager.get_websocket(player.name)
@@ -287,7 +310,7 @@ class Server:
             player
             and game_session.game_logic.running
             and player
-            in game_session.game_logic.strategy.get_players_to_notify_for_next_turn()
+            in game_session.game_logic.round.get_players_to_notify_for_next_turn()
         ):
             await websocket.send_text(
                 json.dumps(
