@@ -251,6 +251,46 @@ function handleGuessResult (data) {
   }
 }
 
+const handleGameOver = data => {
+  log(`🏁 Game Over! Winner: ${data.winner}`)
+  document.getElementById('newSongContainer').style.display = 'none'
+  const winnerHeader = document.getElementById('winnerHeader')
+  const winnerIsYou = data.winner === username
+  winnerHeader.replaceChildren(
+    ...(winnerIsYou
+      ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
+      : [
+          'Game over.',
+          document.createElement('br'),
+          `${data.winner} won the game.`
+        ])
+  )
+
+  winnerHeader.style.display = 'block'
+}
+
+const serverMessageHandlers = {
+  your_turn: handleYourTurn,
+  guess_result: data => {
+    if (data.player === username) {
+      handleGuessResult(data)
+    }
+  },
+  welcome: data => log(`👋🏻 ${data.message}`),
+  player_joined: data => log(`👋🏻 ${data.message}`),
+  player_rejoined: data => {
+    if (data.user_name === username) {
+      handleYourTurn(data)
+    } else {
+      log(`👋🏻 ${data.message}`)
+    }
+  },
+  error: data => log(`🚨 Error: ${data.message}`),
+  other_player_guess: data => log(`🧑🏽‍🎤 ${data.message}`),
+  game_over: handleGameOver,
+  user_disconnected: data => log(`❌ ${data.message}`)
+}
+
 function connectWebSocket () {
   const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -281,46 +321,10 @@ function connectWebSocket () {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data)
-      const type = data.type
-
-      if (type === 'your_turn') {
-        handleYourTurn(data)
-      } else if (type === 'guess_result' && data.player === username) {
-        handleGuessResult(data)
-      } else if (type === 'welcome') {
-        log(`👋🏻 ${data.message}`)
-      } else if (type === 'player_joined') {
-        log(`👋🏻 ${data.message}`)
-      } else if (type === 'game_start') {
-        log(`🎮 ${data.message}`)
-      } else if (type === 'player_rejoined' && data.user_name === username) {
-        handleYourTurn(data)
-      } else if (type === 'player_rejoined' && data.user_name !== username) {
-        log(`👋🏻 ${data.message}`)
-      } else if (type === 'error') {
-        log(`🚨 Error: ${data.message}`)
-      } else if (type === 'other_player_guess') {
-        log(`🧑🏽‍🎤 ${data.message}`)
-      } else if (type === 'game_over') {
-        log(`🏁 Game Over! Winner: ${data.winner}`)
-        document.getElementById('newSongContainer').style.display = 'none'
-        const winnerHeader = document.getElementById('winnerHeader')
-        const winnerIsYou = data.winner === username
-        winnerHeader.replaceChildren(
-          ...(winnerIsYou
-            ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
-            : [
-                'Game over.',
-                document.createElement('br'),
-                `${data.winner} won the game.`
-              ])
-        )
-
-        winnerHeader.style.display = 'block'
-      } else if (type === 'user_disconnected') {
-        log(`❌ ${data.message}`)
+      if (Object.hasOwn(serverMessageHandlers, data.type)) {
+        serverMessageHandlers[data.type](data)
       } else {
-        log(`Unknown message type: ${type}.`)
+        log(`Unknown message type: ${data.type}.`)
       }
     } catch (e) {
       console.error('❌ Error parsing WebSocket message:', e)
