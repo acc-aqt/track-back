@@ -55,7 +55,8 @@ def test_callback_rejects_invalid_game_id(callback_client: TestClient):
 @pytest.mark.parametrize("target_song_count", [0, -1, "zero"])
 def test_callback_rejects_target_song_count_below_one(
     callback_client: TestClient, target_song_count: object
-):
+) -> None:
+    """The callback applies the same Target Song Count rule as /create."""
     state = json.dumps(
         {"game_id": "spotify-game", "target_song_count": target_song_count}
     )

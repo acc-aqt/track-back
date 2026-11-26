@@ -163,6 +163,88 @@ def test_join_accepts_valid_user_names(client: TestClient, user_name: str):
     assert response.status_code == 200
 
 
+BROWSER_NAME_PATTERN = r"/^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u"
+
+NAMES_THE_BROWSER_ACCEPTS = [
+    "Дмитрий",
+    "李雷",
+    "Ελένη",
+    "٣٤٥",
+    "x\u00b2",
+    "\u216b",
+    "Anna-Lena_2",
+    "Anna Lena",
+]
+
+NAMES_THE_BROWSER_REJECTS = [
+    "",
+    " Anna",
+    "Anna ",
+    "Anna  Lena",
+    "a\u0301",
+    "a\u203fb",
+    "tab\there",
+    "semi;colon",
+]
+
+
+def test_browser_name_pattern_is_the_one_under_test() -> None:
+    """The name cases below are checked against this exact browser pattern."""
+    script = (Path(__file__).parents[2] / "web_ui" / "script.js").read_text()
+    assert f"const NAME_PATTERN = {BROWSER_NAME_PATTERN}" in script
+
+
+@pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_ACCEPTS)
+def test_server_accepts_user_names_the_browser_accepts(
+    client: TestClient, user_name: str
+) -> None:
+    """Any user name the browser lets through can join."""
+    _create_and_join(client, "names", user_name)
+
+
+@pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_REJECTS)
+def test_server_rejects_user_names_the_browser_rejects(
+    client: TestClient, user_name: str
+) -> None:
+    """Any user name the browser blocks is a 422 on /join."""
+    _create_and_join(client, "names", "host")
+    response = client.post("/join", json={"game_id": "names", "user_name": user_name})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("game_id", NAMES_THE_BROWSER_ACCEPTS)
+def test_server_accepts_game_ids_the_browser_accepts(
+    client: TestClient, game_id: str
+) -> None:
+    """Game ids follow the same rule as user names."""
+    _create_and_join(client, game_id, "host")
+
+
+@pytest.mark.parametrize("game_id", NAMES_THE_BROWSER_REJECTS)
+def test_server_rejects_game_ids_the_browser_rejects(
+    client: TestClient, game_id: str
+) -> None:
+    """A game id the name rule blocks is a 422 on /create."""
+    response = client.post(
+        "/create",
+        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
+    )
+    assert response.status_code == 422
+
+
+def test_server_rejects_game_ids_over_40_characters(client: TestClient) -> None:
+    """Game ids are capped at 40 characters."""
+    response = client.post(
+        "/create",
+        json={
+            "game_id": "g" * 41,
+            "target_song_count": 2,
+            "music_service_type": "mock",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_create_rejects_markup_in_game_id(client: TestClient):
     response = client.post(
         "/create",
@@ -248,6 +330,7 @@ def test_creating_an_existing_session_is_a_conflict(client: TestClient) -> None:
 def test_create_rejects_target_song_count_below_one(
     client: TestClient, target_song_count: int
 ) -> None:
+    """A Target Song Count below 1 is a 422 and creates no session."""
     response = client.post(
         "/create",
         json={
