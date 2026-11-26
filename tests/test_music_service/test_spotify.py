@@ -16,21 +16,21 @@ class FakeSpotify:
 
 def _adapter_with(playback: dict[str, Any] | None) -> SpotifyAdapter:
     adapter = SpotifyAdapter()
-    adapter.session = FakeSpotify(playback)  # type: ignore[assignment]
+    adapter.session = FakeSpotify(playback)
     return adapter
 
 
-def test_current_song_without_active_device_raises_music_service_error():
+def test_current_song_without_active_device_raises_music_service_error() -> None:
     with pytest.raises(MusicServiceError):
         _adapter_with(None).current_song()
 
 
-def test_current_song_without_item_raises_music_service_error():
+def test_current_song_without_item_raises_music_service_error() -> None:
     with pytest.raises(MusicServiceError):
         _adapter_with({"is_playing": True, "item": None}).current_song()
 
 
-def test_current_song_reads_track_metadata():
+def test_current_song_reads_track_metadata() -> None:
     playback = {
         "is_playing": True,
         "item": {

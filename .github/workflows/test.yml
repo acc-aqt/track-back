@@ -22,9 +22,9 @@ jobs:
         run: pip install -e ".[test,lint]"
       - name: Ruff
         run: |
-          ruff check src --no-fix
-          ruff format --check src
+          ruff check src tests --no-fix
+          ruff format --check src tests
       - name: Mypy
-        run: mypy src
+        run: mypy src tests
       - name: Pytest
         run: pytest tests --cov=src --cov-report=term
