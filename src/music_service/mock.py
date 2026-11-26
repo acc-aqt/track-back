@@ -40,4 +40,4 @@ class MockMusicService(AbstractMusicServiceAdapter):
         """Skip to next track. Songs are ordered by release year."""
         self.playlist_index += 1
         if self.playlist_index >= len(self.playlist):
-            self.playlist_index = 0  # Loop back around
+            self.playlist_index = 0

@@ -46,7 +46,6 @@ class WebSocketGameHandler:
             await send_ws_message(websocket, "error", str(e))
             return
 
-        # Send result to the player who guessed
         await websocket.send_text(json.dumps(payload))
         if payload["type"] == "error":
             return

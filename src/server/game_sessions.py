@@ -40,5 +40,4 @@ class GameSessionManager:
             del self.sessions[game_id]
 
 
-# Global instance (singleton)
 game_session_manager = GameSessionManager()

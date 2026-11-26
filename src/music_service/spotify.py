@@ -77,9 +77,6 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
         self.session.next_track()
 
 
-# ----------------------
-# FastAPI Router for Spotify Login
-# ----------------------
 router = APIRouter()
 
 

@@ -1,7 +1,5 @@
 """Implementation of the AppleMusicAdapter class."""
 
-# pylint: disable=line-too-long
-
 import subprocess
 import sys
 
