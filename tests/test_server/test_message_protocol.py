@@ -1,0 +1,189 @@
+import json
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+from starlette.testclient import WebSocketTestSession
+
+from server.game_sessions import game_session_manager
+from server.server import Server
+
+YESTERDAY = {
+    "title": "Yesterday",
+    "artist": "The Beatles",
+    "release_year": 1965,
+    "album_cover_url": "",
+}
+
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(Server().app)
+
+
+@pytest.fixture(autouse=True)
+def _clear_sessions():
+    yield
+    game_session_manager.sessions.clear()
+
+
+def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
+    return json.loads(ws.receive_text())
+
+
+def _receive_until(ws: WebSocketTestSession, msg_type: str) -> dict[str, Any]:
+    while (message := _receive(ws))["type"] != msg_type:
+        pass
+    return message
+
+
+def _create(client: TestClient, game_id: str) -> None:
+    response = client.post(
+        "/create",
+        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
+    )
+    assert response.status_code == 201
+
+
+def _join(client: TestClient, game_id: str, user: str) -> None:
+    response = client.post("/join", json={"game_id": game_id, "user_name": user})
+    assert response.status_code == 200
+
+
+def test_join_is_broadcast_to_connected_players(client: TestClient):
+    game_id = "join-broadcast"
+    _create(client, game_id)
+    _join(client, game_id, "alice")
+
+    with client.websocket_connect(f"/ws/{game_id}/alice") as ws:
+        assert _receive(ws) == {
+            "type": "welcome",
+            "message": "Welcome alice, you're connected.",
+        }
+        _join(client, game_id, "bob")
+        assert _receive(ws) == {
+            "type": "player_joined",
+            "message": "bob joined the game! There are now 2 players: alice, bob.",
+            "user_name": "bob",
+        }
+
+
+def test_start_and_next_round_send_your_turn(client: TestClient):
+    game_id = "your-turn"
+    _create(client, game_id)
+    _join(client, game_id, "alice")
+    _join(client, game_id, "bob")
+
+    with (
+        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
+        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+    ):
+        _receive(ws1)
+        _receive(ws2)
+        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+
+        assert _receive(ws1) == {
+            "type": "your_turn",
+            "message": "It's your turn!",
+            "next_player": "alice",
+            "song_list": [],
+        }
+        assert _receive(ws2)["next_player"] == "bob"
+
+        ws1.send_json({"type": "guess", "index": 0})
+        assert _receive(ws1)["type"] == "guess_result"
+        assert _receive(ws2) == {
+            "type": "other_player_guess",
+            "player": "alice",
+            "result": "correct",
+            "message": "alice made a guess. Guess was correct.",
+            "next_player": None,
+        }
+
+        ws2.send_json({"type": "guess", "index": 0})
+        assert _receive(ws2)["type"] == "guess_result"
+        assert _receive(ws1)["type"] == "other_player_guess"
+
+        assert _receive(ws1) == {
+            "type": "your_turn",
+            "message": "New round! Make your guess!",
+            "next_player": "alice",
+            "song_list": [YESTERDAY],
+        }
+        assert _receive(ws2)["type"] == "your_turn"
+
+
+def test_game_over_is_broadcast_to_every_player(client: TestClient):
+    game_id = "game-over"
+    _create(client, game_id)
+    _join(client, game_id, "alice")
+    _join(client, game_id, "bob")
+
+    with (
+        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
+        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+    ):
+        _receive(ws1)
+        _receive(ws2)
+        client.post("/start", json={"game_id": game_id})
+        _receive(ws1)
+        _receive(ws2)
+
+        ws1.send_json({"type": "guess", "index": 0})
+        _receive(ws1)
+        _receive(ws2)
+        ws2.send_json({"type": "guess", "index": 0})
+        _receive(ws2)
+        _receive(ws1)
+        assert _receive(ws1)["type"] == "your_turn"
+        assert _receive(ws2)["type"] == "your_turn"
+
+        ws1.send_json({"type": "guess", "index": 1})
+        assert _receive(ws1)["game_over"] is True
+        assert _receive(ws2)["type"] == "other_player_guess"
+
+        game_over = {
+            "type": "game_over",
+            "winner": "alice",
+            "message": "alice has won the game!",
+        }
+        assert _receive_until(ws1, "game_over") == game_over
+        assert _receive_until(ws2, "game_over") == game_over
+
+
+def test_disconnect_and_rejoin_are_broadcast(client: TestClient):
+    game_id = "rejoin"
+    _create(client, game_id)
+    _join(client, game_id, "alice")
+    _join(client, game_id, "bob")
+
+    with client.websocket_connect(f"/ws/{game_id}/alice") as ws1:
+        _receive(ws1)
+        with client.websocket_connect(f"/ws/{game_id}/bob") as ws2:
+            _receive(ws2)
+            client.post("/start", json={"game_id": game_id})
+            _receive(ws1)
+            _receive(ws2)
+
+        assert _receive(ws1) == {
+            "type": "user_disconnected",
+            "message": "bob disconnected. bob can try to re-join the game.",
+        }
+
+        _join(client, game_id, "bob")
+        assert _receive(ws1) == {
+            "type": "player_rejoined",
+            "message": "bob re-joined the game! There are now 2 players: alice, bob.",
+            "song_list": [],
+            "user_name": "bob",
+            "next_player": "bob",
+        }
+
+        with client.websocket_connect(f"/ws/{game_id}/bob") as ws2:
+            assert _receive(ws2)["type"] == "welcome"
+            assert _receive(ws2) == {
+                "type": "your_turn",
+                "message": "It's your turn!",
+                "next_player": "bob",
+                "song_list": [],
+            }
