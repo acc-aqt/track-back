@@ -57,6 +57,14 @@ class ConnectionManager:
                 continue
             await websocket.send_text(text)
 
+    def get_unconnected_user_names(self) -> list[str]:
+        """Get the registered usernames without a live connection."""
+        return [
+            username
+            for username, websocket in self.user_connections.items()
+            if websocket is None or websocket.client_state.name != "CONNECTED"
+        ]
+
     def set_websocket(self, username: str, websocket: ClientConnection) -> None:
         """Set the WebSocket connection for a user."""
         self._ensure_registered(username)
