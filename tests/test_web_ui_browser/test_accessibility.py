@@ -1,3 +1,5 @@
+import re
+
 from playwright.sync_api import Page, expect
 
 
@@ -42,3 +44,30 @@ def test_buttons_do_not_move_when_reduced_motion_is_requested(
 
     expect(host_button).to_have_css("transform", "none")
     expect(host_button).to_have_css("transition-duration", "0s")
+
+
+def test_field_labels_share_the_pixel_font_without_trailing_colons(
+    page: Page, base_url: str
+) -> None:
+    page.goto(base_url)
+
+    labels = page.locator(".input-group label").evaluate_all(
+        """labels => labels.map(label => ({
+            text: label.textContent.trim(),
+            font: getComputedStyle(label).fontFamily,
+        }))"""
+    )
+
+    assert len(labels) >= 4
+    for label in labels:
+        assert not label["text"].endswith(":"), label
+        assert "Press Start 2P" in label["font"], label
+
+
+def test_host_and_join_buttons_share_title_case(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+
+    host = page.get_by_role("button", name=re.compile(r"^Host a Game\b"))
+    join = page.get_by_role("button", name=re.compile(r"^Join a Game\b"))
+    expect(host).to_be_visible()
+    expect(join).to_be_visible()
