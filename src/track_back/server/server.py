@@ -47,6 +47,8 @@ from track_back.server.errors import (
 )
 from track_back.server.game_sessions import GameSession, game_session_manager
 from track_back.server.names import (
+    NAME_PATTERN,
+    SESSION_NAME_MAX_LENGTH,
     USERNAME_MAX_LENGTH,
     SessionName,
     TargetSongCount,
@@ -309,8 +311,13 @@ class Server:
 
     @staticmethod
     async def _server_config(request: Request) -> Response:
-        """Point the bundled Web UI at the origin it was loaded from."""
-        config = {"TRACK_BACK_SERVER_URL": str(request.base_url).rstrip("/")}
+        """Point the bundled Web UI at its origin and hand it the name rules."""
+        config = {
+            "TRACK_BACK_SERVER_URL": str(request.base_url).rstrip("/"),
+            "NAME_PATTERN": NAME_PATTERN,
+            "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
+            "SESSION_NAME_MAX_LENGTH": SESSION_NAME_MAX_LENGTH,
+        }
         return Response(
             content=f"window.TRACK_BACK_CONFIG = {json.dumps(config)};\n",
             media_type="text/javascript",

@@ -1,5 +1,5 @@
 import * as hostOptions from './host-options.js'
-import { USERNAME_MAX_LENGTH, isValidUsername } from './names.js'
+import { isValidUsername, usernameMaxLength } from './names.js'
 import { createRoundFlow } from './round-flow.js'
 import * as screen from './screen.js'
 import * as server from './server-client.js'
@@ -90,7 +90,7 @@ const readUsername = () => {
   }
   if (!isValidUsername(name)) {
     alert(
-      `Usernames can have up to ${USERNAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+      `Usernames can have up to ${usernameMaxLength()} letters, digits, "_", "-" and single spaces.`
     )
     return null
   }

@@ -75,4 +75,9 @@ def test_server_config_points_the_web_ui_at_the_requesting_origin(
         r"window\.TRACK_BACK_CONFIG = (\{.*\});\s*", response.text, re.DOTALL
     )
     assert match is not None
-    assert json.loads(match.group(1)) == {"TRACK_BACK_SERVER_URL": expected_server_url}
+    assert json.loads(match.group(1)) == {
+        "TRACK_BACK_SERVER_URL": expected_server_url,
+        "NAME_PATTERN": r"^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$",
+        "USERNAME_MAX_LENGTH": 20,
+        "SESSION_NAME_MAX_LENGTH": 40,
+    }

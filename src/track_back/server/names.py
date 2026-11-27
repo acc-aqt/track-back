@@ -1,7 +1,7 @@
 r"""Validation rules for user input: usernames, Game Session Names and the Target Song Count.
 
-The name rule matches the browser's NAME_PATTERN in track_back/web_ui/script.js:
-/^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
+The server hands NAME_PATTERN and the maximum lengths to the Web UI, so the
+browser checks names by the same rule as ``is_valid_name``.
 """
 
 import unicodedata
@@ -12,6 +12,7 @@ from pydantic import AfterValidator, Field
 
 USERNAME_MAX_LENGTH = 20
 SESSION_NAME_MAX_LENGTH = 40
+NAME_PATTERN = r"^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$"
 
 
 def _is_name_character(character: str) -> bool:

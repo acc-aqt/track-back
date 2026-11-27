@@ -1,7 +1,7 @@
 // Host Options: the Game Setup panel, its summary strip, the Music Service
 // line and picker, the default Game Session Name and the remembered choices.
 
-import { SESSION_NAME_MAX_LENGTH, isValidSessionName } from './names.js'
+import { isValidSessionName, sessionNameMaxLength } from './names.js'
 import * as server from './server-client.js'
 import { MUSIC_SERVICE_KEY, TARGET_SONG_COUNT_KEY, loadStored, store } from './storage.js'
 
@@ -257,7 +257,7 @@ function hostOptionsProblem () {
     return 'Please enter a Game Session Name!'
   }
   if (!isValidSessionName(name)) {
-    return `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+    return `Game Session Names can have up to ${sessionNameMaxLength()} letters, digits, "_", "-" and single spaces.`
   }
   return ''
 }
