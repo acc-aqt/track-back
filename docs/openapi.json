@@ -95,6 +95,44 @@
         }
       }
     },
+    "/join-qr.svg": {
+      "get": {
+        "summary": " Get Join Qr",
+        "operationId": "_get_join_qr_join_qr_svg_get",
+        "parameters": [
+          {
+            "name": "session",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/svg+xml": {}
+            }
+          },
+          "404": {
+            "description": "Unknown Game Session."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/join": {
       "post": {
         "summary": " Join Game Session",
