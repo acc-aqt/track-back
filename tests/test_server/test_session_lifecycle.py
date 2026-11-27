@@ -1,5 +1,4 @@
 import json
-import re
 import sys
 from collections.abc import Callable
 from importlib.resources import files
@@ -48,20 +47,10 @@ def test_create_with_unknown_music_service_is_rejected(client: TestClient) -> No
     assert game_session_manager.get_game_session("bad-service") is None
 
 
-def _music_service_dropdown_values() -> list[str]:
-    index_html = (WEB_UI / "index.html").read_text()
-    dropdown = re.search(
-        r'<select id="musicServiceDropdown">(.*?)</select>', index_html, re.DOTALL
-    )
-    assert dropdown is not None
-    return re.findall(r'<option value="([^"]+)"', dropdown.group(1))
-
-
-@pytest.mark.parametrize("music_service_type", _music_service_dropdown_values())
-def test_create_accepts_every_browser_music_service(
-    monkeypatch: pytest.MonkeyPatch, music_service_type: str
+def test_create_accepts_every_music_service_the_server_reports(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every value the browser's music-service dropdown sends creates a game."""
+    """Every service /music-services offers the Web UI creates a game."""
     monkeypatch.setattr(sys, "platform", "darwin")
     for key in ("SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"):
         monkeypatch.setenv(key, "value")
@@ -69,15 +58,20 @@ def test_create_accepts_every_browser_music_service(
     always = staticmethod(lambda: True)
     monkeypatch.setattr(AppleMusicAdapter, "running_on_macos", always)
     monkeypatch.setattr(AppleMusicAdapter, "music_app_is_running", always)
-    response = client.post(
-        "/create",
-        json={
-            "game_id": "dropdown",
-            "target_song_count": 2,
-            "music_service_type": music_service_type,
-        },
-    )
-    assert response.status_code == 201
+
+    available = client.get("/music-services").json()["available"]
+
+    assert available == ["spotify", "applemusic", "mock"]
+    for music_service_type in available:
+        response = client.post(
+            "/create",
+            json={
+                "game_id": f"offered-{music_service_type}",
+                "target_song_count": 2,
+                "music_service_type": music_service_type,
+            },
+        )
+        assert response.status_code == 201
 
 
 @pytest.mark.parametrize(
