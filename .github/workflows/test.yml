@@ -28,3 +28,20 @@ jobs:
         run: mypy src tests scripts
       - name: Pytest
         run: pytest tests --cov=src --cov-report=term
+
+  lowest-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v6
+      - name: Install runtime dependencies at their lower bounds
+        run: |
+          uv venv --python 3.11
+          uv pip install --resolution lowest-direct .
+          uv pip install ".[test]"
+          uv pip list
+      - name: Pytest
+        run: .venv/bin/pytest tests
