@@ -3,9 +3,9 @@
 import argparse
 import logging
 import os
+from pathlib import Path
 
-from dotenv import find_dotenv, load_dotenv
-
+from track_back.server import config
 from track_back.server.server import Server
 
 
@@ -20,8 +20,17 @@ def parse_args() -> tuple[int, int]:
         default="INFO",
         help="Set the logging level (default: INFO).",
     )
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        help="Load config from this dotenv file before .env and the user config.",
+    )
 
     args = parser.parse_args()
+
+    if args.env_file is not None and not args.env_file.is_file():
+        parser.error(f"env file not found: {args.env_file}")
+    config.load_config(args.env_file)
 
     port = args.port or int(os.environ.get("PORT", "4200"))
     log_level = getattr(logging, args.log_level.upper(), logging.INFO)
@@ -31,7 +40,6 @@ def parse_args() -> tuple[int, int]:
 
 def main() -> None:
     """Parse args and start the server."""
-    load_dotenv(find_dotenv(usecwd=True))
     port, log_level = parse_args()
     logging.basicConfig(level=log_level)
 
