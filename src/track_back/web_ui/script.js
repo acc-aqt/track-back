@@ -138,6 +138,7 @@ const OLDER_SERVER_MUSIC_SERVICES = {
   fromOlderServer: true
 }
 
+// Returns null, after telling the Host, if the Music Services can't be fetched.
 async function fetchMusicServices () {
   try {
     const res = await fetch(`${serverUrl}/music-services`)
@@ -150,7 +151,8 @@ async function fetchMusicServices () {
     return await res.json()
   } catch (err) {
     console.error('❌ Failed to fetch music services:', err)
-    return OLDER_SERVER_MUSIC_SERVICES
+    alert('⚠️ Failed to fetch the Music Services. Please try again.')
+    return null
   }
 }
 
@@ -180,7 +182,9 @@ function showMusicServiceChoice (services, preferred = null) {
 
 async function loadMusicServiceChoice (preferred = null) {
   const services = await fetchMusicServices()
-  showMusicServiceChoice(services, preferred)
+  if (services) {
+    showMusicServiceChoice(services, preferred)
+  }
   return services
 }
 
@@ -638,11 +642,19 @@ const hostOptionsAreOpen = () => !document.getElementById('gameConfigBox').hidde
 
 let musicServicesLoadedFrom = null
 
+// Returns false if the Music Services could not be loaded.
 async function ensureMusicServiceChoice () {
-  if (musicServicesLoadedFrom !== serverUrl) {
-    await loadMusicServiceChoice(loadStored(MUSIC_SERVICE_STORAGE_KEY))
-    musicServicesLoadedFrom = serverUrl
+  if (musicServicesLoadedFrom === serverUrl) {
+    return true
   }
+  const services = await loadMusicServiceChoice(
+    loadStored(MUSIC_SERVICE_STORAGE_KEY)
+  )
+  if (!services) {
+    return false
+  }
+  musicServicesLoadedFrom = serverUrl
+  return true
 }
 
 function fillHostOptions (name, targetSongCount) {
@@ -658,7 +670,9 @@ async function openHostOptions (error = '') {
     return
   }
   serverUrl = getServerUrl()
-  await ensureMusicServiceChoice()
+  if (!(await ensureMusicServiceChoice())) {
+    return
+  }
   const nameInput = document.getElementById('sessionNameInput')
   if (!nameInput.value) {
     const name = document.getElementById('username').value.trim()
@@ -700,7 +714,9 @@ async function hostGame () {
   if (!username) {
     return
   }
-  await ensureMusicServiceChoice()
+  if (!(await ensureMusicServiceChoice())) {
+    return
+  }
   const nameInput = document.getElementById('sessionNameInput')
   if (!hostOptionsAreOpen()) {
     fillHostOptions(defaultSessionName(username), loadStoredTargetSongCount())
