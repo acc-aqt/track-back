@@ -30,6 +30,7 @@ from track_back.music_service.selection import (
 from track_back.server import config, join_qr, network
 from track_back.server.errors import (
     AlreadyConnectedError,
+    GameSessionNotFoundError,
     GameSessionOverError,
     NotAPlayerError,
     NotEnoughPlayersError,
@@ -55,6 +56,7 @@ WEB_UI_DIR = files("track_back") / "web_ui"
 DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
     AlreadyConnectedError: 409,
     GameAlreadyRunningError: 409,
+    GameSessionNotFoundError: 404,
     GameSessionOverError: 409,
     MusicPlaybackError: 500,
     NotAPlayerError: 409,
@@ -392,10 +394,7 @@ class Server:
         return Response(content=image, media_type="image/jpeg")
 
     async def _get_join_qr(self, session: SessionName) -> Response:
-        if not self.game_sessions.get_game_session(session):
-            raise HTTPException(
-                status_code=404, detail=f"Game session {session} not found."
-            )
+        self.game_sessions.get_game_session(session)
         lan_addresses = network.lan_ipv4_addresses_or_empty()
         host = lan_addresses[0] if lan_addresses else "localhost"
         url = base_url(host, self.port, use_ssl=uses_ssl()) + join_qr.join_path(session)
@@ -406,10 +405,6 @@ class Server:
         session_name = req.game_id
         user_name = req.user_name
         session = self.game_sessions.get_game_session(session_name)
-        if not session:
-            raise HTTPException(
-                status_code=404, detail=f"Game session {session_name} not found."
-            )
         rejoin = session.is_running
         await session.connection_manager.deliver(session.join(user_name))
         if rejoin:
@@ -422,10 +417,6 @@ class Server:
         """Start the game and notify the first player via WebSocket."""
         session_name = req.game_id
         session = self.game_sessions.get_game_session(session_name)
-        if not session:
-            raise HTTPException(
-                status_code=404, detail=f"Game session {session_name} not found."
-            )
 
         await session.connection_manager.deliver(session.start())
 
@@ -440,10 +431,11 @@ class Server:
         if not is_valid_name(username, USERNAME_MAX_LENGTH):
             await websocket.close(code=1008, reason="Invalid user name.")
             return
-        game_session = self.game_sessions.get_game_session(game_id)
-        if not game_session:
+        try:
+            game_session = self.game_sessions.get_game_session(game_id)
+        except GameSessionNotFoundError as e:
             await websocket.close()
-            logger.error("Game session %s not found.", game_id)
+            logger.error(e)
             return
 
         try:

@@ -15,6 +15,13 @@ class NotEnoughPlayersError(Exception):
         super().__init__("Not enough players to start the game.")
 
 
+class GameSessionNotFoundError(Exception):
+    """No Game Session has this name."""
+
+    def __init__(self, session_name: str) -> None:
+        super().__init__(f"Game session {session_name} not found.")
+
+
 class GameSessionOverError(Exception):
     """The Game Session already has a Winner."""
 

@@ -54,8 +54,6 @@ def create_and_join(client: TestClient, create_game: CreateGame) -> CreateAndJoi
 @pytest.fixture
 def get_session(game_sessions: GameSessionManager) -> Callable[[str], GameSession]:
     def get(session_name: str) -> GameSession:
-        session = game_sessions.get_game_session(session_name)
-        assert session is not None
-        return session
+        return game_sessions.get_game_session(session_name)
 
     return get

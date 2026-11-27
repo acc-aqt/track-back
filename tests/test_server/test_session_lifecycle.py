@@ -2,6 +2,7 @@ import json
 import sys
 from collections.abc import Callable
 from importlib.resources import files
+from typing import Any
 
 import pytest
 from fastapi import WebSocketDisconnect
@@ -406,3 +407,20 @@ def test_create_rejects_target_song_count_below_one(
     )
     assert response.status_code == 422
     assert client.get("/list-sessions").json() == {"sessions": []}
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "request_args"),
+    [
+        ("post", "/join", {"json": {"game_id": "nowhere", "user_name": "alice"}}),
+        ("post", "/start", {"json": {"game_id": "nowhere"}}),
+        ("get", "/join-qr.svg", {"params": {"session": "nowhere"}}),
+    ],
+)
+def test_unknown_game_session_is_not_found(
+    client: TestClient, method: str, path: str, request_args: dict[str, Any]
+) -> None:
+    response = client.request(method, path, **request_args)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Game session nowhere not found."}

@@ -9,6 +9,7 @@ from track_back.game.player import Player
 from track_back.server.connection_manager import ConnectionManager
 from track_back.server.errors import (
     AlreadyConnectedError,
+    GameSessionNotFoundError,
     GameSessionOverError,
     NotAPlayerError,
     NotEnoughPlayersError,
@@ -196,9 +197,12 @@ class GameSessionManager:
             raise SessionAlreadyExistsError(session_name)
         self.sessions[session_name] = GameSession(session_name, game)
 
-    def get_game_session(self, session_name: str) -> GameSession | None:
-        """Retrieve the game session by ID."""
-        return self.sessions.get(session_name)
+    def get_game_session(self, session_name: str) -> GameSession:
+        """Return the Game Session with this name, or raise if there is none."""
+        session = self.sessions.get(session_name)
+        if session is None:
+            raise GameSessionNotFoundError(session_name)
+        return session
 
     def remove_game_session(self, session_name: str) -> None:
         """Remove a game session by ID."""
