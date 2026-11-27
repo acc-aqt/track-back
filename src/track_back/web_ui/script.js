@@ -763,7 +763,7 @@ async function toggleHostOptions () {
     setHostOptionsOpen(false)
     return
   }
-  await openHostOptions(document.getElementById('hostOptionsError').textContent)
+  await openHostOptions()
 }
 
 function hostOptionsProblem () {
@@ -844,6 +844,7 @@ async function hostGame () {
     // land on another origin, so remember the choice before leaving.
     store(USERNAME_STORAGE_KEY, username)
     rememberHostingChoice(options.targetSongCount, musicServiceType)
+    showHostOptionsError('')
     const stateParam = encodeURIComponent(
       JSON.stringify({
         game_id: sessionName,
@@ -880,6 +881,7 @@ async function hostGame () {
     return
   }
   rememberHostingChoice(options.targetSongCount, musicServiceType)
+  showHostOptionsError('')
   setHostOptionsOpen(false)
   isHost = true
 
@@ -897,6 +899,16 @@ for (const id of ['targetSongCountInput', 'sessionNameInput', 'username']) {
   document
     .getElementById(id)
     .addEventListener('input', () => updateHostOptionsSummary())
+}
+
+for (const id of [
+  'targetSongCountInput',
+  'sessionNameInput',
+  'musicServiceDropdown'
+]) {
+  document
+    .getElementById(id)
+    .addEventListener('input', () => showHostOptionsError(''))
 }
 
 document.getElementById('joinGameBtn').onclick = async () => {

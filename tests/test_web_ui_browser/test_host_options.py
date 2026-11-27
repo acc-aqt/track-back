@@ -163,3 +163,30 @@ def test_edited_name_stays_when_the_username_changes(
     page.get_by_label("Username").fill("Alice")
 
     expect(page.get_by_label("Game Session Name")).to_have_value("Friday Party")
+
+
+def test_error_clears_when_host_options_reopen(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("alice")
+    host_options_strip(page).click()
+    page.get_by_label("Target Song Count").fill("0")
+    page.get_by_role("button", name="Host a Game").click()
+    expect(page.get_by_role("alert")).to_contain_text("valid number greater than 0")
+
+    host_options_strip(page).click()
+    host_options_strip(page).click()
+
+    expect(page.get_by_role("alert")).to_be_hidden()
+
+
+def test_error_clears_when_the_host_edits_an_option(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("alice")
+    host_options_strip(page).click()
+    page.get_by_label("Target Song Count").fill("0")
+    page.get_by_role("button", name="Host a Game").click()
+    expect(page.get_by_role("alert")).to_contain_text("valid number greater than 0")
+
+    page.get_by_label("Target Song Count").fill("5")
+
+    expect(page.get_by_role("alert")).to_be_hidden()
