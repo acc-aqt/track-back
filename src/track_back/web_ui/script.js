@@ -687,10 +687,15 @@ async function ensureMusicServiceChoice ({ quiet = false } = {}) {
   return true
 }
 
+// The default name follows the Username until the Host edits it.
+let filledDefaultSessionName = ''
+
 function fillDefaultSessionName () {
   const nameInput = document.getElementById('sessionNameInput')
-  if (!nameInput.value.trim()) {
+  const name = nameInput.value.trim()
+  if (!name || name === filledDefaultSessionName) {
     nameInput.value = usernameSessionName()
+    filledDefaultSessionName = nameInput.value
   }
 }
 
@@ -883,6 +888,10 @@ async function hostGame () {
 
 document.getElementById('hostGameBtn').onclick = () => hostGame()
 document.getElementById('hostOptionsBtn').onclick = () => toggleHostOptions()
+
+document
+  .getElementById('username')
+  .addEventListener('input', () => fillDefaultSessionName())
 
 for (const id of ['targetSongCountInput', 'sessionNameInput', 'username']) {
   document

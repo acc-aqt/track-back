@@ -137,3 +137,29 @@ def test_target_song_count_is_remembered_after_a_reload(
     expect(host_options_strip(page)).to_have_accessible_name(
         re.compile(r"^4 songs · Mock · Edit$", re.IGNORECASE)
     )
+
+
+def test_default_name_follows_the_username_typed_after_opening(
+    page: Page, base_url: str
+) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("Al")
+    host_options_strip(page).click()
+    host_options_strip(page).click()
+    page.get_by_label("Username").fill("Alice")
+
+    page.get_by_role("button", name="Host a Game").click()
+
+    expect(page.get_by_text("Joined game: Game-by-Alice")).to_be_visible()
+
+
+def test_edited_name_stays_when_the_username_changes(
+    page: Page, base_url: str
+) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("Al")
+    host_options_strip(page).click()
+    page.get_by_label("Game Session Name").fill("Friday Party")
+    page.get_by_label("Username").fill("Alice")
+
+    expect(page.get_by_label("Game Session Name")).to_have_value("Friday Party")
