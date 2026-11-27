@@ -157,14 +157,6 @@ def test_disconnect_and_rejoin_are_broadcast(
         }
 
         _join(client, game_id, "bob")
-        assert _receive(ws1) == {
-            "type": "player_rejoined",
-            "message": "bob re-joined the game! There are now 2 players: alice, bob.",
-            "song_list": [],
-            "user_name": "bob",
-            "next_player": "bob",
-        }
-
         with client.websocket_connect(f"/ws/{game_id}/bob") as ws2:
             assert _receive(ws2)["type"] == "welcome"
             assert _receive(ws2) == {
@@ -172,6 +164,13 @@ def test_disconnect_and_rejoin_are_broadcast(
                 "message": "It's your turn!",
                 "next_player": "bob",
                 "song_list": [],
+            }
+            assert _receive(ws1) == {
+                "type": "player_rejoined",
+                "message": "bob re-joined the game! "
+                "There are now 2 players: alice, bob.",
+                "song_list": [],
+                "user_name": "bob",
             }
 
 
