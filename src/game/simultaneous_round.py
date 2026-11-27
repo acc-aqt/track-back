@@ -28,16 +28,22 @@ class SimultaneousRound:
     def handle_turn_progression(self, username: str) -> dict[str, Any]:
         """Only when every user has guessed, the game will skip to the next track."""
         self.users_already_guessed.add(username)
-
-        active_users = {user.name for user in self.game.users if user.is_active}
-
-        missing_users = active_users - self.users_already_guessed
-
-        if not missing_users:
-            self.game.music_service.next_track()
-            self.users_already_guessed.clear()
-
+        self._advance_if_round_complete()
         return {"next_player": None}
+
+    def player_left(self, username: str) -> bool:
+        """Stop waiting for a departed player; return True if the round advanced."""
+        if user := self.game.get_user(username):
+            user.is_active = False
+        return self._advance_if_round_complete()
+
+    def _advance_if_round_complete(self) -> bool:
+        active_users = {user.name for user in self.game.users if user.is_active}
+        if not active_users or active_users - self.users_already_guessed:
+            return False
+        self.game.music_service.next_track()
+        self.users_already_guessed.clear()
+        return True
 
     def get_players_to_notify_for_next_turn(self) -> list[User]:
         """Return a list of players to notify for the next turn."""
