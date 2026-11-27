@@ -14,7 +14,7 @@ from track_back.music_service.selection import (
     default_music_service,
 )
 from track_back.server import config, init_config
-from track_back.server.server import Server, uses_ssl
+from track_back.server.server import Server, base_url, uses_ssl
 
 logger = logging.getLogger(__name__)
 
@@ -130,8 +130,7 @@ def main() -> None:
 
     server = Server(music_service=music_service)
     if not args.no_browser:
-        scheme = "https" if uses_ssl() else "http"
-        url = f"{scheme}://localhost:{port}/"
+        url = base_url("localhost", port, use_ssl=uses_ssl()) + "/"
         server.call_when_ready(lambda: open_browser(url))
     server.run(port=port)
 
