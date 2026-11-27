@@ -39,7 +39,7 @@ def test_full_game_one_round() -> None:
     winner = game.winner
 
     assert winner == player_1  # First player instantly wins after first input
-    assert len(winner.song_list) == 1
+    assert len(winner.timeline) == 1
 
 
 ORIGINAL_ARTWORK = b"original artwork bytes"

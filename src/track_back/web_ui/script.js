@@ -190,7 +190,7 @@ function handleGuessRequest (data) {
 }
 
 function showTimeline (list) {
-  document.getElementById('songListHeader').style.display = 'block'
+  document.getElementById('timelineHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'
   document.getElementById('controls-waiting-for-start').hidden = true
@@ -597,7 +597,7 @@ document.getElementById('startGameBtn').onclick = async () => {
   }
 
   document.getElementById('controls-start').hidden = true
-  document.getElementById('songListHeader').style.display = 'block'
+  document.getElementById('timelineHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'
 }

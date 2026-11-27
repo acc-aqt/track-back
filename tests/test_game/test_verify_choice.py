@@ -11,10 +11,10 @@ song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
 
 
 @pytest.mark.parametrize(
-    ("song_list", "index", "selected_song", "expected_result"),
+    ("timeline", "index", "selected_song", "expected_result"),
     [
         (
-            # "empty_song_list",
+            # "empty_timeline",
             [],
             0,
             song_70s,
@@ -81,12 +81,12 @@ song_90s = Song("Scatman (ski-ba-bop-ba-dop-bop)", "Scatman John", 1995)
     ],
 )
 def test_verify_choice(
-    song_list: list[Song],
+    timeline: list[Song],
     index: int,
     selected_song: Song,
     expected_result: bool,
 ) -> None:
     """Test verify_choice with various scenarios."""
-    result = GameLogic.verify_choice(song_list, index, selected_song)
+    result = GameLogic.verify_choice(timeline, index, selected_song)
 
     assert result == expected_result

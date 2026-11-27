@@ -32,7 +32,7 @@ def guess_request_message(
         "type": MessageType.GUESS_REQUEST,
         "message": message,
         "next_player": player.name,
-        "song_list": [song.serialize() for song in player.song_list],
+        "song_list": [song.serialize() for song in player.timeline],
     }
 
 
@@ -59,7 +59,7 @@ def player_rejoined_message(player: Player, player_names: list[str]) -> dict[str
     return {
         "type": MessageType.PLAYER_REJOINED,
         "message": f"{player.name} re-joined the game! {_players_summary(player_names)}",
-        "song_list": [song.serialize() for song in player.song_list],
+        "song_list": [song.serialize() for song in player.timeline],
         "user_name": player.name,
     }
 

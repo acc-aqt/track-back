@@ -55,7 +55,7 @@ class GameLogic:
             return _error(f"{username} has already guessed this song.")
 
         player = next(player for player in self.players if player.name == username)
-        if not 0 <= insert_index <= len(player.song_list):
+        if not 0 <= insert_index <= len(player.timeline):
             return _error(f"Invalid position {insert_index}.")
 
         payload: dict[str, Any] = {}
@@ -65,8 +65,8 @@ class GameLogic:
         payload["type"] = MessageType.GUESS_RESULT
         payload["player"] = username
 
-        if self.verify_choice(player.song_list, insert_index, current_song):
-            player.add_song(insert_index, current_song)
+        if self.verify_choice(player.timeline, insert_index, current_song):
+            player.add_to_timeline(insert_index, current_song)
             payload["result"] = "correct"
         else:
             payload["result"] = "wrong"
@@ -77,9 +77,9 @@ class GameLogic:
         ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
-        payload["song_list"] = [song.serialize() for song in player.song_list]
+        payload["song_list"] = [song.serialize() for song in player.timeline]
 
-        if len(player.song_list) >= self.target_song_count:
+        if len(player.timeline) >= self.target_song_count:
             self.running = False
             self.winner = player
             payload["game_over"] = True
@@ -114,18 +114,18 @@ class GameLogic:
         return True
 
     @staticmethod
-    def verify_choice(song_list: list[Song], index: int, selected_song: Song) -> bool:
-        """Return True if the new song list would be sorted by release year."""
-        potential_list = song_list.copy()
-        potential_list.insert(index, selected_song)
+    def verify_choice(timeline: list[Song], index: int, selected_song: Song) -> bool:
+        """Return True if the timeline with the song added would be sorted by release year."""
+        potential_timeline = timeline.copy()
+        potential_timeline.insert(index, selected_song)
 
-        return GameLogic._is_sorted_by_release_year(potential_list)
+        return GameLogic._is_sorted_by_release_year(potential_timeline)
 
     @staticmethod
-    def _is_sorted_by_release_year(song_list: list[Song]) -> bool:
+    def _is_sorted_by_release_year(songs: list[Song]) -> bool:
         return all(
             earlier.release_year <= later.release_year
-            for earlier, later in pairwise(song_list)
+            for earlier, later in pairwise(songs)
         )
 
     def is_game_over(self) -> bool:

@@ -19,7 +19,7 @@ def test_round_does_not_advance_when_no_active_players_remain() -> None:
 
     game.player_rejoined("alice")
     game.handle_guess("alice", 0)
-    assert [song.title for song in alice.song_list] == ["Yesterday"]
+    assert [song.title for song in alice.timeline] == ["Yesterday"]
 
 
 def test_round_advances_when_last_owed_player_leaves() -> None:
@@ -29,7 +29,7 @@ def test_round_advances_when_last_owed_player_leaves() -> None:
     assert game.player_disconnected("bob") is True
 
     game.handle_guess("alice", 1)
-    assert [song.title for song in alice.song_list] == [
+    assert [song.title for song in alice.timeline] == [
         "Yesterday",
         "Bohemian Rhapsody",
     ]
