@@ -2,8 +2,6 @@
 
 from track_back.server import config
 
-DEFAULT_PORT = "4200"
-
 
 def ask(prompt: str, default: str = "") -> str:
     """Prompt for a value, returning ``default`` when the answer is empty."""
@@ -23,10 +21,10 @@ def run() -> None:
         print(f"Left {path} unchanged.")
         return
 
-    port = ask("Port", DEFAULT_PORT)
+    port = ask("Port", str(config.DEFAULT_PORT))
     while not port.isdigit():
         print("Port must be a number.")
-        port = ask("Port", DEFAULT_PORT)
+        port = ask("Port", str(config.DEFAULT_PORT))
     client_id = ""
     client_secret = ""
     redirect_uri = ""

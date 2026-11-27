@@ -48,7 +48,7 @@ def server_settings(
         parser.error(f"env file not found: {args.env_file}")
     config.load_config(args.env_file)
 
-    port = args.port or int(os.environ.get("PORT", "4200"))
+    port = args.port or int(os.environ.get("PORT", config.DEFAULT_PORT))
     log_level = getattr(logging, args.log_level.upper(), logging.INFO)
 
     return port, log_level

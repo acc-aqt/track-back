@@ -6,6 +6,7 @@ import platformdirs
 from dotenv import find_dotenv, load_dotenv
 
 APP_NAME = "track-back"
+DEFAULT_PORT = 4200
 
 
 def user_config_path() -> Path:
