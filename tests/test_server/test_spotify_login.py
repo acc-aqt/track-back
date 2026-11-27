@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from track_back.server import spotify_login
-from track_back.server.game_sessions import game_session_manager
 
 
 class FakeOAuth:
@@ -36,7 +35,7 @@ def test_callback_rejects_invalid_username(
     )
     assert response.status_code == 400
     assert "<script>" not in response.text
-    assert game_session_manager.sessions == {}
+    assert callback_client.get("/list-sessions").json() == {"sessions": []}
 
 
 def test_callback_redirects_host_into_the_new_game_session(
@@ -55,7 +54,9 @@ def test_callback_redirects_host_into_the_new_game_session(
         response.headers["location"]
         == "/?join=Spiel%20f%C3%BCr%20alle&username=Anna%20L%C3%BC&host=1"
     )
-    assert game_session_manager.get_game_session("Spiel für alle") is not None
+    assert callback_client.get("/list-sessions").json() == {
+        "sessions": ["Spiel für alle"]
+    }
 
 
 def test_callback_rejects_invalid_game_id(callback_client: TestClient) -> None:
@@ -66,7 +67,7 @@ def test_callback_rejects_invalid_game_id(callback_client: TestClient) -> None:
         "/spotify-callback", params={"code": "abc", "state": state}
     )
     assert response.status_code == 400
-    assert game_session_manager.sessions == {}
+    assert callback_client.get("/list-sessions").json() == {"sessions": []}
 
 
 def test_callback_shows_an_error_page_when_the_name_is_taken(
@@ -101,7 +102,7 @@ def test_callback_rejects_target_song_count_below_one(
         "/spotify-callback", params={"code": "abc", "state": state}
     )
     assert response.status_code == 400
-    assert game_session_manager.sessions == {}
+    assert callback_client.get("/list-sessions").json() == {"sessions": []}
 
 
 def test_login_asks_only_for_playback_permissions(

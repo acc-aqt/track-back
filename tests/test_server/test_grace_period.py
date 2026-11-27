@@ -9,7 +9,7 @@ from starlette.testclient import WebSocketTestSession
 
 from track_back.server.game_sessions import (
     EMPTY_SESSION_GRACE_PERIOD_SECONDS,
-    game_session_manager,
+    GameSessionManager,
 )
 
 
@@ -96,9 +96,11 @@ class FakeClock:
 
 
 @pytest.fixture
-def clock(monkeypatch: pytest.MonkeyPatch) -> FakeClock:
+def clock(
+    monkeypatch: pytest.MonkeyPatch, game_sessions: GameSessionManager
+) -> FakeClock:
     fake_clock = FakeClock()
-    monkeypatch.setattr(game_session_manager, "clock", fake_clock)
+    monkeypatch.setattr(game_sessions, "clock", fake_clock)
     return fake_clock
 
 

@@ -37,7 +37,7 @@ from track_back.server.errors import (
     PlayersNotConnectedError,
     SessionAlreadyExistsError,
 )
-from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.game_sessions import GameSession, GameSessionManager
 from track_back.server.messages import error_message, game_over_message
 from track_back.server.names import (
     USERNAME_MAX_LENGTH,
@@ -46,7 +46,7 @@ from track_back.server.names import (
     Username,
     is_valid_name,
 )
-from track_back.server.spotify_login import router as spotify_auth_router
+from track_back.server.spotify_login import spotify_login_router
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +218,8 @@ class Server:
     music_services : Mapping[MusicServiceType, MusicServiceDescription]
         The description of each Music Service: whether it can work here and how
         to build its adapter for a new Game Session.
+    game_sessions : GameSessionManager | None
+        The registry of this server's Game Sessions; a new, empty one by default.
     """
 
     def __init__(
@@ -227,8 +229,12 @@ class Server:
         music_services: Mapping[
             MusicServiceType, MusicServiceDescription
         ] = MUSIC_SERVICES,
+        game_sessions: GameSessionManager | None = None,
     ) -> None:
         self.music_service = music_service
+        self.game_sessions = (
+            GameSessionManager() if game_sessions is None else game_sessions
+        )
         self.music_services = music_services
         self.available_music_services = available_music_services(
             music_service, music_services
@@ -305,7 +311,7 @@ class Server:
         app.post("/join")(self._join_game_session)
         app.post("/start")(self._start_game_session)
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
-        app.include_router(spotify_auth_router)
+        app.include_router(spotify_login_router(self.game_sessions))
         app.get("/server_config.js", include_in_schema=False)(self._server_config)
 
         for error_type in DOMAIN_ERROR_STATUS_CODES:
@@ -332,7 +338,7 @@ class Server:
         )
 
     async def _create_game_session(self, req: CreateGameRequest) -> JSONResponse:
-        game_session_manager.remove_expired_sessions()
+        self.game_sessions.remove_expired_sessions()
         session_name = req.game_id
         target_song_count = req.target_song_count
 
@@ -359,7 +365,7 @@ class Server:
         game = GameLogic(
             target_song_count=target_song_count, music_service=music_service
         )
-        game_session_manager.add_session(session_name, game)
+        self.game_sessions.add_session(session_name, game)
 
         return JSONResponse(
             status_code=201,
@@ -372,7 +378,7 @@ class Server:
         )
 
     async def _list_joinable_game_sessions(self) -> JSONResponse:
-        joinable_session_names = game_session_manager.joinable_session_names()
+        joinable_session_names = self.game_sessions.joinable_session_names()
         return JSONResponse(content={"sessions": joinable_session_names})
 
     @staticmethod
@@ -383,7 +389,7 @@ class Server:
         return Response(content=image, media_type="image/jpeg")
 
     async def _get_join_qr(self, session: SessionName) -> Response:
-        if not game_session_manager.get_game_session(session):
+        if not self.game_sessions.get_game_session(session):
             raise HTTPException(
                 status_code=404, detail=f"Game session {session} not found."
             )
@@ -393,10 +399,10 @@ class Server:
         return Response(content=join_qr.render_svg(url), media_type="image/svg+xml")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
-        game_session_manager.remove_expired_sessions()
+        self.game_sessions.remove_expired_sessions()
         session_name = req.game_id
         user_name = req.user_name
-        session = game_session_manager.get_game_session(session_name)
+        session = self.game_sessions.get_game_session(session_name)
         if not session:
             raise HTTPException(
                 status_code=404, detail=f"Game session {session_name} not found."
@@ -412,7 +418,7 @@ class Server:
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
         session_name = req.game_id
-        session = game_session_manager.get_game_session(session_name)
+        session = self.game_sessions.get_game_session(session_name)
         if not session:
             raise HTTPException(
                 status_code=404, detail=f"Game session {session_name} not found."
@@ -431,7 +437,7 @@ class Server:
         if not is_valid_name(username, USERNAME_MAX_LENGTH):
             await websocket.close(code=1008, reason="Invalid user name.")
             return
-        game_session = game_session_manager.get_game_session(game_id)
+        game_session = self.game_sessions.get_game_session(game_id)
         if not game_session:
             await websocket.close()
             logger.error("Game session %s not found.", game_id)
@@ -461,7 +467,7 @@ class Server:
         except WebSocketDisconnect:
             connection_manager.detach(username)
             await connection_manager.deliver(game_session.disconnect(username))
-            game_session_manager.release_if_empty(game_session)
+            self.game_sessions.release_if_empty(game_session)
 
     @staticmethod
     async def _handle_message(context: ClientMessageContext, raw_data: str) -> None:

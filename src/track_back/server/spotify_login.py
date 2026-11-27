@@ -14,10 +14,8 @@ from track_back.game.game_logic import GameLogic
 from track_back.music_service.spotify import SpotifyAdapter
 from track_back.server import join_qr
 from track_back.server.errors import SessionAlreadyExistsError
-from track_back.server.game_sessions import game_session_manager
+from track_back.server.game_sessions import GameSessionManager
 from track_back.server.names import SessionName, TargetSongCount, Username
-
-router = APIRouter()
 
 
 class LoginState(BaseModel):
@@ -51,85 +49,92 @@ def get_spotify_oauth() -> SpotifyOAuth:
     )
 
 
-@router.get("/spotify-login")
-def spotify_login(state: str = "") -> RedirectResponse:
-    """Initiate the Spotify OAuth authorization flow.
+def spotify_login_router(game_sessions: GameSessionManager) -> APIRouter:
+    """Build the Spotify login routes, which create Game Sessions in the registry."""
+    router = APIRouter()
 
-    This endpoint generates an authorization URL and redirects the user to Spotify's
-    login and consent page. An optional 'state' parameter can be passed to track the
-    session or pass metadata, which will be included in the callback.
+    @router.get("/spotify-login")
+    def spotify_login(state: str = "") -> RedirectResponse:
+        """Initiate the Spotify OAuth authorization flow.
 
-    Parameters
-    ----------
-    state : str, optional
-        A JSON-encoded string to maintain state between the request and callback.
-        Defaults to an empty string.
+        This endpoint generates an authorization URL and redirects the user to Spotify's
+        login and consent page. An optional 'state' parameter can be passed to track the
+        session or pass metadata, which will be included in the callback.
 
-    Returns
-    -------
-    RedirectResponse
-        A redirect to Spotify's authorization URL where the user can log in and
-        authorize access.
+        Parameters
+        ----------
+        state : str, optional
+            A JSON-encoded string to maintain state between the request and callback.
+            Defaults to an empty string.
 
-    """
-    sp_oauth = get_spotify_oauth()
-    auth_url = sp_oauth.get_authorize_url(state=state)
+        Returns
+        -------
+        RedirectResponse
+            A redirect to Spotify's authorization URL where the user can log in and
+            authorize access.
 
-    return RedirectResponse(auth_url)
+        """
+        sp_oauth = get_spotify_oauth()
+        auth_url = sp_oauth.get_authorize_url(state=state)
 
+        return RedirectResponse(auth_url)
 
-@router.get("/spotify-callback")
-def spotify_callback(request: Request) -> Response:
-    """Handle the Spotify OAuth callback after user authorization.
+    @router.get("/spotify-callback")
+    def spotify_callback(request: Request) -> Response:
+        """Handle the Spotify OAuth callback after user authorization.
 
-    This endpoint is triggered by Spotify after a user logs in and approves access. It
-    extracts the authorization code and the game configuration state (game ID, target
-    song count, the Host's username) from the request, exchanges the code for an
-    access token, sets up the game logic with a Spotify adapter, registers the new game
-    session and sends the Host back to the Web UI to join it.
+        This endpoint is triggered by Spotify after a user logs in and approves access. It
+        extracts the authorization code and the game configuration state (game ID, target
+        song count, the Host's username) from the request, exchanges the code for an
+        access token, sets up the game logic with a Spotify adapter, registers the new game
+        session and sends the Host back to the Web UI to join it.
 
-    Parameters
-    ----------
-    request : Request
-        The incoming request containing query parameters 'code' and 'state'.
+        Parameters
+        ----------
+        request : Request
+            The incoming request containing query parameters 'code' and 'state'.
 
-    Returns
-    -------
-    Response
-        A 303 redirect to ``/?join=<session>&username=<username>&host=1`` if login and setup
-        succeeded, or an error page if any part of the process failed or the Game
-        Session Name is taken.
+        Returns
+        -------
+        Response
+            A 303 redirect to ``/?join=<session>&username=<username>&host=1`` if login and setup
+            succeeded, or an error page if any part of the process failed or the Game
+            Session Name is taken.
 
-    """
-    code = request.query_params.get("code")
-    state_raw = request.query_params.get("state")
+        """
+        code = request.query_params.get("code")
+        state_raw = request.query_params.get("state")
 
-    if not code or not state_raw:
-        return HTMLResponse(
-            "❌ Missing code or state in callback request", status_code=400
+        if not code or not state_raw:
+            return HTMLResponse(
+                "❌ Missing code or state in callback request", status_code=400
+            )
+
+        try:
+            state = LoginState.model_validate_json(state_raw)
+        except ValidationError as error:
+            return HTMLResponse(f"❌ {_state_error_message(error)}", status_code=400)
+
+        sp_oauth = get_spotify_oauth()
+        token_info = sp_oauth.get_access_token(code)
+
+        if not token_info:
+            return HTMLResponse("❌ Could not get token from Spotify", status_code=400)
+
+        access_token = token_info["access_token"]
+
+        adapter = SpotifyAdapter(spotipy.Spotify(auth=access_token))
+        game = GameLogic(
+            target_song_count=state.target_song_count, music_service=adapter
         )
 
-    try:
-        state = LoginState.model_validate_json(state_raw)
-    except ValidationError as error:
-        return HTMLResponse(f"❌ {_state_error_message(error)}", status_code=400)
+        try:
+            game_sessions.add_session(state.game_id, game)
+        except SessionAlreadyExistsError as error:
+            return HTMLResponse(f"❌ {html.escape(str(error))}", status_code=409)
 
-    sp_oauth = get_spotify_oauth()
-    token_info = sp_oauth.get_access_token(code)
+        return RedirectResponse(
+            join_qr.join_path(state.game_id, state.username, host=True), status_code=303
+        )
 
-    if not token_info:
-        return HTMLResponse("❌ Could not get token from Spotify", status_code=400)
-
-    access_token = token_info["access_token"]
-
-    adapter = SpotifyAdapter(spotipy.Spotify(auth=access_token))
-    game = GameLogic(target_song_count=state.target_song_count, music_service=adapter)
-
-    try:
-        game_session_manager.add_session(state.game_id, game)
-    except SessionAlreadyExistsError as error:
-        return HTMLResponse(f"❌ {html.escape(str(error))}", status_code=409)
-
-    return RedirectResponse(
-        join_qr.join_path(state.game_id, state.username, host=True), status_code=303
-    )
+    return router

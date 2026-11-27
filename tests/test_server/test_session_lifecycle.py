@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import MusicServiceType
-from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.game_sessions import GameSession
 from track_back.server.names import SESSION_NAME_MAX_LENGTH
 from track_back.server.server import Server
 
@@ -44,7 +44,7 @@ def test_create_with_unknown_music_service_is_rejected(client: TestClient) -> No
         },
     )
     assert response.status_code == 422
-    assert game_session_manager.get_game_session("bad-service") is None
+    assert client.get("/list-sessions").json() == {"sessions": []}
 
 
 def test_create_accepts_every_music_service_the_server_reports(
@@ -405,4 +405,4 @@ def test_create_rejects_target_song_count_below_one(
         },
     )
     assert response.status_code == 422
-    assert game_session_manager.get_game_session("too-few-songs") is None
+    assert client.get("/list-sessions").json() == {"sessions": []}

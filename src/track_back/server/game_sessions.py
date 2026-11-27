@@ -223,6 +223,3 @@ class GameSessionManager:
             return False
         empty_for = self.clock() - session.empty_since
         return empty_for > EMPTY_SESSION_GRACE_PERIOD_SECONDS
-
-
-game_session_manager = GameSessionManager()
