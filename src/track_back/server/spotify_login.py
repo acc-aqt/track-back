@@ -1,5 +1,6 @@
 """Spotify login routes that create a game session with an authenticated adapter."""
 
+import html
 import os
 from urllib.parse import quote
 
@@ -11,6 +12,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 from track_back.game.game_logic import GameLogic
 from track_back.music_service.spotify import SpotifyAdapter
+from track_back.server.errors import SessionAlreadyExistsError
 from track_back.server.game_sessions import game_session_manager
 from track_back.server.names import SessionName, TargetSongCount, Username
 
@@ -84,7 +86,8 @@ def spotify_callback(request: Request) -> Response:
     -------
     Response
         A 303 redirect to ``/?join=<session>&username=<username>&host=1`` if login and setup
-        succeeded, or an error message if any part of the process failed.
+        succeeded, or an error page if any part of the process failed or the Game
+        Session Name is taken.
 
     """
     code = request.query_params.get("code")
@@ -118,7 +121,10 @@ def spotify_callback(request: Request) -> Response:
     adapter.authenticate(access_token)
     game = GameLogic(target_song_count=state.target_song_count, music_service=adapter)
 
-    game_session_manager.add_session(state.game_id, game)
+    try:
+        game_session_manager.add_session(state.game_id, game)
+    except SessionAlreadyExistsError as error:
+        return HTMLResponse(f"❌ {html.escape(str(error))}", status_code=409)
 
     join_query = (
         f"join={quote(state.game_id, safe='')}"
