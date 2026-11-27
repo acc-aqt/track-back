@@ -193,7 +193,9 @@ SESSION_NAMES_THE_BROWSER_REJECTS = [
 
 
 def _browser_script() -> str:
-    return (WEB_UI / "script.js").read_text()
+    return "\n".join(
+        module.read_text() for module in WEB_UI.iterdir() if module.name.endswith(".js")
+    )
 
 
 def test_browser_name_pattern_is_the_one_under_test() -> None:
