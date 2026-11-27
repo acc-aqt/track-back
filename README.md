@@ -57,6 +57,12 @@ cp .env.example .env
 
 `.env` holds your Spotify credentials (see 2.1.2) and, optionally, the SSL paths for HTTPS (see 3). Leave the values empty for features you don't use.
 
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Port the server listens on (default `4200`). `track-back-server --port <port>` takes precedence. |
+| `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 2.1.2). |
+| `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 3). |
+
 ---
 
 ## 2. Connect to a music service
@@ -179,6 +185,8 @@ make format                # Applies ruff fixes and formatting
 make run                   # Starts the game server
 make openapi               # Regenerates docs/openapi.json
 ```
+
+The HTTP API is described in [docs/openapi.json](docs/openapi.json), the WebSocket messages in [docs/websocket-protocol.md](docs/websocket-protocol.md).
 
 ---
 
