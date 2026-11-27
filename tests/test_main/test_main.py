@@ -11,6 +11,26 @@ from unittest import mock
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def user_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    config_dir = tmp_path / "user-config"
+    monkeypatch.setattr(
+        "track_back.server.config.user_config_path",
+        lambda: config_dir / ".env",
+    )
+    monkeypatch.delenv("PORT", raising=False)
+    return config_dir
+
+
+def run_main(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> mock.MagicMock:
+    monkeypatch.setattr(sys, "argv", ["track-back-server", *argv])
+    main_module = importlib.import_module("track_back.server.main")
+    mock_server = mock.MagicMock()
+    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
+    main_module.main()
+    return mock_server
+
+
 @pytest.mark.parametrize(
     ("argv", "expected_port", "expected_log_level"),
     [
@@ -36,57 +56,15 @@ def test_main_starts_server_with_port_and_log_level_from_arguments(
     basic_config.assert_called_once_with(level=expected_log_level)
 
 
-def test_main_runs_server(monkeypatch: pytest.MonkeyPatch) -> None:
-    sys.argv = ["server/main.py", "--port", "4321", "--log-level", "DEBUG"]
-
-    main_module = importlib.import_module("track_back.server.main")
-
-    mock_server = mock.MagicMock()
-    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
-
-    main_module.main()
-
-    mock_server.run.assert_called_once_with(port=4321)
-
-
 def test_main_uses_port_from_dotenv_in_working_directory(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    sys.argv = ["server/main.py"]
-    monkeypatch.setenv("PORT", "unset-after-test")
-    monkeypatch.delenv("PORT")
     (tmp_path / ".env").write_text("PORT=5555\n")
     monkeypatch.chdir(tmp_path)
 
-    main_module = importlib.import_module("track_back.server.main")
+    server = run_main(monkeypatch, [])
 
-    mock_server = mock.MagicMock()
-    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
-
-    main_module.main()
-
-    mock_server.run.assert_called_once_with(port=5555)
-
-
-@pytest.fixture(autouse=True)
-def user_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    config_dir = tmp_path / "user-config"
-    monkeypatch.setattr(
-        "track_back.server.config.user_config_path",
-        lambda: config_dir / ".env",
-    )
-    monkeypatch.setenv("PORT", "unset-after-test")
-    monkeypatch.delenv("PORT")
-    return config_dir
-
-
-def run_main(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> mock.MagicMock:
-    sys.argv = ["track-back-server", *argv]
-    main_module = importlib.import_module("track_back.server.main")
-    mock_server = mock.MagicMock()
-    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
-    main_module.main()
-    return mock_server
+    server.run.assert_called_once_with(port=5555)
 
 
 def test_main_uses_port_from_user_config_from_unrelated_directory(
@@ -122,34 +100,54 @@ SOURCES = ["environment", "env_file", "cwd_dotenv", "user_config"]
 
 
 def configure_port(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, ports: dict[str, int]
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    user_config_dir: Path,
+    ports: dict[str, int],
 ) -> list[str]:
     """Set PORT in each named source, chdir to a fresh directory, return argv."""
     cwd = tmp_path / "cwd"
     cwd.mkdir()
     monkeypatch.chdir(cwd)
     argv: list[str] = []
+
+    def set_environment(port: int) -> None:
+        monkeypatch.setenv("PORT", str(port))
+
+    def set_env_file(port: int) -> None:
+        env_file = tmp_path / "chosen.env"
+        env_file.write_text(f"PORT={port}\n")
+        argv.extend(["--env-file", str(env_file)])
+
+    def set_cwd_dotenv(port: int) -> None:
+        (cwd / ".env").write_text(f"PORT={port}\n")
+
+    def set_user_config(port: int) -> None:
+        user_config_dir.mkdir()
+        (user_config_dir / ".env").write_text(f"PORT={port}\n")
+
+    setters = {
+        "environment": set_environment,
+        "env_file": set_env_file,
+        "cwd_dotenv": set_cwd_dotenv,
+        "user_config": set_user_config,
+    }
     for source, port in ports.items():
-        if source == "environment":
-            monkeypatch.setenv("PORT", str(port))
-        elif source == "env_file":
-            env_file = tmp_path / "chosen.env"
-            env_file.write_text(f"PORT={port}\n")
-            argv = ["--env-file", str(env_file)]
-        elif source == "cwd_dotenv":
-            (cwd / ".env").write_text(f"PORT={port}\n")
-        else:
-            user_file = tmp_path / "user-config" / ".env"
-            user_file.parent.mkdir()
-            user_file.write_text(f"PORT={port}\n")
+        setters[source](port)
     return argv
 
 
 @pytest.mark.parametrize(("higher", "lower"), list(itertools.combinations(SOURCES, 2)))
 def test_higher_precedence_config_source_wins(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, higher: str, lower: str
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    user_config_dir: Path,
+    higher: str,
+    lower: str,
 ) -> None:
-    argv = configure_port(monkeypatch, tmp_path, {lower: 7002, higher: 7001})
+    argv = configure_port(
+        monkeypatch, tmp_path, user_config_dir, {lower: 7002, higher: 7001}
+    )
 
     server = run_main(monkeypatch, argv)
 
@@ -158,9 +156,9 @@ def test_higher_precedence_config_source_wins(
 
 @pytest.mark.parametrize("source", SOURCES)
 def test_port_option_overrides_port_from_every_source(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, source: str
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, user_config_dir: Path, source: str
 ) -> None:
-    argv = configure_port(monkeypatch, tmp_path, {source: 7001})
+    argv = configure_port(monkeypatch, tmp_path, user_config_dir, {source: 7001})
 
     server = run_main(monkeypatch, [*argv, "--port", "8123"])
 
@@ -281,8 +279,7 @@ def test_server_started_from_unrelated_directory_uses_values_from_init(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     for key in SPOTIFY_KEYS:
-        monkeypatch.setenv(key, "unset-after-test")
-        monkeypatch.delenv(key)
+        monkeypatch.delenv(key, raising=False)
     run_init(monkeypatch, ["5000", "y", "my-id", "my-secret", ""])
     unrelated = tmp_path / "unrelated"
     unrelated.mkdir()
