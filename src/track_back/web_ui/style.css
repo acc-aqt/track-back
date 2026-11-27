@@ -5,7 +5,10 @@
   --bg-light: #8AABDB;
   --accent: #9C89DB;
   --border: #333;
-  --text-dark: #333;
+  --text-dark: #1a1a2e;
+  --focus-outline: #1a1a2e;
+  --panel-inset: #7780CE;
+  --wrong-guess-badge: #B3261E;
   --text-light-dark: #5f5f5f;
   --white: #fff;
   --gold: #E3C86C;
@@ -102,6 +105,7 @@ body {
 .input-group button {
   box-sizing: border-box;
   width: 100%;
+  min-height: 44px;
   padding: 0.5rem;
   font-size: 1rem;
   border: 1px solid var(--border);
@@ -112,10 +116,9 @@ body {
   color: var(--text-dark);
 }
 
-
-.input-group input:focus,
-.input-group select:focus {
-  outline: none; /* 🚫 No white border */
+:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 2px;
 }
 
 .input-group button {
@@ -310,8 +313,8 @@ label[for="server"]{
   position: absolute;
   top: -10px;
   left: -2px;
-  background-color: #ff4d4f;
-  color: white;
+  background-color: var(--wrong-guess-badge);
+  color: var(--white);
   font-size: 0.7rem;
   padding: 2px 6px;
   border-radius: 4px;
@@ -363,3 +366,15 @@ input[type="number"] {
   text-align: center;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+
+  .input-group button:hover,
+  .input-group button:active {
+    transform: none;
+  }
+}
