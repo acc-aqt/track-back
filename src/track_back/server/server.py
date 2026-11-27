@@ -31,7 +31,11 @@ from track_back.game.messages import (
 from track_back.game.player import Player
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
-from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
+from track_back.music_service.selection import (
+    MUSIC_SERVICES,
+    MusicServiceType,
+    available_music_services,
+)
 from track_back.server import network
 from track_back.server.errors import (
     AlreadyConnectedError,
@@ -77,7 +81,7 @@ class CreateGameRequest(BaseModel):
 
     game_id: SessionName
     target_song_count: TargetSongCount
-    music_service_type: MusicServiceType
+    music_service_type: MusicServiceType | None = None
 
 
 class JoinGameRequest(BaseModel):
@@ -183,9 +187,18 @@ class _ReadyNotifyingServer(uvicorn.Server):
 
 
 class Server:
-    """Encapsulates the FastAPI application."""
+    """Encapsulates the FastAPI application.
 
-    def __init__(self) -> None:
+    Parameters
+    ----------
+    music_service : MusicServiceType
+        The Music Service chosen by the Server Operator. Game Sessions use it
+        unless the Host picks another available one.
+    """
+
+    def __init__(self, music_service: MusicServiceType) -> None:
+        self.music_service = music_service
+        self.available_music_services = available_music_services(music_service)
         self.app = self.create_app()
         self._ready_callbacks: list[Callable[[], None]] = []
 
@@ -276,8 +289,17 @@ class Server:
         session_name = req.game_id
         target_song_count = req.target_song_count
 
+        music_service_type = req.music_service_type or self.music_service
+        if music_service_type not in self.available_music_services:
+            available = ", ".join(self.available_music_services)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Music Service {music_service_type} is not available on "
+                f"this server. Available: {available}.",
+            )
+
         try:
-            music_service = MUSIC_SERVICES[req.music_service_type]()
+            music_service = MUSIC_SERVICES[music_service_type]()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 

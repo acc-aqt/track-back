@@ -47,9 +47,9 @@ test:
 	$(ENV_PREFIX)pytest tests --cov=src --cov-report=html
 
 .PHONY: run
-run:              ## Start the game server
-	$(ENV_PREFIX)track-back-server --no-browser
+run:              ## Start the game server with the Mock Music Service
+	$(ENV_PREFIX)track-back-server --music-service mock --no-browser
 
 .PHONY: openapi
 openapi:          ## Regenerate docs/openapi.json
-	$(ENV_PREFIX)python -c "import json; from track_back.server.server import Server; print(json.dumps(Server().app.openapi(), indent=2))" > docs/openapi.json
+	$(ENV_PREFIX)python -c "import json; from track_back.music_service.selection import MusicServiceType; from track_back.server.server import Server; print(json.dumps(Server(music_service=MusicServiceType.MOCK).app.openapi(), indent=2))" > docs/openapi.json

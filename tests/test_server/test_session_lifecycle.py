@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from collections.abc import Callable
 from importlib.resources import files
 
@@ -9,8 +10,10 @@ from fastapi.testclient import TestClient
 
 from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.error import MusicServiceError
+from track_back.music_service.selection import MusicServiceType
 from track_back.server.game_sessions import GameSession, game_session_manager
 from track_back.server.names import SESSION_NAME_MAX_LENGTH
+from track_back.server.server import Server
 
 WEB_UI = files("track_back") / "web_ui"
 
@@ -56,9 +59,13 @@ def _music_service_dropdown_values() -> list[str]:
 
 @pytest.mark.parametrize("music_service_type", _music_service_dropdown_values())
 def test_create_accepts_every_browser_music_service(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch, music_service_type: str
+    monkeypatch: pytest.MonkeyPatch, music_service_type: str
 ) -> None:
     """Every value the browser's music-service dropdown sends creates a game."""
+    monkeypatch.setattr(sys, "platform", "darwin")
+    for key in ("SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"):
+        monkeypatch.setenv(key, "value")
+    client = TestClient(Server(music_service=MusicServiceType.MOCK).app)
     always = staticmethod(lambda: True)
     monkeypatch.setattr(AppleMusicAdapter, "running_on_macos", always)
     monkeypatch.setattr(AppleMusicAdapter, "music_app_is_running", always)

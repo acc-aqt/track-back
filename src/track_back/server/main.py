@@ -3,10 +3,16 @@
 import argparse
 import logging
 import os
+import sys
 import webbrowser
 from pathlib import Path
 
 from track_back import __version__
+from track_back.music_service.selection import (
+    MusicServiceType,
+    available_music_services,
+    default_music_service,
+)
 from track_back.server import config, init_config
 from track_back.server.server import Server, uses_ssl
 
@@ -22,6 +28,13 @@ def build_parser() -> argparse.ArgumentParser:
     subcommands = parser.add_subparsers(dest="command", title="commands")
     subcommands.add_parser("init", help="Interactively create the user config file.")
     parser.add_argument("--port", type=int, help="Port to run the server on.")
+    parser.add_argument(
+        "--music-service",
+        type=MusicServiceType,
+        choices=list(MusicServiceType),
+        help="Music Service to play Songs with (default: MUSIC_SERVICE, "
+        "else applemusic on macOS and spotify elsewhere).",
+    )
     parser.add_argument(
         "--log-level",
         type=str,
@@ -52,6 +65,41 @@ def server_settings(args: argparse.Namespace) -> tuple[int, int]:
     return port, log_level
 
 
+UNAVAILABLE_MUSIC_SERVICE_FIXES = {
+    MusicServiceType.SPOTIFY: "Spotify needs credentials: "
+    "run `track-back-server init` to add them.",
+    MusicServiceType.APPLE_MUSIC: "Apple Music needs macOS and the Music app: "
+    "try --music-service spotify.",
+}
+
+
+class MusicServiceConfigError(Exception):
+    """The chosen Music Service is invalid or can't work on this machine."""
+
+
+def chosen_music_service(args: argparse.Namespace) -> MusicServiceType:
+    """Return the Music Service from the option, ``MUSIC_SERVICE`` or the default."""
+    if args.music_service is not None:
+        music_service: MusicServiceType = args.music_service
+        return music_service
+    if configured := os.environ.get("MUSIC_SERVICE"):
+        try:
+            return MusicServiceType(configured)
+        except ValueError:
+            valid = ", ".join(MusicServiceType)
+            msg = f"Invalid MUSIC_SERVICE {configured!r}: use one of {valid}."
+            raise MusicServiceConfigError(msg) from None
+    return default_music_service()
+
+
+def usable_music_service(args: argparse.Namespace) -> MusicServiceType:
+    """Return the chosen Music Service, or raise if it can't work here."""
+    music_service = chosen_music_service(args)
+    if music_service not in available_music_services(music_service):
+        raise MusicServiceConfigError(UNAVAILABLE_MUSIC_SERVICE_FIXES[music_service])
+    return music_service
+
+
 def open_browser(url: str) -> None:
     """Open the URL in the default browser, logging a warning if that fails."""
     try:
@@ -74,8 +122,13 @@ def main() -> None:
         parser.error(f"env file not found: {args.env_file}")
     port, log_level = server_settings(args)
     logging.basicConfig(level=log_level)
+    try:
+        music_service = usable_music_service(args)
+    except MusicServiceConfigError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
-    server = Server()
+    server = Server(music_service=music_service)
     if not args.no_browser:
         scheme = "https" if uses_ssl() else "http"
         url = f"{scheme}://localhost:{port}/"

@@ -2,6 +2,7 @@ from unittest import mock
 
 import pytest
 
+from track_back.music_service.selection import MusicServiceType
 from track_back.server.server import Server
 
 
@@ -9,7 +10,7 @@ def run_server(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], port: int
 ) -> str:
     monkeypatch.setattr("uvicorn.Server.run", mock.MagicMock())
-    Server().run(port=port)
+    Server(music_service=MusicServiceType.MOCK).run(port=port)
     return capsys.readouterr().out
 
 
