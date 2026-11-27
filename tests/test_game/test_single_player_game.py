@@ -1,20 +1,18 @@
 import pytest
-from game.user import User
-from music_service.mock import DummyMusicService
+
 from game.game_logic import GameLogic
-from game.strategies.factory import GameStrategyEnum
+from game.user import User
+from music_service.mock import MockMusicService
 
 
-@pytest.fixture(params=[GameStrategyEnum.SEQUENTIAL, GameStrategyEnum.SIMULTANEOUS])
-def test_env(request):
-    game = GameLogic(
-        target_song_count=2, music_service=DummyMusicService(), game_strategy_enum=request.param
-    )
+@pytest.fixture
+def test_env() -> GameLogic:
+    game = GameLogic(target_song_count=2, music_service=MockMusicService())
 
     return game
 
 
-def test_single_player_game(test_env):
+def test_single_player_game(test_env: GameLogic) -> None:
     game = test_env
     assert game.running is False
 
@@ -33,7 +31,6 @@ def test_single_player_game(test_env):
     assert len(test_user.song_list) == 1
     assert game.is_game_over() is False
     assert game.winner is None
-
 
     # user makes correct guess (songs from mock are delived with increasing release year)
     game.handle_player_turn(test_user.name, 1)

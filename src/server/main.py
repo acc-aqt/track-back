@@ -4,7 +4,7 @@ import argparse
 import logging
 import os
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 from server.server import Server
 
@@ -31,10 +31,9 @@ def parse_args() -> tuple[int, int]:
 
 def main() -> None:
     """Parse args and start the server."""
+    load_dotenv(find_dotenv(usecwd=True))
     port, log_level = parse_args()
     logging.basicConfig(level=log_level)
-
-    load_dotenv()
 
     server = Server()
     server.run(port=port)

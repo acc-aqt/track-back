@@ -13,6 +13,7 @@ const MAX_RECONNECT_ATTEMPTS = 10
 
 const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
 const USER_NAME_MAX_LENGTH = 20
+const GAME_ID_MAX_LENGTH = 40
 const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
 function loadScript (url, onSuccess, onError) {
@@ -23,7 +24,6 @@ function loadScript (url, onSuccess, onError) {
   document.head.appendChild(script)
 }
 
-// Called only if config file is successfully loaded
 // Get serverurl by user input if server_config.js does not exist.
 loadScript(
   'server_config.js',
@@ -65,8 +65,8 @@ let currentGuessSong = null
 let pauseAfterGuess = false
 let queuedTurn = null
 
-const WRONG_GUESS_DISPLAY_TIME = 2000 // How long the wrong guess stays visible
-const FADE_DURATION = 1000 // Duration of fade-out animation
+const WRONG_GUESS_DISPLAY_TIME = 2000
+const FADE_DURATION = 1000
 
 const log = msg => {
   const logBox = document.getElementById('log')
@@ -79,14 +79,16 @@ const targetSongCountInput = document.getElementById('targetSongCountInput')
 targetSongCountInput.addEventListener('input', () => {
   let value = targetSongCountInput.value.trim()
 
-  // Only allow positive integers
   if (!/^\d+$/.test(value) || parseInt(value) <= 0) {
-    targetSongCountInput.value = '' // Clear invalid input
+    targetSongCountInput.value = ''
   }
 })
 
 const isValidUsername = name =>
   name.length <= USER_NAME_MAX_LENGTH && NAME_PATTERN.test(name)
+
+const isValidGameId = id =>
+  id.length <= GAME_ID_MAX_LENGTH && NAME_PATTERN.test(id)
 
 const readUsername = () => {
   const name = document.getElementById('username').value.trim()
@@ -153,12 +155,8 @@ function handleYourTurn (data) {
     return
   }
 
-  document.getElementById('songListHeader').style.display = 'block'
-  document.getElementById('songTimeline').style.display = 'block'
-  document.getElementById('songCount').style.display = 'block'
-  document.getElementById('controls-waiting-for-start').hidden = true
+  showTimeline(data.song_list || [])
 
-  const list = data.song_list || []
   const dummyCovers = [
     'dummy-cover/cover1.webp',
     'dummy-cover/cover2.webp',
@@ -181,15 +179,20 @@ function handleYourTurn (data) {
 
   document.getElementById('newSongContainer').style.display = 'block'
 
-  document.getElementById(
-    'songCount'
-  ).textContent = `Song count: ${data.song_list.length}`
+  setupDragDrop()
+}
 
+function showTimeline (list) {
+  document.getElementById('songListHeader').style.display = 'block'
+  document.getElementById('songTimeline').style.display = 'block'
+  document.getElementById('songCount').style.display = 'block'
+  document.getElementById('controls-waiting-for-start').hidden = true
+  document.getElementById('controls-start').hidden = true
+
+  document.getElementById('songCount').textContent = `Song count: ${list.length}`
   document
     .getElementById('songTimeline')
     .replaceChildren(...list.map(s => buildSongEntry(s)))
-
-  setupDragDrop()
 }
 
 function handleGuessResult (data) {
@@ -206,13 +209,11 @@ function handleGuessResult (data) {
 
   const timeline = document.getElementById('songTimeline')
 
-  // Always clear the new song container
   document.getElementById('newSongContainer').style.display = 'none'
 
   // Update the timeline first (without the guess)
   timeline.replaceChildren(...list.map(s => buildSongEntry(s)))
 
-  // If the guess was wrong, insert the incorrect guess at the user's chosen position
   if (data.result === 'wrong') {
     const wrongSong = data.last_song || {}
     const guessedIndex = Number(data.last_index ?? 0)
@@ -230,7 +231,6 @@ function handleGuessResult (data) {
       timeline.appendChild(wrongSongEl)
     }
 
-    // Fade out and remove after WRONG_GUESS_DISPLAY_TIME
     setTimeout(() => {
       wrongSongEl.classList.add('fade-out')
       setTimeout(() => {
@@ -251,6 +251,48 @@ function handleGuessResult (data) {
   }
 }
 
+const handleGameOver = data => {
+  log(`🏁 Game Over! Winner: ${data.winner}`)
+  document.getElementById('newSongContainer').style.display = 'none'
+  const winnerHeader = document.getElementById('winnerHeader')
+  const winnerIsYou = data.winner === username
+  winnerHeader.replaceChildren(
+    ...(winnerIsYou
+      ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
+      : [
+          'Game over.',
+          document.createElement('br'),
+          `${data.winner} won the game.`
+        ])
+  )
+
+  winnerHeader.style.display = 'block'
+}
+
+const serverMessageHandlers = {
+  your_turn: handleYourTurn,
+  guess_result: data => {
+    if (data.player === username) {
+      handleGuessResult(data)
+    }
+  },
+  welcome: data => log(`👋🏻 ${data.message}`),
+  player_joined: data => log(`👋🏻 ${data.message}`),
+  player_rejoined: data => {
+    if (data.user_name === username) {
+      document.getElementById('newSongContainer').style.display = 'none'
+      showTimeline(data.song_list || [])
+      log('👋🏻 Welcome back! Waiting for the others to guess.')
+    } else {
+      log(`👋🏻 ${data.message}`)
+    }
+  },
+  error: data => log(`🚨 Error: ${data.message}`),
+  other_player_guess: data => log(`🧑🏽‍🎤 ${data.message}`),
+  game_over: handleGameOver,
+  user_disconnected: data => log(`❌ ${data.message}`)
+}
+
 function connectWebSocket () {
   const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -264,7 +306,7 @@ function connectWebSocket () {
     document.getElementById('game').style.display = 'block'
     log('🔌 Connected to game session.')
 
-    reconnectAttempts = 0 // Reset attempt counter
+    reconnectAttempts = 0
 
     // Start keepalive ping
     pingInterval = setInterval(() => {
@@ -281,46 +323,10 @@ function connectWebSocket () {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data)
-      const type = data.type
-
-      if (type === 'your_turn') {
-        handleYourTurn(data)
-      } else if (type === 'guess_result' && data.player === username) {
-        handleGuessResult(data)
-      } else if (type === 'welcome') {
-        log(`👋🏻 ${data.message}`)
-      } else if (type === 'player_joined') {
-        log(`👋🏻 ${data.message}`)
-      } else if (type === 'game_start') {
-        log(`🎮 ${data.message}`)
-      } else if (type === 'player_rejoined' && data.user_name === username) {
-        handleYourTurn(data)
-      } else if (type === 'player_rejoined' && data.user_name !== username) {
-        log(`👋🏻 ${data.message}`)
-      } else if (type === 'error') {
-        log(`🚨 Error: ${data.message}`)
-      } else if (type === 'other_player_guess') {
-        log(`🧑🏽‍🎤 ${data.message}`)
-      } else if (type === 'game_over') {
-        log(`🏁 Game Over! Winner: ${data.winner}`)
-        document.getElementById('newSongContainer').style.display = 'none'
-        const winnerHeader = document.getElementById('winnerHeader')
-        const winnerIsYou = data.winner === username
-        winnerHeader.replaceChildren(
-          ...(winnerIsYou
-            ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
-            : [
-                'Game over.',
-                document.createElement('br'),
-                `${data.winner} won the game.`
-              ])
-        )
-
-        winnerHeader.style.display = 'block'
-      } else if (type === 'user_disconnected') {
-        log(`❌ ${data.message}`)
+      if (Object.hasOwn(serverMessageHandlers, data.type)) {
+        serverMessageHandlers[data.type](data)
       } else {
-        log(`Unknown message type: ${type}.`)
+        log(`Unknown message type: ${data.type}.`)
       }
     } catch (e) {
       console.error('❌ Error parsing WebSocket message:', e)
@@ -366,7 +372,6 @@ async function listAndChooseGameSessions () {
     const dropdown = document.getElementById('sessionDropdown')
     const joinButton = document.getElementById('joinSelectedSessionBtn')
 
-    // Clear previous options
     dropdown.innerHTML = ''
 
     if (sessions.length === 0) {
@@ -374,7 +379,6 @@ async function listAndChooseGameSessions () {
       return
     }
 
-    // Fill the dropdown
     sessions.forEach((sessionId, index) => {
       const option = document.createElement('option')
       option.value = sessionId
@@ -464,6 +468,12 @@ async function createGame () {
 
   if (!gameId) {
     alert('Please enter a game ID!')
+    return
+  }
+  if (!isValidGameId(gameId)) {
+    alert(
+      `Game IDs can have up to ${GAME_ID_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+    )
     return
   }
 
@@ -556,7 +566,6 @@ document.getElementById('joinGameBtn').onclick = async () => {
     await joinGame()
     return
   }
-  // Ask the user to pick one session
   await listAndChooseGameSessions()
 }
 
@@ -604,13 +613,10 @@ const setupDragDrop = () => {
       if (evt.item.id === 'new-song') {
         const newIndex = evt.newIndex
 
-        // Remove the dragged song from the timeline immediately
         evt.item.remove()
 
-        // Send the guess to the server
         socket.send(JSON.stringify({ type: 'guess', index: newIndex }))
 
-        // Disable dragging
         Sortable.get(timeline).option('disabled', true)
         Sortable.get(newSongContainer).option('disabled', true)
       }

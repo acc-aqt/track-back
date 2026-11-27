@@ -4,10 +4,10 @@ from game.song import Song
 from music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
-class DummyMusicService(AbstractMusicServiceAdapter):
+class MockMusicService(AbstractMusicServiceAdapter):
     """Mock music service for testing purposes."""
 
-    service_name = "Dummy Music Service"
+    service_name = "Mock Music Service"
 
     def __init__(self) -> None:
         self.playlist: list[Song] = [
@@ -40,4 +40,4 @@ class DummyMusicService(AbstractMusicServiceAdapter):
         """Skip to next track. Songs are ordered by release year."""
         self.playlist_index += 1
         if self.playlist_index >= len(self.playlist):
-            self.playlist_index = 0  # Loop back around
+            self.playlist_index = 0

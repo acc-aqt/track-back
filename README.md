@@ -57,6 +57,12 @@ cp .env.example .env
 
 `.env` holds your Spotify credentials (see 2.1.2) and, optionally, the SSL paths for HTTPS (see 3). Leave the values empty for features you don't use.
 
+| Variable | Purpose |
+| --- | --- |
+| `PORT` | Port the server listens on (default `4200`). `track-back-server --port <port>` takes precedence. |
+| `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 2.1.2). |
+| `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 3). |
+
 ---
 
 ## 2. Connect to a music service
@@ -140,12 +146,12 @@ Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html), or op
 
 If the page doesn't come with a preconfigured server, it first shows a **Server** field. Enter your server's address, e.g. `http://localhost:4200` or `http://<your-lan-ip>:4200`.
 
-Every player enters a **Username** (up to 20 letters, digits, `_`, `-` and single spaces).
+Every player enters a **Username** of up to 20 characters. Usernames and **Game Session Names** (up to 40 characters) follow the same rule: one or more words separated by single spaces, where each word uses only letters and digits from any script (Unicode categories L and N, e.g. `Jörg`, `李雷`, `٣٤`), `_` and `-`. No leading, trailing or double spaces.
 
 ### 4.1 Host a game
 
 1. Click **Configure new Game Session**.
-2. In **Game Setup**, choose the music service, a **Game Session Name** (defaults to `Game-by-<username>`) and the **Target Song Count**: the first player whose timeline reaches it wins.
+2. In **Game Setup**, choose the music service, a **Game Session Name** (defaults to `Game-by-<username>`) and the **Target Song Count** (at least 1): the first player whose timeline reaches it wins.
 3. Click **Create new Game Session**.
    - **Spotify:** a Spotify login opens in a new tab. Log in, close the tab, and click **Join the new game session** in the game.
    - **Apple Music:** the session is created and you join it directly.
@@ -164,7 +170,7 @@ Every player enters a **Username** (up to 20 letters, digits, `_`, `-` and singl
 - The first player to reach the target song count wins.
 - If you lose your connection, join the same session again with the same username to continue.
 
-> The **Dummy Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
+> The **Mock Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
 
 ## 5. Development setup (not necessary to run the game)
 
@@ -174,10 +180,13 @@ For code development and testing:
 make create-venv           # Creates .venv/ and installs the package with test and lint extras
 source .venv/bin/activate  # Activates the virtual environment in your shell
 make test                  # Runs the tests with coverage
-make lint                  # Runs formatters, ruff, mypy and pylint on src/
+make lint                  # Checks ruff lint, ruff format and mypy on src/ and tests/ (same as CI)
+make format                # Applies ruff fixes and formatting
 make run                   # Starts the game server
 make openapi               # Regenerates docs/openapi.json
 ```
+
+The HTTP API is described in [docs/openapi.json](docs/openapi.json), the WebSocket messages in [docs/websocket-protocol.md](docs/websocket-protocol.md).
 
 ---
 
