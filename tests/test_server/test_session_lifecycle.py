@@ -206,7 +206,7 @@ def test_browser_session_name_rule_is_the_one_under_test() -> None:
     script = _browser_script()
     assert f"const SESSION_NAME_MAX_LENGTH = {SESSION_NAME_MAX_LENGTH}\n" in script
     assert BROWSER_SESSION_NAME_RULE in script
-    assert "if (!isValidSessionName(sessionName)) {" in script
+    assert "if (!isValidSessionName(name)) {" in script
 
 
 @pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_ACCEPTS)

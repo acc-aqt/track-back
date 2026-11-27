@@ -134,17 +134,27 @@ body {
   transform: translateY(0px);
 }
 
+#hostOptionsError[hidden],
 #musicServiceLine[hidden],
 #musicServiceChange[hidden],
 #musicServicePicker[hidden] {
   display: none !important;
 }
 
+#hostOptionsLine,
 #musicServiceLine {
   margin: 0;
   font-family: sans-serif;
   font-size: 0.9rem;
   color: var(--text-dark);
+}
+
+.config-error {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 0.9rem;
+  color: #b00020;
+  text-align: center;
 }
 
 .link-button {
