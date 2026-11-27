@@ -1,4 +1,8 @@
-# 🎵 TrackBack
+<p align="center">
+  <img src="web_ui/assets/logo.svg" alt="TrackBack logo" width="96" />
+</p>
+
+# TrackBack
 
 [![Tests](https://github.com/acc-aqt/track-back/actions/workflows/test.yml/badge.svg)](https://github.com/acc-aqt/track-back/actions/workflows/test.yml)
 
