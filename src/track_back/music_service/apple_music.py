@@ -48,9 +48,6 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
 
     def current_song(self) -> Song:
         """Get the currently playing song."""
-        if not self._music_is_playing():
-            self.start_playback()
-
         separator = "TrackBackSeparator"
         script = f"""
     tell application "Music"
@@ -117,20 +114,6 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
     """
 
         subprocess.run([OSA_SCRIPT_PATH, "-e", script], check=False)  # noqa: S603
-
-    def _music_is_playing(self) -> bool:
-        script = """
-    tell application "Music"
-        return player state is playing
-    end tell
-    """
-        result = subprocess.run(  # noqa: S603
-            [OSA_SCRIPT_PATH, "-e", script],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return result.stdout.strip().lower() == "true"
 
     def next_track(self) -> None:
         """Skip to the next track."""

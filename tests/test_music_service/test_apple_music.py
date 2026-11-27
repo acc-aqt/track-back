@@ -10,6 +10,7 @@ from track_back.game.game_logic import GameLogic
 from track_back.game.player import Player
 from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
+from track_back.music_service.error import MusicServiceError
 
 
 @pytest.mark.skipif(
@@ -55,8 +56,11 @@ class FakeMac:
         sips_works: bool = True,
         sips_missing: bool = False,
         export_hangs: bool = False,
+        playing: bool = True,
     ) -> None:
         self.artwork = artwork
+        self.playing = playing
+        self.scripts: list[str] = []
         self.sips_works = sips_works
         self.sips_missing = sips_missing
         self.export_hangs = export_hangs
@@ -67,13 +71,25 @@ class FakeMac:
         if args[0] == "sips":
             return self._sips(args)
         script = args[2]
+        self.scripts.append(script)
         if "artwork" in script:
             return self._export_artwork(Path(args[3]))
         if "TrackBackSeparator" in script:
+            if not self.playing:
+                return self._done("No song is currently playing")
             return self._done(
                 "YesterdayTrackBackSeparatorThe BeatlesTrackBackSeparator1965"
             )
+        if "player state is playing" in script:
+            return self._done(str(self.playing).lower())
         return self._done("true")
+
+    def started_playback(self) -> bool:
+        return any(
+            line.strip() == "play"
+            for script in self.scripts
+            for line in script.split("\n")
+        )
 
     def _export_artwork(self, path: Path) -> subprocess.CompletedProcess[str]:
         if self.export_hangs:
@@ -162,3 +178,15 @@ def test_hanging_artwork_export_leaves_song_without_cover(
 
     assert song.title == "Yesterday"
     assert song.album_cover_url == ""
+
+
+def test_current_song_while_paused_raises_without_starting_playback(
+    fake_mac: Callable[[FakeMac], AppleMusicAdapter],
+) -> None:
+    mac = FakeMac(artwork=None, playing=False)
+    adapter = fake_mac(mac)
+
+    with pytest.raises(MusicServiceError):
+        adapter.current_song()
+
+    assert not mac.started_playback()
