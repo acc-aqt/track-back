@@ -76,3 +76,32 @@ def test_create_with_unavailable_music_service_is_rejected(
     assert response.status_code == 400
     assert available in response.json()["detail"]
     assert client.get("/list-sessions").json() == {"sessions": []}
+
+
+@pytest.mark.parametrize(
+    ("setup", "available"),
+    [
+        (("applemusic", "darwin", False), ["applemusic"]),
+        (("applemusic", "darwin", True), ["spotify", "applemusic"]),
+        (("spotify", "darwin", True), ["spotify", "applemusic"]),
+        (("spotify", "linux", True), ["spotify"]),
+        (("spotify", "win32", True), ["spotify"]),
+        (("mock", "linux", False), ["mock"]),
+        (("mock", "darwin", True), ["spotify", "applemusic", "mock"]),
+    ],
+)
+def test_music_services_reports_default_and_available(
+    monkeypatch: pytest.MonkeyPatch, setup: ServerSetup, available: list[str]
+) -> None:
+    chosen, platform, spotify_credentials = setup
+    client = client_for(
+        monkeypatch,
+        MusicServiceType(chosen),
+        platform=platform,
+        spotify_credentials=spotify_credentials,
+    )
+
+    response = client.get("/music-services")
+
+    assert response.status_code == 200
+    assert response.json() == {"default": chosen, "available": available}

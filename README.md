@@ -105,6 +105,7 @@ The Server Operator chooses the Music Service when starting the server. Every Ga
 - **Default:** Apple Music on macOS, Spotify on Windows and Linux.
 - **Switch:** re-run `track-back-server init`, set `MUSIC_SERVICE` in your config (see 2.3), or pass `track-back-server --music-service spotify|applemusic` for one start. The option takes precedence over `MUSIC_SERVICE`.
 - **Available services:** Apple Music on macOS, Spotify when `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` are all set, and the Mock Music Service only when the server was started with it.
+- **Per Game Session:** Game Setup shows "Music: <service> · change". "change" lists the available services and only affects that Game Session; it's hidden when only one service is available.
 
 If the chosen Music Service can't work on this machine, the server refuses to start and prints how to fix it: run `track-back-server init` to add Spotify credentials, or use `--music-service spotify` instead of Apple Music on a machine that isn't a Mac. An unknown `MUSIC_SERVICE` value stops the server with a list of the valid values.
 

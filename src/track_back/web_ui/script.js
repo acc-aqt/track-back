@@ -124,9 +124,74 @@ function askUsernameThenJoin (session) {
   document.getElementById('username').focus()
 }
 
-const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1', '']
-if (!LOCAL_HOSTNAMES.includes(window.location.hostname)) {
-  document.querySelector('#musicServiceDropdown option[value="mock"]')?.remove()
+// Music Service choice in Game Setup: "Music: <service> · change".
+const MUSIC_SERVICE_LABELS = {
+  spotify: 'Spotify 📻🎶',
+  applemusic: 'Apple Music 🍎🎶',
+  mock: 'Mock Music Service'
+}
+
+// Older servers have no /music-services; offer the real services as before.
+const OLDER_SERVER_MUSIC_SERVICES = {
+  default: 'spotify',
+  available: ['spotify', 'applemusic'],
+  fromOlderServer: true
+}
+
+async function fetchMusicServices () {
+  try {
+    const res = await fetch(`${serverUrl}/music-services`)
+    if (res.status === 404) {
+      return OLDER_SERVER_MUSIC_SERVICES
+    }
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    return await res.json()
+  } catch (err) {
+    console.error('❌ Failed to fetch music services:', err)
+    return OLDER_SERVER_MUSIC_SERVICES
+  }
+}
+
+// Fill the Music line for the given services; `preferred` wins if still available.
+function showMusicServiceChoice (services, preferred = null) {
+  const dropdown = document.getElementById('musicServiceDropdown')
+  dropdown.replaceChildren(
+    ...services.available.map(service => {
+      const option = document.createElement('option')
+      option.value = service
+      option.textContent = MUSIC_SERVICE_LABELS[service] || service
+      return option
+    })
+  )
+  dropdown.value = services.available.includes(preferred)
+    ? preferred
+    : services.default
+
+  const showDropdown = Boolean(services.fromOlderServer)
+  document.getElementById('musicServiceName').textContent =
+    MUSIC_SERVICE_LABELS[dropdown.value] || dropdown.value
+  document.getElementById('musicServiceChange').hidden =
+    services.available.length < 2
+  document.getElementById('musicServiceLine').hidden = showDropdown
+  document.getElementById('musicServicePicker').hidden = !showDropdown
+}
+
+async function loadMusicServiceChoice (preferred = null) {
+  const services = await fetchMusicServices()
+  showMusicServiceChoice(services, preferred)
+  return services
+}
+
+function selectedMusicService () {
+  return document.getElementById('musicServiceDropdown').value
+}
+
+document.getElementById('musicServiceChangeBtn').onclick = () => {
+  document.getElementById('musicServiceLine').hidden = true
+  document.getElementById('musicServicePicker').hidden = false
+  document.getElementById('musicServiceDropdown').focus()
 }
 
 let currentGuessSong = null
@@ -544,6 +609,8 @@ async function configureGame () {
   if (!username) {
     return
   }
+  serverUrl = getServerUrl()
+  await loadMusicServiceChoice()
   document.getElementById('gameConfigBox').hidden = false
 
   document.getElementById('controls-new-or-join').hidden = true
@@ -580,7 +647,7 @@ async function createGame () {
     return
   }
 
-  const musicServiceType = document.getElementById('musicServiceDropdown').value
+  const musicServiceType = selectedMusicService()
 
   if (musicServiceType === 'spotify') {
     // The Spotify callback creates the Game Session and redirects back with a

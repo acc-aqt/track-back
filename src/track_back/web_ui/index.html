@@ -61,15 +61,22 @@
     <div id="gameConfigBox" class="config-box" hidden>
       <div class="config-title">Game Setup 🎮</div>
 
-      <div class="input-group">
-        <label id="musicServiceDropdownLabel" for="musicServiceDropdown">
-          Choose a music service:
-        </label>
-        <select id="musicServiceDropdown">
-          <option value="spotify">Spotify 📻🎶</option>
-          <option value="applemusic">Apple Music 🍎🎶</option>
-          <option value="mock">Mock Music Service</option>
-        </select>
+      <div id="musicServiceChoice">
+        <p id="musicServiceLine" hidden>
+          Music: <span id="musicServiceName"></span
+          ><span id="musicServiceChange">
+            ·
+            <button type="button" id="musicServiceChangeBtn" class="link-button">
+              change
+            </button></span
+          >
+        </p>
+        <div id="musicServicePicker" class="input-group" hidden>
+          <label id="musicServiceDropdownLabel" for="musicServiceDropdown">
+            Choose a music service:
+          </label>
+          <select id="musicServiceDropdown"></select>
+        </div>
       </div>
 
       <div class="input-group">

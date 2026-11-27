@@ -134,6 +134,29 @@ body {
   transform: translateY(0px);
 }
 
+#musicServiceLine[hidden],
+#musicServiceChange[hidden],
+#musicServicePicker[hidden] {
+  display: none !important;
+}
+
+#musicServiceLine {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .input-group-configure-game[hidden] {
   display: none !important;
 }
