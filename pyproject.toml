@@ -67,7 +67,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 track_back = [
   "web_ui/index.html",
-  "web_ui/script.js",
+  "web_ui/*.js",
   "web_ui/style.css",
   "web_ui/dummy-cover/*.webp",
   "web_ui/assets/*",
