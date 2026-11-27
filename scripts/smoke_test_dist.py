@@ -2,13 +2,16 @@
 
 Installs the wheel from a dist directory into a fresh virtual environment,
 outside the source tree, and checks the installed tool and its Web UI files.
+Also checks that the sdist contains every Web UI file and, with
+``--expect-version``, that the installed tool reports that version.
 
-Usage: ``python scripts/smoke_test_dist.py dist``
+Usage: ``python scripts/smoke_test_dist.py dist [--expect-version X]``
 """
 
 import argparse
 import subprocess
 import sys
+import tarfile
 import tempfile
 from collections.abc import Iterable
 from pathlib import Path
@@ -76,6 +79,41 @@ def missing_web_ui_files(source_web_ui: Path, installed: Iterable[str]) -> list[
     return sorted(expected - set(installed))
 
 
+def sdist_web_ui_files(sdist: Path) -> list[str]:
+    """Return the Web UI files packed into an sdist.
+
+    Parameters
+    ----------
+    sdist
+        The ``.tar.gz`` source distribution.
+
+    Returns
+    -------
+    list[str]
+        Paths of the Web UI files, relative to its ``web_ui`` directory.
+    """
+    with tarfile.open(sdist) as tar:
+        members = [member.name for member in tar.getmembers() if member.isfile()]
+    marker = "/src/track_back/web_ui/"
+    return [name.split(marker, 1)[1] for name in members if marker in name]
+
+
+def reported_version(version_output: str) -> str:
+    """Return the version from ``track-back-server --version`` output.
+
+    Parameters
+    ----------
+    version_output
+        The command's output, e.g. ``"track-back-server 0.1.0"``.
+
+    Returns
+    -------
+    str
+        The version, e.g. ``"0.1.0"``.
+    """
+    return version_output.rsplit(maxsplit=1)[-1]
+
+
 def _run(*command: str | Path, cwd: Path) -> str:
     print("+", *command, flush=True)
     result = subprocess.run(  # noqa: S603
@@ -89,7 +127,7 @@ def _run(*command: str | Path, cwd: Path) -> str:
     return result.stdout
 
 
-def smoke_test(wheel: Path) -> list[str]:
+def smoke_test(wheel: Path) -> tuple[str, list[str]]:
     """Install the wheel into a fresh venv and check the installed tool.
 
     Parameters
@@ -99,8 +137,8 @@ def smoke_test(wheel: Path) -> list[str]:
 
     Returns
     -------
-    list[str]
-        Web UI files missing from the installed package.
+    tuple[str, list[str]]
+        The version the installed tool reports, and the installed Web UI files.
     """
     with tempfile.TemporaryDirectory() as tmp:
         workdir = Path(tmp)
@@ -117,11 +155,38 @@ def smoke_test(wheel: Path) -> list[str]:
             cwd=workdir,
         )
         _run(bin_dir / "track-back-server", "--help", cwd=workdir)
-        _run(bin_dir / "track-back-server", "--version", cwd=workdir)
+        version = _run(bin_dir / "track-back-server", "--version", cwd=workdir)
         listing = _run(
             bin_dir / "python", "-I", "-c", LIST_INSTALLED_WEB_UI, cwd=workdir
         )
-    return missing_web_ui_files(SOURCE_WEB_UI, listing.splitlines())
+    return reported_version(version), listing.splitlines()
+
+
+def check_distributions(dist_dir: Path, expect_version: str | None) -> list[str]:
+    """Smoke-test the wheel and sdist in a dist directory.
+
+    Parameters
+    ----------
+    dist_dir
+        Directory holding the built distributions.
+    expect_version
+        The version the installed tool must report, or ``None`` to skip the check.
+
+    Returns
+    -------
+    list[str]
+        One message per failed check.
+    """
+    wheel, sdist = find_distributions(dist_dir)
+    version, installed = smoke_test(wheel)
+    errors = [
+        f"Web UI file missing from the {kind}: {name}"
+        for kind, files in [("wheel", installed), ("sdist", sdist_web_ui_files(sdist))]
+        for name in missing_web_ui_files(SOURCE_WEB_UI, files)
+    ]
+    if expect_version is not None and version != expect_version:
+        errors.append(f"expected version {expect_version}, tool reports {version}")
+    return errors
 
 
 def main() -> int:
@@ -134,10 +199,13 @@ def main() -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("dist_dir", type=Path, help="directory with wheel and sdist")
+    parser.add_argument(
+        "--expect-version",
+        help="fail unless track-back-server --version reports this version",
+    )
     args = parser.parse_args()
     try:
-        wheel, _sdist = find_distributions(args.dist_dir)
-        missing = smoke_test(wheel)
+        errors = check_distributions(args.dist_dir, args.expect_version)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
@@ -145,10 +213,9 @@ def main() -> int:
         print(error.stdout, error.stderr, sep="\n", file=sys.stderr)
         print(f"error: command failed: {error.cmd}", file=sys.stderr)
         return 1
-    if missing:
-        print("error: Web UI files missing from the wheel:", file=sys.stderr)
-        for name in missing:
-            print(f"  {name}", file=sys.stderr)
+    for message in errors:
+        print(f"error: {message}", file=sys.stderr)
+    if errors:
         return 1
     print("smoke test passed")
     return 0
