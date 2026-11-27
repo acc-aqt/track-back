@@ -32,6 +32,11 @@ body {
     margin-bottom: 1rem;
   }
 
+  .title-logo {
+    height: 1.25em;
+    vertical-align: middle;
+  }
+
 
 
   #controls,
