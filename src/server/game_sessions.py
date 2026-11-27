@@ -1,8 +1,12 @@
 """Module with the GameSession and GameSessionManager classes."""
 
+import time
+
 from game.game_logic import GameLogic
 from server.connection_manager import ConnectionManager
 from server.errors import SessionAlreadyExistsError
+
+EMPTY_SESSION_GRACE_PERIOD_SECONDS = 10 * 60
 
 
 class GameSession:
@@ -12,6 +16,7 @@ class GameSession:
         self.game_id = game_id
         self.game_logic = game_logic
         self.connection_manager = ConnectionManager()
+        self.empty_since: float | None = None
 
 
 class GameSessionManager:
@@ -19,6 +24,7 @@ class GameSessionManager:
 
     def __init__(self) -> None:
         self.sessions: dict[str, GameSession] = {}
+        self.clock = time.monotonic
 
     def add_game(self, game_id: str, game: GameLogic) -> None:
         """Create and store a full GameLogic instance."""
@@ -34,6 +40,22 @@ class GameSessionManager:
         """Remove a game session by ID."""
         if game_id in self.sessions:
             del self.sessions[game_id]
+
+    def mark_empty(self, session: GameSession) -> None:
+        """Record that the session's last connection has left."""
+        session.empty_since = self.clock()
+
+    def remove_expired_sessions(self) -> None:
+        """Remove sessions that have been empty for longer than the grace period."""
+        for game_id, session in list(self.sessions.items()):
+            if self._is_expired(session):
+                del self.sessions[game_id]
+
+    def _is_expired(self, session: GameSession) -> bool:
+        if session.empty_since is None or session.connection_manager.user_connections:
+            return False
+        empty_for = self.clock() - session.empty_since
+        return empty_for > EMPTY_SESSION_GRACE_PERIOD_SECONDS
 
 
 game_session_manager = GameSessionManager()

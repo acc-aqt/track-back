@@ -169,6 +169,7 @@ class Server:
         )
 
     async def _create_game_session(self, req: CreateGameRequest) -> JSONResponse:
+        game_session_manager.remove_expired_sessions()
         game_id = req.game_id
         target_song_count = req.target_song_count
 
@@ -187,6 +188,7 @@ class Server:
         )
 
     async def _list_joinable_game_sessions(self) -> JSONResponse:
+        game_session_manager.remove_expired_sessions()
         joinable_session_ids = [
             session_id
             for session_id, session in game_session_manager.sessions.items()
@@ -196,6 +198,7 @@ class Server:
         return JSONResponse(content={"sessions": joinable_session_ids})
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
+        game_session_manager.remove_expired_sessions()
         game_id = req.game_id
         user_name = req.user_name
         session = game_session_manager.get_game_session(game_id)
@@ -419,6 +422,11 @@ class Server:
             await WebSocketGameHandler(connection_manager).notify_next_round(game)
 
         game_id = game_session.game_id
-        if not connection_manager.user_connections:
+        if connection_manager.user_connections:
+            return
+        if game_session.game_logic.running:
+            game_session_manager.mark_empty(game_session)
+            logger.info("Game session %s is empty; keeping it for rejoin", game_id)
+        else:
             game_session_manager.remove_game_session(game_id)
             logger.info("Removed empty game session %s", game_id)
