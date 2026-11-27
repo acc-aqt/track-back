@@ -2,6 +2,7 @@ import importlib
 import itertools
 import logging
 import sys
+import tomllib
 from pathlib import Path
 from unittest import mock
 
@@ -158,3 +159,16 @@ def test_port_option_overrides_port_from_every_source(
     server = run_main(monkeypatch, [*argv, "--port", "8123"])
 
     server.run.assert_called_once_with(port=8123)
+
+
+def test_version_flag_prints_package_version_and_exits(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pyproject = Path(__file__).parents[2] / "pyproject.toml"
+    expected_version = tomllib.loads(pyproject.read_text())["project"]["version"]
+
+    with pytest.raises(SystemExit) as exit_info:
+        run_main(monkeypatch, ["--version"])
+
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"track-back-server {expected_version}"
