@@ -738,10 +738,12 @@ function updateHostOptionsSummary () {
   document.getElementById('hostOptionsSummary').replaceChildren(...children)
 }
 
+// A count the browser restored into the field wins over the stored one.
 async function prepareHostOptions () {
-  document.getElementById('targetSongCountInput').value = String(
-    loadStoredTargetSongCount()
-  )
+  const countInput = document.getElementById('targetSongCountInput')
+  if (countInput.value === countInput.defaultValue) {
+    countInput.value = String(loadStoredTargetSongCount())
+  }
   updateHostOptionsSummary()
   serverUrl = getServerUrl()
   await ensureMusicServiceChoice({ quiet: true })

@@ -234,3 +234,23 @@ def test_strip_shows_the_service_when_the_server_url_is_relative(
     expect(host_options_strip(page)).to_have_accessible_name(
         re.compile(r"^10 songs · Mock · Edit$", re.IGNORECASE)
     )
+
+
+def test_a_target_song_count_the_browser_restores_is_kept(
+    page: Page, base_url: str
+) -> None:
+    """Firefox restores form fields on reload; Chromium doesn't, so fake it."""
+    config = httpx.get(f"{base_url}/server_config.js").text
+    restore = "document.getElementById('targetSongCountInput').value = '6';\n"
+    page.route(
+        "**/server_config.js",
+        lambda route: route.fulfill(
+            body=restore + config, content_type="text/javascript"
+        ),
+    )
+
+    page.goto(base_url)
+
+    expect(host_options_strip(page)).to_have_accessible_name(
+        re.compile(r"^6 songs · Mock · Edit$", re.IGNORECASE)
+    )
