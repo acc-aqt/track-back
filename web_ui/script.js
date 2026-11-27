@@ -151,12 +151,8 @@ function handleYourTurn (data) {
     return
   }
 
-  document.getElementById('songListHeader').style.display = 'block'
-  document.getElementById('songTimeline').style.display = 'block'
-  document.getElementById('songCount').style.display = 'block'
-  document.getElementById('controls-waiting-for-start').hidden = true
+  showTimeline(data.song_list || [])
 
-  const list = data.song_list || []
   const dummyCovers = [
     'dummy-cover/cover1.webp',
     'dummy-cover/cover2.webp',
@@ -179,15 +175,20 @@ function handleYourTurn (data) {
 
   document.getElementById('newSongContainer').style.display = 'block'
 
-  document.getElementById(
-    'songCount'
-  ).textContent = `Song count: ${data.song_list.length}`
+  setupDragDrop()
+}
 
+function showTimeline (list) {
+  document.getElementById('songListHeader').style.display = 'block'
+  document.getElementById('songTimeline').style.display = 'block'
+  document.getElementById('songCount').style.display = 'block'
+  document.getElementById('controls-waiting-for-start').hidden = true
+  document.getElementById('controls-start').hidden = true
+
+  document.getElementById('songCount').textContent = `Song count: ${list.length}`
   document
     .getElementById('songTimeline')
     .replaceChildren(...list.map(s => buildSongEntry(s)))
-
-  setupDragDrop()
 }
 
 function handleGuessResult (data) {
@@ -275,7 +276,9 @@ const serverMessageHandlers = {
   player_joined: data => log(`👋🏻 ${data.message}`),
   player_rejoined: data => {
     if (data.user_name === username) {
-      handleYourTurn(data)
+      document.getElementById('newSongContainer').style.display = 'none'
+      showTimeline(data.song_list || [])
+      log('👋🏻 Welcome back! Waiting for the others to guess.')
     } else {
       log(`👋🏻 ${data.message}`)
     }
