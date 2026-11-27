@@ -1,6 +1,8 @@
 import importlib
+import io
 import itertools
 import logging
+import os
 import sys
 import tomllib
 from pathlib import Path
@@ -172,3 +174,134 @@ def test_version_flag_prints_package_version_and_exits(
 
     assert exit_info.value.code == 0
     assert capsys.readouterr().out.strip() == f"track-back-server {expected_version}"
+
+
+def run_init(monkeypatch: pytest.MonkeyPatch, answers: list[str]) -> mock.MagicMock:
+    monkeypatch.setattr(sys, "stdin", io.StringIO("".join(f"{a}\n" for a in answers)))
+    return run_main(monkeypatch, ["init"])
+
+
+def test_init_writes_user_config_from_answers(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    server = run_init(
+        monkeypatch,
+        ["5000", "y", "my-id", "my-secret", "https://example.com/callback"],
+    )
+
+    assert (user_config_dir / ".env").read_text() == (
+        "PORT=5000\n"
+        "SSL_KEYFILE=\n"
+        "SSL_CERTFILE=\n"
+        "SPOTIPY_CLIENT_ID=my-id\n"
+        "SPOTIPY_CLIENT_SECRET=my-secret\n"
+        "SPOTIPY_REDIRECT_URI=https://example.com/callback\n"
+    )
+    server.run.assert_not_called()
+
+
+def test_init_enter_accepts_default_port(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    run_init(monkeypatch, ["", "n"])
+
+    assert "PORT=4200\n" in (user_config_dir / ".env").read_text()
+
+
+def test_init_default_redirect_uri_uses_chosen_port(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    run_init(monkeypatch, ["5000", "y", "my-id", "my-secret", ""])
+
+    assert "SPOTIPY_REDIRECT_URI=http://127.0.0.1:5000/spotify-callback\n" in (
+        (user_config_dir / ".env").read_text()
+    )
+
+
+def test_init_skipping_spotify_writes_empty_keys_without_prompting(
+    monkeypatch: pytest.MonkeyPatch,
+    user_config_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run_init(monkeypatch, ["", "n"])
+
+    written = (user_config_dir / ".env").read_text()
+    assert "SPOTIPY_CLIENT_ID=\n" in written
+    assert "SPOTIPY_CLIENT_SECRET=\n" in written
+    assert "SPOTIPY_REDIRECT_URI=\n" in written
+    assert "client ID" not in capsys.readouterr().out
+
+
+def test_init_creates_missing_config_directory_and_prints_path(
+    monkeypatch: pytest.MonkeyPatch,
+    user_config_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert not user_config_dir.exists()
+
+    run_init(monkeypatch, ["", "n"])
+
+    assert (user_config_dir / ".env").is_file()
+    assert str(user_config_dir / ".env") in capsys.readouterr().out
+
+
+EXISTING_CONFIG = b"PORT=6001\r\n# hand-edited\n"
+
+
+def test_init_overwrites_existing_config_when_confirmed(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    user_config_dir.mkdir()
+    (user_config_dir / ".env").write_bytes(EXISTING_CONFIG)
+
+    run_init(monkeypatch, ["y", "5000", "n"])
+
+    assert "PORT=5000\n" in (user_config_dir / ".env").read_text()
+
+
+def test_init_leaves_existing_config_unchanged_when_declined(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    user_config_dir.mkdir()
+    (user_config_dir / ".env").write_bytes(EXISTING_CONFIG)
+
+    run_init(monkeypatch, ["n", "5000", "n"])
+
+    assert (user_config_dir / ".env").read_bytes() == EXISTING_CONFIG
+
+
+SPOTIFY_KEYS = ["SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"]
+
+
+def test_server_started_from_unrelated_directory_uses_values_from_init(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    for key in SPOTIFY_KEYS:
+        monkeypatch.setenv(key, "unset-after-test")
+        monkeypatch.delenv(key)
+    run_init(monkeypatch, ["5000", "y", "my-id", "my-secret", ""])
+    unrelated = tmp_path / "unrelated"
+    unrelated.mkdir()
+    monkeypatch.chdir(unrelated)
+
+    server = run_main(monkeypatch, [])
+
+    server.run.assert_called_once_with(port=5000)
+    assert os.environ["SPOTIPY_CLIENT_ID"] == "my-id"
+
+
+def test_help_lists_init_command(capsys: pytest.CaptureFixture[str]) -> None:
+    sys.argv = ["track-back-server", "-h"]
+
+    with pytest.raises(SystemExit):
+        parse_args()
+
+    assert "init" in capsys.readouterr().out
+
+
+def test_init_asks_again_when_port_is_not_a_number(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    run_init(monkeypatch, ["abc", "5000", "n"])
+
+    assert "PORT=5000\n" in (user_config_dir / ".env").read_text()

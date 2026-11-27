@@ -30,6 +30,7 @@ from track_back.game.messages import (
 from track_back.game.user import User
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
+from track_back.server import network
 from track_back.server.errors import (
     AlreadyConnectedError,
     NotAMemberError,
@@ -126,6 +127,31 @@ CLIENT_MESSAGE_HANDLERS: dict[str, ClientMessageHandler] = {
 }
 
 
+def startup_hint(port: int, *, use_ssl: bool, lan_addresses: list[str]) -> str:
+    """Tell the host which URLs open the Web UI.
+
+    Parameters
+    ----------
+    port : int
+        The port the server listens on.
+    use_ssl : bool
+        Whether the server serves HTTPS.
+    lan_addresses : list[str]
+        The addresses other devices can reach this machine on.
+
+    Returns
+    -------
+    str
+        One sentence naming the ``localhost`` URL and one URL per LAN address.
+    """
+    scheme = "https" if use_ssl else "http"
+    hint = f"Open {scheme}://localhost:{port} on this machine"
+    if not lan_addresses:
+        return f"{hint}."
+    lan_urls = " or ".join(f"{scheme}://{address}:{port}" for address in lan_addresses)
+    return f"{hint}, or {lan_urls} on other devices."
+
+
 class Server:
     """Encapsulates the FastAPI application."""
 
@@ -137,7 +163,15 @@ class Server:
         ssl_keyfile = os.getenv("SSL_KEYFILE")
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
-        if ssl_keyfile and ssl_certfile:
+        use_ssl = bool(ssl_keyfile and ssl_certfile)
+        try:
+            lan_addresses = network.lan_ipv4_addresses()
+        except OSError:
+            logger.warning("Could not discover LAN addresses.", exc_info=True)
+            lan_addresses = []
+        print(startup_hint(port, use_ssl=use_ssl, lan_addresses=lan_addresses))
+
+        if use_ssl:
             logger.info("Running server with SSL.")
             uvicorn.run(
                 self.app,
