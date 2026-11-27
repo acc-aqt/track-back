@@ -14,7 +14,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from game.game_logic import GameLogic
 from music_service.spotify import SpotifyAdapter
 from server.game_sessions import game_session_manager
-from server.names import GAME_ID_MAX_LENGTH, TargetSongCount, is_valid_name
+from server.names import GameId, TargetSongCount
 
 router = APIRouter()
 
@@ -40,14 +40,17 @@ def spotify_login(state: str = "") -> RedirectResponse:
     login and consent page. An optional 'state' parameter can be passed to track the
     session or pass metadata, which will be included in the callback.
 
-    Args:
-        state (str, optional): A JSON-encoded string to maintain state between the
-        request and callback. Defaults to an empty string.
+    Parameters
+    ----------
+    state : str, optional
+        A JSON-encoded string to maintain state between the request and callback.
+        Defaults to an empty string.
 
     Returns
     -------
-        RedirectResponse: A redirect to Spotify's authorization URL where the user can
-        log in and authorize access.
+    RedirectResponse
+        A redirect to Spotify's authorization URL where the user can log in and
+        authorize access.
 
     """
     sp_oauth = get_spotify_oauth()
@@ -66,14 +69,16 @@ def spotify_callback(request: Request) -> HTMLResponse:
     user profile, sets up the game logic with a Spotify adapter, and registers the new
     game session.
 
-    Args:
-        request (Request): The incoming request containing query parameters 'code' and
-        'state'.
+    Parameters
+    ----------
+    request : Request
+        The incoming request containing query parameters 'code' and 'state'.
 
     Returns
     -------
-        HTMLResponse: A success message if login and setup succeeded, or an error
-        message if any part of the process failed.
+    HTMLResponse
+        A success message if login and setup succeeded, or an error message if any
+        part of the process failed.
 
     """
     code = request.query_params.get("code")
@@ -91,7 +96,9 @@ def spotify_callback(request: Request) -> HTMLResponse:
     except json.JSONDecodeError:
         return HTMLResponse("❌ Failed to parse state", status_code=400)
 
-    if not game_id or not is_valid_name(str(game_id), GAME_ID_MAX_LENGTH):
+    try:
+        game_id = TypeAdapter(GameId).validate_python(game_id)
+    except ValidationError:
         return HTMLResponse("❌ Missing or invalid game_id (state)", status_code=400)
     try:
         target_song_count = TypeAdapter(TargetSongCount).validate_python(
