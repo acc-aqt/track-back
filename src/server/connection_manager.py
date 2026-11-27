@@ -51,18 +51,20 @@ class ConnectionManager:
         """Send a message to every connected user except the excluded one."""
         text = json.dumps(message)
         for username, websocket in list(self.user_connections.items()):
-            if username == exclude or websocket is None:
-                continue
-            if websocket.client_state.name != "CONNECTED":
-                continue
-            await websocket.send_text(text)
+            if username != exclude and websocket and self.is_connected(username):
+                await websocket.send_text(text)
+
+    def is_connected(self, username: str) -> bool:
+        """Return True if the user holds a live connection."""
+        websocket = self.user_connections.get(username)
+        return websocket is not None and websocket.client_state.name == "CONNECTED"
 
     def get_unconnected_user_names(self) -> list[str]:
         """Get the registered usernames without a live connection."""
         return [
             username
-            for username, websocket in self.user_connections.items()
-            if websocket is None or websocket.client_state.name != "CONNECTED"
+            for username in self.user_connections
+            if not self.is_connected(username)
         ]
 
     def set_websocket(self, username: str, websocket: ClientConnection) -> None:
