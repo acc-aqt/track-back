@@ -67,7 +67,7 @@ def test_full_game_client_connection(
 
         response = client.post("/start", json={"game_id": game_id})
         assert response.status_code == 200
-        assert response.json()["type"] == "game_start"
+        assert "type" not in response.json()
         assert ws1.receive_json()["type"] == "your_turn"
         assert ws2.receive_json()["type"] == "your_turn"
 

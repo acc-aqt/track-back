@@ -147,6 +147,88 @@ def test_join_accepts_valid_user_names(
     assert response.status_code == 200
 
 
+BROWSER_NAME_PATTERN = r"/^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u"
+
+NAMES_THE_BROWSER_ACCEPTS = [
+    "Дмитрий",
+    "李雷",
+    "Ελένη",
+    "٣٤٥",
+    "x\u00b2",
+    "\u216b",
+    "Anna-Lena_2",
+    "Anna Lena",
+]
+
+NAMES_THE_BROWSER_REJECTS = [
+    "",
+    " Anna",
+    "Anna ",
+    "Anna  Lena",
+    "a\u0301",
+    "a\u203fb",
+    "tab\there",
+    "semi;colon",
+]
+
+
+def test_browser_name_pattern_is_the_one_under_test() -> None:
+    """The name cases below are checked against this exact browser pattern."""
+    script = (Path(__file__).parents[2] / "web_ui" / "script.js").read_text()
+    assert f"const NAME_PATTERN = {BROWSER_NAME_PATTERN}" in script
+
+
+@pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_ACCEPTS)
+def test_server_accepts_user_names_the_browser_accepts(
+    create_and_join: Callable[..., None], user_name: str
+) -> None:
+    """Any user name the browser lets through can join."""
+    create_and_join("names", user_name)
+
+
+@pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_REJECTS)
+def test_server_rejects_user_names_the_browser_rejects(
+    client: TestClient, create_game: Callable[[str], None], user_name: str
+) -> None:
+    """Any user name the browser blocks is a 422 on /join."""
+    create_game("names")
+    response = client.post("/join", json={"game_id": "names", "user_name": user_name})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("game_id", NAMES_THE_BROWSER_ACCEPTS)
+def test_server_accepts_game_ids_the_browser_accepts(
+    create_game: Callable[[str], None], game_id: str
+) -> None:
+    """Game ids follow the same rule as user names."""
+    create_game(game_id)
+
+
+@pytest.mark.parametrize("game_id", NAMES_THE_BROWSER_REJECTS)
+def test_server_rejects_game_ids_the_browser_rejects(
+    client: TestClient, game_id: str
+) -> None:
+    """A game id the name rule blocks is a 422 on /create."""
+    response = client.post(
+        "/create",
+        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
+    )
+    assert response.status_code == 422
+
+
+def test_server_rejects_game_ids_over_40_characters(client: TestClient) -> None:
+    """Game ids are capped at 40 characters."""
+    response = client.post(
+        "/create",
+        json={
+            "game_id": "g" * 41,
+            "target_song_count": 2,
+            "music_service_type": "mock",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_create_rejects_markup_in_game_id(client: TestClient) -> None:
     response = client.post(
         "/create",
@@ -232,3 +314,72 @@ def test_creating_an_existing_session_is_a_conflict(
     assert response.json() == {
         "detail": "Session 'taken' already exists. Choose different ID."
     }
+
+
+def test_starting_a_running_game_is_a_conflict_and_keeps_timelines(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
+    """A second Start is a 409 and does not wipe the timelines."""
+    game_id = "restart"
+    create_and_join(game_id, "solo")
+
+    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+        assert ws.receive_json()["type"] == "welcome"
+        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert ws.receive_json()["type"] == "your_turn"
+        ws.send_json({"type": "guess", "index": 0})
+        assert len(ws.receive_json()["song_list"]) == 1
+        assert len(ws.receive_json()["song_list"]) == 1
+
+        response = client.post("/start", json={"game_id": game_id})
+        assert response.status_code == 409
+        assert response.json() == {"detail": f"Game {game_id} is already running."}
+
+        ws.send_json({"type": "guess", "index": 1})
+        result = ws.receive_json()
+        assert result["type"] == "guess_result"
+        assert len(result["song_list"]) == 2
+
+
+def test_starting_with_unconnected_players_is_a_conflict_and_retryable(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
+    """Start names the unconnected players and leaves the game not running."""
+    game_id = "half-start"
+    create_and_join(game_id, "alex", "bo", "cy")
+
+    with client.websocket_connect(f"/ws/{game_id}/alex") as ws_alex:
+        assert ws_alex.receive_json()["type"] == "welcome"
+
+        response = client.post("/start", json={"game_id": game_id})
+        assert response.status_code == 409
+        assert response.json() == {"detail": "Players not connected: bo, cy."}
+        assert client.get("/list-sessions").json() == {"sessions": [game_id]}
+
+        with (
+            client.websocket_connect(f"/ws/{game_id}/bo") as ws_bo,
+            client.websocket_connect(f"/ws/{game_id}/cy") as ws_cy,
+        ):
+            response = client.post("/start", json={"game_id": game_id})
+            assert response.status_code == 200
+            assert response.json() == {"message": f"Game {game_id} started."}
+            for ws in (ws_bo, ws_cy):
+                assert ws.receive_json()["type"] == "welcome"
+                assert ws.receive_json()["type"] == "your_turn"
+
+
+@pytest.mark.parametrize("target_song_count", [0, -1])
+def test_create_rejects_target_song_count_below_one(
+    client: TestClient, target_song_count: int
+) -> None:
+    """A Target Song Count below 1 is a 422 and creates no session."""
+    response = client.post(
+        "/create",
+        json={
+            "game_id": "too-few-songs",
+            "target_song_count": target_song_count,
+            "music_service_type": "mock",
+        },
+    )
+    assert response.status_code == 422
+    assert game_session_manager.get_game_session("too-few-songs") is None

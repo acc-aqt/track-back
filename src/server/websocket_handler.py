@@ -6,7 +6,7 @@ import logging
 from fastapi import WebSocket
 
 from game.game_logic import GameLogic
-from game.messages import MessageType, your_turn_message
+from game.messages import MessageType, game_over_message, your_turn_message
 from game.user import User
 from music_service.error import MusicServiceError
 from server.connection_manager import ConnectionManager
@@ -67,13 +67,8 @@ class WebSocketGameHandler:
         await self.notify_next_round(game)
 
         if payload.get("game_over"):
-            winner = payload["winner"]
             await self.connection_manager.broadcast(
-                {
-                    "type": MessageType.GAME_OVER,
-                    "winner": winner,
-                    "message": f"{winner} has won the game!",
-                }
+                game_over_message(payload["winner"])
             )
 
     async def notify_next_round(self, game: GameLogic) -> None:

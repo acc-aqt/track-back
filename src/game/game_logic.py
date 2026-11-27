@@ -115,3 +115,11 @@ class GameLogic:
             if user.name == username:
                 return user
         return None
+
+    def owes_guess(self, username: str) -> bool:
+        """Return True if the member still has to guess the current song."""
+        return (
+            self.running
+            and self.get_user(username) is not None
+            and not self.round.has_guessed(username)
+        )
