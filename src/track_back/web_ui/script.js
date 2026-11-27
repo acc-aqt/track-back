@@ -76,14 +76,10 @@ const store = (key, value) => {
   }
 }
 
-const loadStoredUsername = () => loadStored(USERNAME_STORAGE_KEY)
-
-const storeUsername = name => store(USERNAME_STORAGE_KEY, name)
-
 function prefillStoredUsername () {
   const input = document.getElementById('username')
   if (!input.value) {
-    input.value = loadStoredUsername()
+    input.value = loadStored(USERNAME_STORAGE_KEY)
   }
 }
 
@@ -594,7 +590,7 @@ async function joinGame () {
     }
 
     log(`✅ Joined game: ${sessionName}`)
-    storeUsername(username)
+    store(USERNAME_STORAGE_KEY, username)
     connectWebSocket()
     showLobbyQr()
     if (isHost) {
@@ -614,6 +610,7 @@ const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'
 const MUSIC_SERVICE_STORAGE_KEY = 'trackback.musicService'
 const DEFAULT_TARGET_SONG_COUNT = 10
 
+const defaultSessionName = name => `Game-by-${name}`
 
 const loadStoredTargetSongCount = () => {
   const count = parseInt(loadStored(TARGET_SONG_COUNT_STORAGE_KEY))
@@ -653,7 +650,10 @@ async function openHostOptions (error = '') {
   const nameInput = document.getElementById('sessionNameInput')
   if (!nameInput.value) {
     const name = document.getElementById('username').value.trim()
-    fillHostOptions(name ? `Game-by-${name}` : '', loadStoredTargetSongCount())
+    fillHostOptions(
+      name ? defaultSessionName(name) : '',
+      loadStoredTargetSongCount()
+    )
   }
   document.getElementById('gameConfigBox').hidden = false
   document.getElementById('hostOptionsBtn').setAttribute('aria-expanded', 'true')
@@ -691,9 +691,9 @@ async function hostGame () {
   await ensureMusicServiceChoice()
   const nameInput = document.getElementById('sessionNameInput')
   if (!hostOptionsAreOpen()) {
-    fillHostOptions(`Game-by-${username}`, loadStoredTargetSongCount())
+    fillHostOptions(defaultSessionName(username), loadStoredTargetSongCount())
   } else if (!nameInput.value.trim()) {
-    nameInput.value = `Game-by-${username}`
+    nameInput.value = defaultSessionName(username)
   }
   const options = readHostOptions()
   if (!options) {
@@ -706,7 +706,7 @@ async function hostGame () {
     // The Spotify callback creates the Game Session and redirects back with a
     // join link, so the Host lands in the Lobby in this tab. The callback may
     // land on another origin, so remember the choice before leaving.
-    storeUsername(username)
+    store(USERNAME_STORAGE_KEY, username)
     rememberHostingChoice(options.targetSongCount, musicServiceType)
     const stateParam = encodeURIComponent(
       JSON.stringify({
