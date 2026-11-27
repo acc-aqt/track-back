@@ -54,6 +54,71 @@ function getServerUrl () {
 
 function startApp () {
   console.log('🌐 Using server URL:', serverUrl)
+  prefillStoredUsername()
+  handleJoinLink()
+}
+
+const USERNAME_STORAGE_KEY = 'trackback.username'
+
+const loadStoredUsername = () => {
+  try {
+    return localStorage.getItem(USERNAME_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+const storeUsername = name => {
+  try {
+    localStorage.setItem(USERNAME_STORAGE_KEY, name)
+  } catch {
+    // Storage can be unavailable (private mode); the Username is then just not remembered.
+  }
+}
+
+function prefillStoredUsername () {
+  const input = document.getElementById('username')
+  if (!input.value) {
+    input.value = loadStoredUsername()
+  }
+}
+
+// Join link: /?join=<Game Session Name>[&username=<Username>]
+// Used by the Spotify callback redirect and the Lobby QR code.
+function readJoinLink () {
+  const url = new URL(window.location.href)
+  const session = url.searchParams.get('join')
+  const linkUsername = url.searchParams.get('username')
+  if (session === null && linkUsername === null) {
+    return null
+  }
+  url.searchParams.delete('join')
+  url.searchParams.delete('username')
+  window.history.replaceState(window.history.state, '', url)
+  return session ? { session, username: linkUsername } : null
+}
+
+async function handleJoinLink () {
+  const link = readJoinLink()
+  if (!link) {
+    return
+  }
+  const input = document.getElementById('username')
+  if (link.username) {
+    input.value = link.username.trim()
+  }
+  if (isValidUsername(input.value.trim())) {
+    await joinSession(link.session)
+  } else {
+    askUsernameThenJoin(link.session)
+  }
+}
+
+function askUsernameThenJoin (session) {
+  showSessionChoice([session])
+  document.getElementById('joinGameTitle').textContent =
+    'Enter your username to join'
+  document.getElementById('username').focus()
 }
 
 const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1', '']
@@ -364,51 +429,53 @@ window.addEventListener('online', () => {
     connectWebSocket()
   }
 })
-async function listAndChooseGameSessions () {
+async function fetchJoinableSessions () {
   try {
-    document.getElementById('joinGameConfigBox').hidden = false
-
     const res = await fetch(`${serverUrl}/list-sessions`)
     const data = await res.json()
     if (!res.ok) {
       handleHttpError(data)
-      return
+      return null
     }
-
-    const sessions = data.sessions || []
-    const dropdown = document.getElementById('sessionDropdown')
-    const joinButton = document.getElementById('joinSelectedSessionBtn')
-
-    dropdown.innerHTML = ''
-
-    if (sessions.length === 0) {
-      alert('❌ No available game sessions.')
-      return
-    }
-
-    sessions.forEach((sessionId, index) => {
-      const option = document.createElement('option')
-      option.value = sessionId
-      option.textContent = `${index + 1}. ${sessionId}`
-      dropdown.appendChild(option)
-    })
-
-    joinButton.onclick = async () => {
-      const selectedSessionName = dropdown.value
-      if (!selectedSessionName) {
-        alert('❌ Please select a session.')
-        return
-      }
-      sessionName = selectedSessionName
-      const success = await joinGame()
-      if (success) {
-        document.getElementById('controls-waiting-for-start').hidden = false
-      }
-    }
+    return data.sessions || []
   } catch (err) {
     console.error('❌ Failed to fetch sessions:', err)
     alert('⚠️ Failed to fetch game sessions.')
+    return null
   }
+}
+
+function showSessionChoice (sessions) {
+  document.getElementById('joinGameConfigBox').hidden = false
+  document.getElementById('joinGameTitle').textContent = 'Select game to join'
+
+  const dropdown = document.getElementById('sessionDropdown')
+  dropdown.replaceChildren(
+    ...sessions.map((name, index) => {
+      const option = document.createElement('option')
+      option.value = name
+      option.textContent = `${index + 1}. ${name}`
+      return option
+    })
+  )
+
+  document.getElementById('joinSelectedSessionBtn').onclick = async () => {
+    if (!dropdown.value) {
+      alert('❌ Please select a session.')
+      return
+    }
+    await joinSession(dropdown.value)
+  }
+}
+
+async function joinSession (name) {
+  sessionName = name
+  const success = await joinGame()
+  if (success) {
+    document.getElementById('controls-new-or-join').hidden = true
+    document.getElementById('controls-waiting-for-start').hidden = false
+  }
+  return success
 }
 
 async function joinGame () {
@@ -431,6 +498,7 @@ async function joinGame () {
     }
 
     log(`✅ Joined game: ${sessionName}`)
+    storeUsername(username)
     connectWebSocket()
     if (isHostingSpotifySession) {
       document.getElementById('controls-start').hidden = false
@@ -554,26 +622,24 @@ document.getElementById('joinGameBtn').onclick = async () => {
     return
   }
 
-  const res = await fetch(`${serverUrl}/list-sessions`)
-  const data = await res.json()
-
-  if (!res.ok) {
-    handleHttpError(data)
+  const sessions = await fetchJoinableSessions()
+  if (!sessions) {
     return
   }
 
-  if (!data.sessions.length) {
+  if (!sessions.length) {
     alert('❌ No game sessions available to join.')
     return
   }
 
-  document.getElementById('controls-new-or-join').hidden = true
-
   if (isHostingSpotifySession) {
+    document.getElementById('controls-new-or-join').hidden = true
     await joinGame()
     return
   }
-  await listAndChooseGameSessions()
+
+  document.getElementById('controls-new-or-join').hidden = true
+  showSessionChoice(sessions)
 }
 
 document.getElementById('startGameBtn').onclick = async () => {
