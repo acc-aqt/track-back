@@ -55,6 +55,7 @@ function getServerUrl () {
 function startApp () {
   console.log('🌐 Using server URL:', serverUrl)
   prefillStoredUsername()
+  prepareHostOptions()
   handleJoinLink()
 }
 
@@ -124,11 +125,18 @@ function askUsernameThenJoin (session) {
   document.getElementById('username').focus()
 }
 
-// Music Service choice in Game Setup: "Music: <service> · change".
+// Music Service choice in Game Setup: "Music: <service>" and a change button.
 const MUSIC_SERVICE_LABELS = {
   spotify: 'Spotify 📻🎶',
   applemusic: 'Apple Music 🍎🎶',
   mock: 'Mock Music Service'
+}
+
+// Shorter names for the Host Options strip, which has little room.
+const MUSIC_SERVICE_SHORT_LABELS = {
+  spotify: 'Spotify',
+  applemusic: 'Apple Music',
+  mock: 'Mock'
 }
 
 // Older servers have no /music-services; offer the real services as before.
@@ -138,7 +146,7 @@ const OLDER_SERVER_MUSIC_SERVICES = {
   fromOlderServer: true
 }
 
-// Returns null, after telling the Host, if the Music Services can't be fetched.
+// Returns null if the Music Services can't be fetched.
 async function fetchMusicServices () {
   try {
     const res = await fetch(`${serverUrl}/music-services`)
@@ -151,7 +159,6 @@ async function fetchMusicServices () {
     return await res.json()
   } catch (err) {
     console.error('❌ Failed to fetch music services:', err)
-    alert('⚠️ Failed to fetch the Music Services. Please try again.')
     return null
   }
 }
@@ -178,6 +185,7 @@ function showMusicServiceChoice (services, preferred = null) {
     services.available.length < 2
   document.getElementById('musicServiceLine').hidden = showDropdown
   document.getElementById('musicServicePicker').hidden = !showDropdown
+  updateHostOptionsSummary()
 }
 
 async function loadMusicServiceChoice (preferred = null) {
@@ -198,6 +206,13 @@ document.getElementById('musicServiceChangeBtn').onclick = () => {
   document.getElementById('musicServiceDropdown').focus()
 }
 
+document.getElementById('musicServiceDropdown').onchange = () => {
+  const dropdown = document.getElementById('musicServiceDropdown')
+  document.getElementById('musicServiceName').textContent =
+    MUSIC_SERVICE_LABELS[dropdown.value] || dropdown.value
+  updateHostOptionsSummary()
+}
+
 let currentGuessSong = null
 let pauseAfterGuess = false
 let queuedGuessRequest = null
@@ -207,6 +222,10 @@ const FADE_DURATION = 1000
 
 const log = msg => {
   const logBox = document.getElementById('log')
+  if (logBox.classList.contains('log-empty')) {
+    logBox.classList.remove('log-empty')
+    logBox.textContent = ''
+  }
   logBox.textContent += msg + '\n'
   logBox.scrollTop = logBox.scrollHeight
 }
@@ -620,8 +639,9 @@ async function joinGame () {
   }
 }
 
-// Hosting: "Host a game" creates the Game Session right away with these
-// defaults; "Options" reveals them for editing first.
+// Hosting: "Host a Game" creates the Game Session with the Host Options, which
+// start as these defaults. The Host Options strip under the button summarises
+// them and opens and closes the panel for editing them.
 const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'
 const MUSIC_SERVICE_STORAGE_KEY = 'trackback.musicService'
 const DEFAULT_TARGET_SONG_COUNT = 10
@@ -640,32 +660,111 @@ const rememberHostingChoice = (targetSongCount, musicServiceType) => {
 
 const hostOptionsAreOpen = () => !document.getElementById('gameConfigBox').hidden
 
-let musicServicesLoadedFrom = null
+const usernameSessionName = () => {
+  const name = document.getElementById('username').value.trim()
+  return name ? defaultSessionName(name) : ''
+}
 
-// Returns false if the Music Services could not be loaded.
-async function ensureMusicServiceChoice () {
+let musicServicesLoadedFrom = null
+let musicServicesLoading = null
+
+// Callers share one load per server, so a later load can't reset the Music
+// Service the Host picked after an earlier one. A failed load can be retried.
+function loadMusicServicesOnce () {
+  if (musicServicesLoading?.serverUrl !== serverUrl) {
+    const url = serverUrl
+    const promise = loadMusicServiceChoice(
+      loadStored(MUSIC_SERVICE_STORAGE_KEY)
+    ).then(services => {
+      if (services) {
+        musicServicesLoadedFrom = url
+        updateHostOptionsSummary()
+      } else if (musicServicesLoading?.promise === promise) {
+        musicServicesLoading = null
+      }
+      return Boolean(services)
+    })
+    musicServicesLoading = { serverUrl: url, promise }
+  }
+  return musicServicesLoading.promise
+}
+
+// Returns false if the Music Services could not be loaded. `quiet` skips
+// telling the Host, for the load in the background when the page opens.
+async function ensureMusicServiceChoice ({ quiet = false } = {}) {
   if (musicServicesLoadedFrom === serverUrl) {
     return true
   }
-  const services = await loadMusicServiceChoice(
-    loadStored(MUSIC_SERVICE_STORAGE_KEY)
-  )
-  if (!services) {
-    return false
+  const loaded = await loadMusicServicesOnce()
+  if (!loaded && !quiet) {
+    alert('⚠️ Failed to fetch the Music Services. Please try again.')
   }
-  musicServicesLoadedFrom = serverUrl
-  return true
+  return loaded
 }
 
-function fillHostOptions (name, targetSongCount) {
-  document.getElementById('sessionNameInput').value = name
-  document.getElementById('targetSongCountInput').value = String(targetSongCount)
+// The default name follows the Username until the Host edits it.
+let filledDefaultSessionName = ''
+
+function fillDefaultSessionName () {
+  const nameInput = document.getElementById('sessionNameInput')
+  const name = nameInput.value.trim()
+  if (!name || name === filledDefaultSessionName) {
+    nameInput.value = usernameSessionName()
+    filledDefaultSessionName = nameInput.value
+  }
+}
+
+function hostOptionsSummaryParts () {
+  const count = parseInt(document.getElementById('targetSongCountInput').value)
+  const loaded =
+    musicServicesLoadedFrom !== null && musicServicesLoadedFrom === serverUrl
+  const service = loaded ? selectedMusicService() : ''
+  return [
+    count > 0 ? `${count} ${count === 1 ? 'song' : 'songs'}` : '',
+    service ? MUSIC_SERVICE_SHORT_LABELS[service] || service : ''
+  ].filter(Boolean)
+}
+
+// The name keeps its own case, so it gets a span the strip doesn't uppercase.
+function updateHostOptionsSummary () {
+  const children = hostOptionsSummaryParts().map(part => `${part} · `)
+  const name = document.getElementById('sessionNameInput').value.trim()
+  if (name && name !== usernameSessionName()) {
+    const nameSpan = document.createElement('span')
+    nameSpan.className = 'host-options-name'
+    nameSpan.textContent = name
+    children.push(nameSpan, ' · ')
+  }
+  document.getElementById('hostOptionsSummary').replaceChildren(...children)
+}
+
+// A count the browser restored into the field wins over the stored one.
+async function prepareHostOptions () {
+  const countInput = document.getElementById('targetSongCountInput')
+  if (countInput.value === countInput.defaultValue) {
+    countInput.value = String(loadStoredTargetSongCount())
+  }
+  updateHostOptionsSummary()
+  serverUrl = getServerUrl()
+  await ensureMusicServiceChoice({ quiet: true })
+}
+
+function showHostOptionsError (error) {
+  const errorBox = document.getElementById('hostOptionsError')
+  errorBox.textContent = error
+  errorBox.hidden = !error
+}
+
+function setHostOptionsOpen (open) {
+  document.getElementById('gameConfigBox').hidden = !open
+  document
+    .getElementById('hostOptionsBtn')
+    .setAttribute('aria-expanded', String(open))
+  document.getElementById('hostOptionsArrow').textContent = open ? '▴' : '▾'
 }
 
 async function openHostOptions (error = '') {
-  const errorLine = document.getElementById('hostOptionsError')
-  errorLine.textContent = error
-  errorLine.hidden = !error
+  showHostOptionsError(error)
   if (hostOptionsAreOpen()) {
     return
   }
@@ -673,39 +772,49 @@ async function openHostOptions (error = '') {
   if (!(await ensureMusicServiceChoice())) {
     return
   }
-  const nameInput = document.getElementById('sessionNameInput')
-  if (!nameInput.value) {
-    const name = document.getElementById('username').value.trim()
-    fillHostOptions(
-      name ? defaultSessionName(name) : '',
-      loadStoredTargetSongCount()
-    )
-  }
-  document.getElementById('gameConfigBox').hidden = false
-  document.getElementById('hostOptionsBtn').setAttribute('aria-expanded', 'true')
+  fillDefaultSessionName()
+  updateHostOptionsSummary()
+  setHostOptionsOpen(true)
 }
 
-function readHostOptions () {
+async function toggleHostOptions () {
+  if (hostOptionsAreOpen()) {
+    setHostOptionsOpen(false)
+    return
+  }
+  await openHostOptions()
+}
+
+function hostOptionsProblem () {
   const targetSongCount = parseInt(
     document.getElementById('targetSongCountInput').value.trim()
   )
   if (isNaN(targetSongCount) || targetSongCount <= 0) {
-    alert('⚠️ Please enter a valid number greater than 0 for songs!')
-    return null
+    return 'Please enter a valid number greater than 0 for songs!'
   }
-
   const name = document.getElementById('sessionNameInput').value.trim()
   if (!name) {
-    alert('Please enter a Game Session Name!')
-    return null
+    return 'Please enter a Game Session Name!'
   }
   if (!isValidSessionName(name)) {
-    alert(
-      `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
-    )
+    return `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+  }
+  return ''
+}
+
+// Returns null after showing the problem inside Host Options.
+async function readHostOptions () {
+  const problem = hostOptionsProblem()
+  if (problem) {
+    await openHostOptions(problem)
     return null
   }
-  return { name, targetSongCount }
+  return {
+    name: document.getElementById('sessionNameInput').value.trim(),
+    targetSongCount: parseInt(
+      document.getElementById('targetSongCountInput').value.trim()
+    )
+  }
 }
 
 // A failed lookup counts as not listed; the server rejects taken names anyway.
@@ -732,13 +841,8 @@ async function hostGame () {
   if (!(await ensureMusicServiceChoice())) {
     return
   }
-  const nameInput = document.getElementById('sessionNameInput')
-  if (!hostOptionsAreOpen()) {
-    fillHostOptions(defaultSessionName(username), loadStoredTargetSongCount())
-  } else if (!nameInput.value.trim()) {
-    nameInput.value = defaultSessionName(username)
-  }
-  const options = readHostOptions()
+  fillDefaultSessionName()
+  const options = await readHostOptions()
   if (!options) {
     return
   }
@@ -759,6 +863,7 @@ async function hostGame () {
     // land on another origin, so remember the choice before leaving.
     store(USERNAME_STORAGE_KEY, username)
     rememberHostingChoice(options.targetSongCount, musicServiceType)
+    showHostOptionsError('')
     const stateParam = encodeURIComponent(
       JSON.stringify({
         game_id: sessionName,
@@ -795,14 +900,35 @@ async function hostGame () {
     return
   }
   rememberHostingChoice(options.targetSongCount, musicServiceType)
-  document.getElementById('gameConfigBox').hidden = true
+  showHostOptionsError('')
+  setHostOptionsOpen(false)
   isHost = true
 
   await joinSession(sessionName)
 }
 
 document.getElementById('hostGameBtn').onclick = () => hostGame()
-document.getElementById('hostOptionsBtn').onclick = () => openHostOptions()
+document.getElementById('hostOptionsBtn').onclick = () => toggleHostOptions()
+
+document
+  .getElementById('username')
+  .addEventListener('input', () => fillDefaultSessionName())
+
+for (const id of ['targetSongCountInput', 'sessionNameInput', 'username']) {
+  document
+    .getElementById(id)
+    .addEventListener('input', () => updateHostOptionsSummary())
+}
+
+for (const id of [
+  'targetSongCountInput',
+  'sessionNameInput',
+  'musicServiceDropdown'
+]) {
+  document
+    .getElementById(id)
+    .addEventListener('input', () => showHostOptionsError(''))
+}
 
 document.getElementById('joinGameBtn').onclick = async () => {
   serverUrl = getServerUrl()

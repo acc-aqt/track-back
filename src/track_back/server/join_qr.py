@@ -5,6 +5,9 @@ from urllib.parse import quote
 
 import segno
 
+QR_DARK = "#1a1a2e"
+QR_LIGHT = "#8AABDB"
+
 
 def join_path(
     session_name: str, username: str | None = None, *, host: bool = False
@@ -44,11 +47,17 @@ def render_svg(url: str) -> str:
     Returns
     -------
     str
-        An SVG document with a ``viewBox`` and a white background, so it scales
-        with CSS and stays scannable on dark themes.
+        An SVG document with a ``viewBox``, drawn in the Web UI's dark text colour
+        on its light control colour, so it scales with CSS and matches the panels.
     """
     buffer = io.BytesIO()
     segno.make_qr(url).save(
-        buffer, kind="svg", scale=4, light="#fff", omitsize=True, xmldecl=False
+        buffer,
+        kind="svg",
+        scale=4,
+        dark=QR_DARK,
+        light=QR_LIGHT,
+        omitsize=True,
+        xmldecl=False,
     )
     return buffer.getvalue().decode("utf-8")
