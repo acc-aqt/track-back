@@ -10,7 +10,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from game.errors import GameAlreadyRunningError, MusicPlaybackError
@@ -25,6 +25,7 @@ from game.messages import (
     your_turn_message,
 )
 from game.user import User
+from music_service.covers import COVER_URL_PREFIX, cover_store
 from music_service.error import MusicServiceError
 from music_service.selection import MUSIC_SERVICES, MusicServiceType
 from server.errors import (
@@ -158,6 +159,14 @@ class Server:
 
         app.post("/create")(self._create_game_session)
         app.get("/list-sessions")(self._list_joinable_game_sessions)
+        app.get(
+            COVER_URL_PREFIX + "{cover_id}",
+            response_class=Response,
+            responses={
+                200: {"content": {"image/jpeg": {}}},
+                404: {"description": "Unknown cover."},
+            },
+        )(self._get_cover)
         app.post("/join")(self._join_game_session)
         app.post("/start")(self._start_game_session)
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
@@ -206,6 +215,13 @@ class Server:
             )
         ]
         return JSONResponse(content={"sessions": joinable_session_ids})
+
+    @staticmethod
+    async def _get_cover(cover_id: str) -> Response:
+        image = cover_store.get(cover_id)
+        if image is None:
+            raise HTTPException(status_code=404, detail="Unknown cover.")
+        return Response(content=image, media_type="image/jpeg")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
         game_session_manager.remove_expired_sessions()

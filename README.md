@@ -97,11 +97,11 @@ cp .env.example .env
 2. Start the server (see 3) and create a game with **Apple Music**.
 3. On the first game, macOS asks whether your terminal may control **Music** and **System Events**. Allow both. You can change this later under **System Settings > Privacy & Security > Automation**.
 
-How it works: the server talks to the Music app via AppleScript. It starts playback, reads the title, artist and **Year** field of the current track, and skips to the next track after each round.
+How it works: the server talks to the Music app via AppleScript. It starts playback, reads the title, artist, **Year** field and album artwork of the current track, and skips to the next track after each round.
 
 > Notes:
 > - The release year comes from the track's **Year** field in your library. Tracks without a year count as year 0, so check your playlist's metadata.
-> - Apple Music doesn't provide album covers to the game, so placeholder covers are shown.
+> - Album covers are shrunk to 300 px with the built-in `sips` tool and served by the game server. Tracks without artwork show a placeholder cover.
 
 ---
 

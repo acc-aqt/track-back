@@ -57,6 +57,44 @@
         }
       }
     },
+    "/covers/{cover_id}": {
+      "get": {
+        "summary": " Get Cover",
+        "operationId": "_get_cover_covers__cover_id__get",
+        "parameters": [
+          {
+            "name": "cover_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cover Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "404": {
+            "description": "Unknown cover."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/join": {
       "post": {
         "summary": " Join Game Session",

@@ -117,6 +117,13 @@ const handleHttpError = (data, prefix = '❌ Server error') => {
   log(`${prefix}: ${describeHttpError(data)}`)
 }
 
+// The server sends either a full URL (Spotify) or a path on itself (Apple Music).
+const coverSrc = song => {
+  const url = song.album_cover_url
+  if (!url) return FALLBACK_COVER
+  return url.startsWith('/') ? `${serverUrl}${url}` : url
+}
+
 const buildSongEntry = (song, extraClass = '') => {
   const entry = document.createElement('div')
   entry.className = extraClass ? `song-entry ${extraClass}` : 'song-entry'
@@ -128,7 +135,7 @@ const buildSongEntry = (song, extraClass = '') => {
     cover.onerror = null
     cover.src = FALLBACK_COVER
   }
-  cover.src = song.album_cover_url || FALLBACK_COVER
+  cover.src = coverSrc(song)
 
   const details = document.createElement('div')
   details.className = 'song-details'
