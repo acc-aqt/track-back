@@ -2,12 +2,37 @@
 
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 from track_back.game.song import Song
 from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from track_back.music_service.covers import cover_store, cover_url
 from track_back.music_service.error import MusicServiceError
 
 OSA_SCRIPT_PATH = "osascript"
+SIPS_PATH = "sips"
+COVER_SIZE_PX = 300
+COVER_TIMEOUT_SECONDS = 5
+
+EXPORT_ARTWORK_SCRIPT = """
+on run argv
+    tell application "Music"
+        if (count of artworks of current track) is 0 then return "none"
+        set artworkData to raw data of artwork 1 of current track
+    end tell
+    set outFile to open for access (POSIX file (item 1 of argv)) with write permission
+    try
+        set eof outFile to 0
+        write artworkData to outFile
+    on error errorMessage
+        close access outFile
+        error errorMessage
+    end try
+    close access outFile
+    return "ok"
+end run
+"""
 
 
 class AppleMusicAdapter(AbstractMusicServiceAdapter):
@@ -57,7 +82,31 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
 
         release_year_int = int(release_year) if release_year.isdigit() else 0
 
-        return Song(title=track_name, artist=artist_name, release_year=release_year_int)
+        return Song(
+            title=track_name,
+            artist=artist_name,
+            release_year=release_year_int,
+            album_cover_url=self._current_cover_url(),
+        )
+
+    def _current_cover_url(self) -> str:
+        """Return the URL of the current track's cover, or "" if it has none."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            artwork_path = Path(tmp_dir) / "artwork"
+            try:
+                result = subprocess.run(  # noqa: S603
+                    [OSA_SCRIPT_PATH, "-e", EXPORT_ARTWORK_SCRIPT, str(artwork_path)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=COVER_TIMEOUT_SECONDS,
+                )
+            except (OSError, subprocess.SubprocessError):
+                return ""
+            if result.stdout.strip() != "ok" or not artwork_path.is_file():
+                return ""
+            image = _resized_to_jpeg(artwork_path) or artwork_path.read_bytes()
+        return cover_url(cover_store.add(image))
 
     def start_playback(self) -> None:
         """Start playing music."""
@@ -110,3 +159,31 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
             check=False,
         )
         return result.stdout.strip().lower() == "true"
+
+
+def _resized_to_jpeg(image_path: Path) -> bytes | None:
+    """Return the image shrunk to a small JPEG, or None if sips fails."""
+    out_path = image_path.with_suffix(".jpg")
+    try:
+        result = subprocess.run(  # noqa: S603
+            [
+                SIPS_PATH,
+                "-s",
+                "format",
+                "jpeg",
+                "-Z",
+                str(COVER_SIZE_PX),
+                str(image_path),
+                "--out",
+                str(out_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=COVER_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0 or not out_path.is_file():
+        return None
+    return out_path.read_bytes()

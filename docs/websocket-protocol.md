@@ -74,7 +74,7 @@ Until then the finished game is deliberately not joinable: `GET /list-sessions` 
 {"title": "Yesterday", "artist": "The Beatles", "release_year": 1965, "album_cover_url": ""}
 ```
 
-`album_cover_url` is an empty string when the music service has no cover.
+`album_cover_url` is an empty string when the music service has no cover. Otherwise it is either a full URL (Spotify) or a path on the game server starting with `/`, such as `/covers/<id>` (Apple Music), which the client resolves against the server URL.
 
 **Timeline**: a list of Songs ordered by release year, oldest first. Sent as `song_list`.
 

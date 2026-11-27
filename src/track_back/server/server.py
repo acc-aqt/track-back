@@ -28,6 +28,7 @@ from track_back.game.messages import (
     your_turn_message,
 )
 from track_back.game.user import User
+from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
 from track_back.server import network
@@ -193,6 +194,14 @@ class Server:
 
         app.post("/create")(self._create_game_session)
         app.get("/list-sessions")(self._list_joinable_game_sessions)
+        app.get(
+            COVER_URL_PREFIX + "{cover_id}",
+            response_class=Response,
+            responses={
+                200: {"content": {"image/jpeg": {}}},
+                404: {"description": "Unknown cover."},
+            },
+        )(self._get_cover)
         app.post("/join")(self._join_game_session)
         app.post("/start")(self._start_game_session)
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
@@ -253,6 +262,13 @@ class Server:
             )
         ]
         return JSONResponse(content={"sessions": joinable_session_ids})
+
+    @staticmethod
+    async def _get_cover(cover_id: str) -> Response:
+        image = cover_store.get(cover_id)
+        if image is None:
+            raise HTTPException(status_code=404, detail="Unknown cover.")
+        return Response(content=image, media_type="image/jpeg")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
         game_session_manager.remove_expired_sessions()
