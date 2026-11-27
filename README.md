@@ -35,7 +35,7 @@ uv tool install track-back
 
 (Or `pipx install track-back`.)
 
-2. Create your config. `init` asks for the port and, optionally, your Spotify credentials (see 3.1):
+2. Create your config. `init` asks which Music Service you use (`applemusic` or `spotify`, with your platform's default suggested), the port and, only if you choose `spotify`, your Spotify credentials (see 3 and 3.1):
 
 ```bash
 track-back-server init
@@ -103,7 +103,7 @@ Leave the values empty for features you don't use.
 The Server Operator chooses the Music Service when starting the server. Every Game Session uses it, unless the Host switches to another one that's available on the server.
 
 - **Default:** Apple Music on macOS, Spotify on Windows and Linux.
-- **Switch:** set `MUSIC_SERVICE` in your config (see 2.3), or pass `track-back-server --music-service spotify|applemusic` for one start. The option takes precedence over `MUSIC_SERVICE`.
+- **Switch:** re-run `track-back-server init`, set `MUSIC_SERVICE` in your config (see 2.3), or pass `track-back-server --music-service spotify|applemusic` for one start. The option takes precedence over `MUSIC_SERVICE`.
 - **Available services:** Apple Music on macOS, Spotify when `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` are all set, and the Mock Music Service only when the server was started with it.
 
 If the chosen Music Service can't work on this machine, the server refuses to start and prints how to fix it: run `track-back-server init` to add Spotify credentials, or use `--music-service spotify` instead of Apple Music on a machine that isn't a Mac. An unknown `MUSIC_SERVICE` value stops the server with a list of the valid values.
@@ -120,7 +120,7 @@ If the chosen Music Service can't work on this machine, the server refuses to st
 
 #### 3.1.2 Setup
 
-1. Run `track-back-server init`, answer `y` to **Set up Spotify?** and enter the Client ID, Client Secret and redirect URI from 3.1.1. The suggested default redirect URI is the loopback one for your port.
+1. Run `track-back-server init`, answer `spotify` to **Music service** and enter the Client ID, Client Secret and redirect URI from 3.1.1. The suggested default redirect URI is the loopback one for your port.
 2. Open the Spotify app and log in with a registered account (see 3.1.1).
 3. Select a playlist to use in the game.
 
