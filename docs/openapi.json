@@ -57,6 +57,24 @@
         }
       }
     },
+    "/music-services": {
+      "get": {
+        "summary": " List Music Services",
+        "operationId": "_list_music_services_music_services_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MusicServicesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/covers/{cover_id}": {
       "get": {
         "summary": " Get Cover",
@@ -298,6 +316,27 @@
         ],
         "title": "MusicServiceType",
         "description": "Music services a game can be created with."
+      },
+      "MusicServicesResponse": {
+        "properties": {
+          "default": {
+            "$ref": "#/components/schemas/MusicServiceType"
+          },
+          "available": {
+            "items": {
+              "$ref": "#/components/schemas/MusicServiceType"
+            },
+            "type": "array",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "default",
+          "available"
+        ],
+        "title": "MusicServicesResponse",
+        "description": "The Music Services a Host can create a Game Session with."
       },
       "StartGameRequest": {
         "properties": {

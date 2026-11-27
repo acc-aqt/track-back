@@ -84,6 +84,13 @@ class CreateGameRequest(BaseModel):
     music_service_type: MusicServiceType | None = None
 
 
+class MusicServicesResponse(BaseModel):
+    """The Music Services a Host can create a Game Session with."""
+
+    default: MusicServiceType
+    available: list[MusicServiceType]
+
+
 class JoinGameRequest(BaseModel):
     """Request model for joining a game session."""
 
@@ -247,6 +254,7 @@ class Server:
 
         app.post("/create")(self._create_game_session)
         app.get("/list-sessions")(self._list_joinable_game_sessions)
+        app.get("/music-services")(self._list_music_services)
         app.get(
             COVER_URL_PREFIX + "{cover_id}",
             response_class=Response,
@@ -311,6 +319,11 @@ class Server:
         return JSONResponse(
             status_code=201,
             content={"message": f"Game session {session_name} created."},
+        )
+
+    async def _list_music_services(self) -> MusicServicesResponse:
+        return MusicServicesResponse(
+            default=self.music_service, available=self.available_music_services
         )
 
     async def _list_joinable_game_sessions(self) -> JSONResponse:
