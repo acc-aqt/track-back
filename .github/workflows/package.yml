@@ -4,9 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+    inputs:
+      expect-version:
+        description: Version the built tool must report (empty skips the check).
+        type: string
+        default: ""
+
+permissions:
+  contents: read
 
 jobs:
-  smoke-test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,5 +26,17 @@ jobs:
         run: |
           pip install build
           python -m build --outdir dist
-      - name: Smoke-test the wheel
-        run: python scripts/smoke_test_dist.py dist
+      - name: Smoke-test the distributions
+        env:
+          EXPECT_VERSION: ${{ inputs.expect-version }}
+        run: |
+          if [ -n "$EXPECT_VERSION" ]; then
+            python scripts/smoke_test_dist.py dist --expect-version "$EXPECT_VERSION"
+          else
+            python scripts/smoke_test_dist.py dist
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error

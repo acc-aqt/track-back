@@ -12,8 +12,9 @@ Releases are published by `.github/workflows/release.yml` when a `v*` tag is pus
 
 The workflow fails before building if the tag is not `v` plus the `pyproject.toml`
 version (check locally with `python scripts/check_release_tag.py v0.2.0`). It then
-builds the sdist and wheel once, smoke-tests the wheel, and publishes those same
-files to TestPyPI and, only if that succeeds, to PyPI.
+builds the sdist and wheel once with the reusable `package.yml` workflow (which
+smoke-tests both and checks the tool reports the tag's version), and publishes those
+same files to TestPyPI and, only if that succeeds, to PyPI.
 
 ### One-time setup
 
