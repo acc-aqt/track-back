@@ -15,9 +15,7 @@ class FakeSpotify:
 
 
 def _adapter_with(playback: dict[str, Any] | None) -> SpotifyAdapter:
-    adapter = SpotifyAdapter()
-    adapter.session = FakeSpotify(playback)
-    return adapter
+    return SpotifyAdapter(FakeSpotify(playback))
 
 
 def test_current_song_without_active_device_raises_music_service_error() -> None:

@@ -3,6 +3,7 @@
 import html
 import os
 
+import spotipy
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, ValidationError
@@ -121,8 +122,7 @@ def spotify_callback(request: Request) -> Response:
 
     access_token = token_info["access_token"]
 
-    adapter = SpotifyAdapter()
-    adapter.authenticate(access_token)
+    adapter = SpotifyAdapter(spotipy.Spotify(auth=access_token))
     game = GameLogic(target_song_count=state.target_song_count, music_service=adapter)
 
     try:

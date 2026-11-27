@@ -14,17 +14,12 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
 
     service_name = "Spotify"
 
-    def __init__(self) -> None:
-        self.session: spotipy.Spotify | None = None
-
-    def authenticate(self, access_token: str) -> None:
-        """Authenticate the Spotify session with the provided access token."""
-        self.session = spotipy.Spotify(auth=access_token)
+    def __init__(self, session: spotipy.Spotify) -> None:
+        """Use an authenticated Spotify client, such as ``spotipy.Spotify(auth=token)``."""
+        self.session = session
 
     def current_song(self) -> Song:
         """Get the currently playing song."""
-        if not self.session:
-            raise MusicServiceError("Spotify session is not yet authenticated.")
         playback = self.session.current_playback()
         if not playback or not playback.get("item"):
             raise MusicServiceError(
@@ -48,8 +43,6 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
 
     def start_playback(self) -> None:
         """Start playing music."""
-        if not self.session:
-            raise MusicServiceError("Spotify session is not yet authenticated.")
         try:
             self.session.start_playback()
         except spotipy.exceptions.SpotifyException:
@@ -62,8 +55,6 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
 
     def next_track(self) -> None:
         """Skip to the next track."""
-        if not self.session:
-            raise MusicServiceError("Spotify session is not yet authenticated.")
         self.session.next_track()
 
 
