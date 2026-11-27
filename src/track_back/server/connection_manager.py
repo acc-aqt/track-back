@@ -1,17 +1,17 @@
-"""Contains the ConnectionManager class, which handles player connections."""
+"""Contains the ConnectionManager class, which delivers messages to live connections."""
 
 import json
+import logging
 from enum import Enum
-from typing import Any, Protocol
+from typing import Protocol
 
-from track_back.server.errors import (
-    PlayerAlreadyRegisteredError,
-    PlayerNotRegisteredError,
-)
+from track_back.server.messages import OutgoingMessage
+
+logger = logging.getLogger(__name__)
 
 
 class ClientConnection(Protocol):
-    """The parts of a client connection the game layer relies on."""
+    """The parts of a client connection the server relies on."""
 
     @property
     def client_state(self) -> Enum:
@@ -24,66 +24,38 @@ class ClientConnection(Protocol):
 
 
 class ConnectionManager:
-    """Holds the registered players and websocket connections."""
+    """Maps Usernames to their live connections and delivers messages to them."""
 
     def __init__(self) -> None:
-        self.player_connections: dict[str, ClientConnection | None] = {}
+        self.connections: dict[str, ClientConnection] = {}
 
-    def player_is_registered(self, username: str) -> bool:
-        """Check if a player is already registered."""
-        return username in self.player_connections
+    def attach(self, username: str, connection: ClientConnection) -> None:
+        """Remember the Player's live connection."""
+        self.connections[username] = connection
 
-    def get_registered_player_names(self) -> list[str]:
-        """Get a list of registered usernames."""
-        return list(self.player_connections.keys())
+    def detach(self, username: str) -> None:
+        """Forget the Player's connection."""
+        self.connections.pop(username, None)
 
-    def register_player(self, username: str) -> None:
-        """Register a new player."""
-        if username in self.player_connections:
-            raise PlayerAlreadyRegisteredError(username)
-        self.player_connections[username] = None
+    async def deliver(self, outgoing: list[OutgoingMessage]) -> None:
+        """Send each message to the live connections it is addressed to."""
+        for message in outgoing:
+            text = json.dumps(message.message)
+            for username in self._recipients(message):
+                if connection := self._live_connection(username):
+                    await connection.send_text(text)
+                else:
+                    logger.warning("Player %s has no live connection.", username)
 
-    def unregister_player(self, username: str) -> None:
-        """Unregister a player."""
-        self._ensure_registered(username)
-        self.player_connections.pop(username)
-
-    async def broadcast(
-        self, message: dict[str, Any], exclude: str | None = None
-    ) -> None:
-        """Send a message to every connected player except the excluded one."""
-        text = json.dumps(message)
-        for username, websocket in list(self.player_connections.items()):
-            if username != exclude and websocket and self.is_connected(username):
-                await websocket.send_text(text)
-
-    def is_connected(self, username: str) -> bool:
-        """Return True if the player holds a live connection."""
-        websocket = self.player_connections.get(username)
-        return websocket is not None and websocket.client_state.name == "CONNECTED"
-
-    def get_unconnected_player_names(self) -> list[str]:
-        """Get the registered usernames without a live connection."""
+    def _recipients(self, message: OutgoingMessage) -> list[str]:
+        if message.to is not None:
+            return [message.to]
         return [
-            username
-            for username in self.player_connections
-            if not self.is_connected(username)
+            username for username in self.connections if username != message.exclude
         ]
 
-    def set_websocket(self, username: str, websocket: ClientConnection) -> None:
-        """Set the WebSocket connection for a player."""
-        self._ensure_registered(username)
-        self.player_connections[username] = websocket
-
-    def get_websocket(self, username: str) -> ClientConnection | None:
-        """Get the WebSocket connection for a given username."""
-        return self.player_connections.get(username)
-
-    def remove_websocket(self, username: str) -> None:
-        """Remove the WebSocket connection for a player."""
-        self._ensure_registered(username)
-        self.player_connections[username] = None
-
-    def _ensure_registered(self, username: str) -> None:
-        if username not in self.player_connections:
-            raise PlayerNotRegisteredError(username)
+    def _live_connection(self, username: str) -> ClientConnection | None:
+        connection = self.connections.get(username)
+        if connection is None or connection.client_state.name != "CONNECTED":
+            return None
+        return connection

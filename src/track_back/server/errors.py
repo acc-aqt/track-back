@@ -8,11 +8,19 @@ class PlayerAlreadyRegisteredError(Exception):
         super().__init__(f"Player '{username}' already registered")
 
 
-class PlayerNotRegisteredError(Exception):
-    """No player with this name is registered in the session."""
+class NotEnoughPlayersError(Exception):
+    """The Lobby has no Players to start the game with."""
 
-    def __init__(self, username: str) -> None:
-        super().__init__(f"Player '{username}' not registered.")
+    def __init__(self) -> None:
+        super().__init__("Not enough players to start the game.")
+
+
+class GameSessionOverError(Exception):
+    """The Game Session already has a Winner."""
+
+    def __init__(self, session_name: str, winner: str) -> None:
+        super().__init__(f"Game session {session_name} is already over.")
+        self.winner = winner
 
 
 class SessionAlreadyExistsError(Exception):

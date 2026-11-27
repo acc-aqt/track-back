@@ -175,11 +175,3 @@ class GameLogic:
     def players_owing_guess(self) -> list[Player]:
         """Return the players who still have to guess the current song."""
         return [player for player in self.players if self.owes_guess(player.name)]
-
-    def disconnected_player_names(self) -> list[str]:
-        """Return the names of players who are not connected."""
-        return [player.name for player in self.players if not player.is_connected]
-
-    def has_disconnected_players(self) -> bool:
-        """Return True if any player is not connected."""
-        return bool(self.disconnected_player_names())

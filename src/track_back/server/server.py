@@ -19,7 +19,6 @@ from pydantic import BaseModel
 from track_back import __version__
 from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
 from track_back.game.game_logic import GameLogic
-from track_back.game.player import Player
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import (
@@ -31,23 +30,15 @@ from track_back.music_service.selection import (
 from track_back.server import config, join_qr, network
 from track_back.server.errors import (
     AlreadyConnectedError,
+    GameSessionOverError,
     NotAPlayerError,
+    NotEnoughPlayersError,
     PlayerAlreadyRegisteredError,
-    PlayerNotRegisteredError,
     PlayersNotConnectedError,
     SessionAlreadyExistsError,
 )
 from track_back.server.game_sessions import GameSession, game_session_manager
-from track_back.server.messages import (
-    GUESS_REQUEST_TEXT,
-    NEW_ROUND_TEXT,
-    MessageType,
-    game_over_message,
-    guess_request_message,
-    player_disconnected_message,
-    player_joined_message,
-    player_rejoined_message,
-)
+from track_back.server.messages import error_message, game_over_message
 from track_back.server.names import (
     USERNAME_MAX_LENGTH,
     SessionName,
@@ -56,11 +47,6 @@ from track_back.server.names import (
     is_valid_name,
 )
 from track_back.server.spotify_login import router as spotify_auth_router
-from track_back.server.websocket_handler import (
-    WebSocketGameHandler,
-    notify_players_owing_guess,
-    send_ws_message,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +55,13 @@ WEB_UI_DIR = files("track_back") / "web_ui"
 DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
     AlreadyConnectedError: 409,
     GameAlreadyRunningError: 409,
+    GameSessionOverError: 409,
     MusicPlaybackError: 500,
     NotAPlayerError: 409,
+    NotEnoughPlayersError: 400,
     PlayersNotConnectedError: 409,
     SessionAlreadyExistsError: 409,
     PlayerAlreadyRegisteredError: 409,
-    PlayerNotRegisteredError: 404,
 }
 
 
@@ -112,10 +99,14 @@ class ClientMessageContext:
 
     websocket: WebSocket
     username: str
-    handler: WebSocketGameHandler
+    session: GameSession
 
 
 ClientMessageHandler = Callable[[ClientMessageContext, dict[str, Any]], Awaitable[None]]
+
+
+async def _send(websocket: WebSocket, message: dict[str, Any]) -> None:
+    await websocket.send_text(json.dumps(message))
 
 
 async def _handle_guess_message(
@@ -123,11 +114,15 @@ async def _handle_guess_message(
 ) -> None:
     index = data.get("index")
     if not isinstance(index, int) or isinstance(index, bool):
-        await send_ws_message(
-            context.websocket, MessageType.ERROR, "Guess index must be an integer."
-        )
+        await _send(context.websocket, error_message("Guess index must be an integer."))
         return
-    await context.handler.handle_guess(context.websocket, context.username, index)
+    session = context.session
+    try:
+        outgoing = session.guess(context.username, index)
+    except MusicServiceError as e:
+        await _send(context.websocket, error_message(str(e)))
+        return
+    await session.connection_manager.deliver(outgoing)
 
 
 async def _handle_ping_message(
@@ -377,16 +372,7 @@ class Server:
         )
 
     async def _list_joinable_game_sessions(self) -> JSONResponse:
-        game_session_manager.remove_expired_sessions()
-        joinable_session_names = [
-            session_name
-            for session_name, session in game_session_manager.sessions.items()
-            if session.game_logic.winner is None
-            and (
-                not session.game_logic.running
-                or session.game_logic.has_disconnected_players()
-            )
-        ]
+        joinable_session_names = game_session_manager.joinable_session_names()
         return JSONResponse(content={"sessions": joinable_session_names})
 
     @staticmethod
@@ -415,31 +401,13 @@ class Server:
             raise HTTPException(
                 status_code=404, detail=f"Game session {session_name} not found."
             )
-        if session.game_logic.winner is not None:
-            raise HTTPException(
-                status_code=409, detail=f"Game session {session_name} is already over."
-            )
-        if session.game_logic.running:
-            session.check_can_rejoin(user_name)
-            return JSONResponse(
-                content={
-                    "message": f"Player {user_name} can rejoin game session {session_name}."
-                }
-            )
-
-        connection_manager = session.connection_manager
-        connection_manager.register_player(user_name)
-        await connection_manager.broadcast(
-            player_joined_message(
-                user_name, connection_manager.get_registered_player_names()
-            )
-        )
-
-        return JSONResponse(
-            content={
-                "message": f"Player {user_name} joined game session {session_name}."
-            }
-        )
+        rejoin = session.is_running
+        await session.connection_manager.deliver(session.join(user_name))
+        if rejoin:
+            message = f"Player {user_name} can rejoin game session {session_name}."
+        else:
+            message = f"Player {user_name} joined game session {session_name}."
+        return JSONResponse(content={"message": message})
 
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
@@ -450,25 +418,7 @@ class Server:
                 status_code=404, detail=f"Game session {session_name} not found."
             )
 
-        game = session.game_logic
-        if game.running:
-            raise GameAlreadyRunningError(session_name)
-
-        connection_manager = session.connection_manager
-
-        if len(connection_manager.get_registered_player_names()) < 1:
-            raise HTTPException(
-                status_code=400, detail="Not enough players to start the game."
-            )
-
-        if unconnected := connection_manager.get_unconnected_player_names():
-            raise PlayersNotConnectedError(unconnected)
-
-        player_names = connection_manager.get_registered_player_names()
-        players = [Player(name=user_name) for user_name in player_names]
-
-        game.start_game(players)
-        await notify_players_owing_guess(connection_manager, game, GUESS_REQUEST_TEXT)
+        await session.connection_manager.deliver(session.start())
 
         return JSONResponse(
             content={"message": f"Game session {session_name} started."}
@@ -487,55 +437,31 @@ class Server:
             logger.error("Game session %s not found.", game_id)
             return
 
-        game = game_session.game_logic
-        if game.winner is not None:
-            await websocket.send_text(json.dumps(game_over_message(game.winner.name)))
+        try:
+            outgoing = game_session.connect(username)
+        except GameSessionOverError as e:
+            await _send(websocket, game_over_message(e.winner))
             await websocket.close()
             return
-
-        handler = WebSocketGameHandler(game_session)
-        if not game.running:
-            await handler.handle_connection(websocket, username)
-        elif not await self._rejoin(websocket, username, game_session, handler):
+        except (NotAPlayerError, AlreadyConnectedError) as e:
+            await _send(websocket, error_message(str(e)))
+            await websocket.close(code=1008)
             return
+
+        connection_manager = game_session.connection_manager
+        connection_manager.attach(username, websocket)
+        await connection_manager.deliver(outgoing)
 
         try:
             while True:
                 raw_data = await websocket.receive_text()
                 await self._handle_message(
-                    ClientMessageContext(websocket, username, handler), raw_data
+                    ClientMessageContext(websocket, username, game_session), raw_data
                 )
-
         except WebSocketDisconnect:
-            await self.handle_disconnection(username, game_session)
-
-    @staticmethod
-    async def _rejoin(
-        websocket: WebSocket,
-        username: str,
-        game_session: GameSession,
-        handler: WebSocketGameHandler,
-    ) -> bool:
-        """Put a player back into the running game; reject anyone else."""
-        try:
-            player = game_session.check_can_rejoin(username)
-        except (NotAPlayerError, AlreadyConnectedError) as e:
-            await send_ws_message(websocket, MessageType.ERROR, str(e))
-            await websocket.close(code=1008)
-            return False
-
-        await handler.handle_connection(websocket, username)
-
-        connection_manager = game_session.connection_manager
-        rejoined = player_rejoined_message(
-            player, connection_manager.get_registered_player_names()
-        )
-        if game_session.game_logic.owes_guess(username):
-            await websocket.send_text(json.dumps(guess_request_message(player)))
-            await connection_manager.broadcast(rejoined, exclude=username)
-        else:
-            await connection_manager.broadcast(rejoined)
-        return True
+            connection_manager.detach(username)
+            await connection_manager.deliver(game_session.disconnect(username))
+            game_session_manager.release_if_empty(game_session)
 
     @staticmethod
     async def _handle_message(context: ClientMessageContext, raw_data: str) -> None:
@@ -544,10 +470,10 @@ class Server:
         try:
             data = json.loads(raw_data)
         except json.JSONDecodeError:
-            await send_ws_message(websocket, MessageType.ERROR, "Invalid JSON.")
+            await _send(websocket, error_message("Invalid JSON."))
             return
         if not isinstance(data, dict):
-            await send_ws_message(websocket, MessageType.ERROR, "Expected an object.")
+            await _send(websocket, error_message("Expected an object."))
             return
 
         message_type = data.get("type")
@@ -557,29 +483,6 @@ class Server:
             else None
         )
         if client_handler is None:
-            await send_ws_message(websocket, MessageType.ERROR, "Unknown message type.")
+            await _send(websocket, error_message("Unknown message type."))
             return
         await client_handler(context, data)
-
-    async def handle_disconnection(
-        self, username: str, game_session: GameSession
-    ) -> None:
-        """Handle player disconnection from the game session."""
-        connection_manager = game_session.connection_manager
-        round_advanced = game_session.disconnect(username)
-
-        await connection_manager.broadcast(player_disconnected_message(username))
-        if round_advanced:
-            await notify_players_owing_guess(
-                connection_manager, game_session.game_logic, NEW_ROUND_TEXT
-            )
-
-        session_name = game_session.session_name
-        if connection_manager.player_connections:
-            return
-        if game_session.game_logic.running:
-            game_session_manager.mark_empty(game_session)
-            logger.info("Game session %s is empty; keeping it for rejoin", session_name)
-        else:
-            game_session_manager.remove_game_session(session_name)
-            logger.info("Removed empty game session %s", session_name)

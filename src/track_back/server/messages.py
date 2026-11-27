@@ -1,5 +1,6 @@
 """Builds every message the server sends over the WebSocket (see docs/websocket-protocol.md)."""
 
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -20,6 +21,34 @@ class MessageType(StrEnum):
     PLAYER_DISCONNECTED = "user_disconnected"
     GAME_OVER = "game_over"
     ERROR = "error"
+
+
+@dataclass(frozen=True)
+class OutgoingMessage:
+    """A message and who receives it.
+
+    ``to`` names the one Player who receives it. Without ``to``, every
+    connected Player receives it except ``exclude``, if set.
+    """
+
+    message: dict[str, Any]
+    to: str | None = None
+    exclude: str | None = None
+
+
+def to_player(username: str, message: dict[str, Any]) -> OutgoingMessage:
+    """Address the message to one Player."""
+    return OutgoingMessage(message, to=username)
+
+
+def to_everyone(message: dict[str, Any]) -> OutgoingMessage:
+    """Address the message to every connected Player."""
+    return OutgoingMessage(message)
+
+
+def to_everyone_except(username: str, message: dict[str, Any]) -> OutgoingMessage:
+    """Address the message to every connected Player except one."""
+    return OutgoingMessage(message, exclude=username)
 
 
 GUESS_REQUEST_TEXT = "Place the new Song in your Timeline!"
