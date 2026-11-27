@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 from fastapi.testclient import TestClient
 
+from track_back.music_service.selection import MusicServiceType
 from track_back.server.server import Server
 
 PORT = 4300
@@ -13,7 +14,7 @@ PORT = 4300
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(Server(port=PORT).app)
+    return TestClient(Server(music_service=MusicServiceType.MOCK, port=PORT).app)
 
 
 @pytest.fixture(autouse=True)
@@ -134,19 +135,12 @@ def test_join_qr_falls_back_to_localhost_when_lan_discovery_fails(
 def test_join_qr_uses_the_port_the_server_runs_on(
     monkeypatch: pytest.MonkeyPatch, encoded_urls: list[str]
 ) -> None:
-    monkeypatch.setattr("track_back.server.server.uvicorn.run", mock.MagicMock())
+    monkeypatch.setattr("uvicorn.Server.run", mock.MagicMock())
     set_lan_addresses(monkeypatch, ["192.168.1.23"])
-    server = Server()
+    server = Server(music_service=MusicServiceType.MOCK)
     server.run(port=5100)
     client = TestClient(server.app)
-    client.post(
-        "/create",
-        json={
-            "game_id": "run-game",
-            "target_song_count": 2,
-            "music_service_type": "mock",
-        },
-    )
+    client.post("/create", json={"game_id": "run-game", "target_song_count": 2})
 
     client.get("/join-qr.svg", params={"session": "run-game"})
 

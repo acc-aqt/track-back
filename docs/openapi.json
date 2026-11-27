@@ -248,7 +248,7 @@
     "/spotify-callback": {
       "get": {
         "summary": "Spotify Callback",
-        "description": "Handle the Spotify OAuth callback after user authorization.\n\nThis endpoint is triggered by Spotify after a user logs in and approves access. It\nextracts the authorization code and the game configuration state (game ID, target\nsong count) from the request, exchanges the code for an access token, retrieves the\nuser profile, sets up the game logic with a Spotify adapter, and registers the new\ngame session.\n\nParameters\n----------\nrequest : Request\n    The incoming request containing query parameters 'code' and 'state'.\n\nReturns\n-------\nHTMLResponse\n    A success message if login and setup succeeded, or an error message if any\n    part of the process failed.",
+        "description": "Handle the Spotify OAuth callback after user authorization.\n\nThis endpoint is triggered by Spotify after a user logs in and approves access. It\nextracts the authorization code and the game configuration state (game ID, target\nsong count, the Host's username) from the request, exchanges the code for an\naccess token, sets up the game logic with a Spotify adapter, registers the new game\nsession and sends the Host back to the Web UI to join it.\n\nParameters\n----------\nrequest : Request\n    The incoming request containing query parameters 'code' and 'state'.\n\nReturns\n-------\nResponse\n    A 303 redirect to ``/?join=<session>&username=<username>&host=1`` if login and setup\n    succeeded, or an error message if any part of the process failed.",
         "operationId": "spotify_callback_spotify_callback_get",
         "responses": {
           "200": {
@@ -277,14 +277,20 @@
             "title": "Target Song Count"
           },
           "music_service_type": {
-            "$ref": "#/components/schemas/MusicServiceType"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MusicServiceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
           "game_id",
-          "target_song_count",
-          "music_service_type"
+          "target_song_count"
         ],
         "title": "CreateGameRequest",
         "description": "Request model for creating a game session."

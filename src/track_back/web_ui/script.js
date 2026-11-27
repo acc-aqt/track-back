@@ -3,7 +3,7 @@
 let socket
 let sessionName
 let username
-let isHostingSpotifySession = false
+let isHost = false
 
 let serverUrl = ''
 
@@ -83,19 +83,21 @@ function prefillStoredUsername () {
   }
 }
 
-// Join link: /?join=<Game Session Name>[&username=<Username>]
-// Used by the Spotify callback redirect and the Lobby QR code.
+// Join link: /?join=<Game Session Name>[&username=<Username>][&host=1]
+// Used by the Spotify callback redirect (with host=1) and the Lobby QR code.
 function readJoinLink () {
   const url = new URL(window.location.href)
   const session = url.searchParams.get('join')
   const linkUsername = url.searchParams.get('username')
-  if (session === null && linkUsername === null) {
+  const host = url.searchParams.get('host') === '1'
+  if (session === null && linkUsername === null && !host) {
     return null
   }
   url.searchParams.delete('join')
   url.searchParams.delete('username')
+  url.searchParams.delete('host')
   window.history.replaceState(window.history.state, '', url)
-  return session ? { session, username: linkUsername } : null
+  return session ? { session, username: linkUsername, host } : null
 }
 
 async function handleJoinLink () {
@@ -103,6 +105,7 @@ async function handleJoinLink () {
   if (!link) {
     return
   }
+  isHost = link.host
   const input = document.getElementById('username')
   if (link.username) {
     input.value = link.username.trim()
@@ -525,7 +528,7 @@ async function joinGame () {
     storeUsername(username)
     connectWebSocket()
     showLobbyQr()
-    if (isHostingSpotifySession) {
+    if (isHost) {
       document.getElementById('controls-start').hidden = false
     }
     document.getElementById('joinGameConfigBox').hidden = true
@@ -580,35 +583,17 @@ async function createGame () {
   const musicServiceType = document.getElementById('musicServiceDropdown').value
 
   if (musicServiceType === 'spotify') {
-    // ✨ Spotify: first login
-    const stateObject = {
-      game_id: sessionName,
-      target_song_count: targetSongCount
-    }
-
-    const stateParam = encodeURIComponent(JSON.stringify(stateObject))
-
-    const loginUrl = `${serverUrl}/spotify-login?state=${stateParam}`
-
-    document.getElementById('joinGameBtn').innerHTML =
-      'After login to Spotify: 📻&thinsp;🔑<br>Join the new game session 👋🏻'
-
-    document.getElementById('controls-new-or-join').hidden = false
-    document.getElementById('joinGameTitle').style.display = 'none'
-    document.getElementById('sessionDropdown').style.display = 'none'
-
-    document.getElementById('joinGameBtn').style.display = 'block'
-    document.getElementById('controls-start').hidden = true
-    document.getElementById('gameConfigBox').hidden = true
-
-    document.getElementById('configureGameBtn').style.display = 'none'
-
-    isHostingSpotifySession = true
-    window.open(loginUrl, '_blank')
-
-    log(`🎮 Created new spotify game session: ${sessionName}`)
-
-    // user returns later and clicks Join
+    // The Spotify callback creates the Game Session and redirects back with a
+    // join link, so the Host lands in the Lobby in this tab.
+    storeUsername(username)
+    const stateParam = encodeURIComponent(
+      JSON.stringify({
+        game_id: sessionName,
+        target_song_count: targetSongCount,
+        username
+      })
+    )
+    window.location.assign(`${serverUrl}/spotify-login?state=${stateParam}`)
   } else {
     try {
       const res = await fetch(`${serverUrl}/create`, {
@@ -631,7 +616,7 @@ async function createGame () {
       return
     }
     document.getElementById('gameConfigBox').hidden = true
-    document.getElementById('controls-start').hidden = false
+    isHost = true
 
     await joinGame()
   }
@@ -654,12 +639,6 @@ document.getElementById('joinGameBtn').onclick = async () => {
 
   if (!sessions.length) {
     alert('❌ No game sessions available to join.')
-    return
-  }
-
-  if (isHostingSpotifySession) {
-    document.getElementById('controls-new-or-join').hidden = true
-    await joinGame()
     return
   }
 
