@@ -77,7 +77,7 @@ The server reads its settings from these sources, highest precedence first. A va
 | --- | --- |
 | macOS | `~/Library/Application Support/track-back/.env` |
 | Linux | `~/.config/track-back/.env` (or `$XDG_CONFIG_HOME/track-back/.env`) |
-| Windows | `%LOCALAPPDATA%\track-back\track-back\.env` |
+| Windows | `%LOCALAPPDATA%\track-back\.env` |
 
 Re-run `track-back-server init` to replace it (it asks before overwriting), or edit it directly. To write a dotenv file of your own, start from [.env.example](.env.example).
 

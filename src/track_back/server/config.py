@@ -17,7 +17,7 @@ def user_config_path() -> Path:
     Path
         The ``.env`` file in the platform's user config directory for TrackBack.
     """
-    return Path(platformdirs.user_config_dir(APP_NAME)) / ".env"
+    return Path(platformdirs.user_config_dir(APP_NAME, appauthor=False)) / ".env"
 
 
 def load_config(env_file: Path | None = None) -> None:
