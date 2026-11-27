@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from track_back import __version__
 from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
 from track_back.game.game_logic import GameLogic
 from track_back.game.messages import (
@@ -185,7 +186,7 @@ class Server:
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
-        app = FastAPI(title="TrackBack", version="0.1.0")
+        app = FastAPI(title="TrackBack", version=__version__)
 
         app.add_middleware(
             CORSMiddleware,
