@@ -142,7 +142,9 @@ If both variables are set, the server will automatically start with SSL enabled.
 
 ## 4. Play the game in the browser
 
-Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html), or open `web_ui/index.html` locally. (The `index.html` in the repo root only redirects the GitHub Pages root to the Web UI.)
+The server serves the Web UI itself: open `http://<server>:<port>/` (e.g. `http://localhost:4200/`) and the page already talks to that server.
+
+Alternatively, open the public [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) on GitHub Pages. It's published from `src/track_back/web_ui/` by the Pages workflow on every push to `main`. (The `index.html` in the repo root only redirects the GitHub Pages root to the Web UI.)
 
 If the page doesn't come with a preconfigured server, it first shows a **Server** field. Enter your server's address, e.g. `http://localhost:4200` or `http://<your-lan-ip>:4200`.
 
