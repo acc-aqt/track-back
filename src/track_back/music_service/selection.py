@@ -8,6 +8,7 @@ from enum import StrEnum
 
 from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from track_back.music_service.apple_music import AppleMusicAdapter
+from track_back.music_service.covers import CoverStore
 from track_back.music_service.mock import MockMusicService
 
 
@@ -43,9 +44,10 @@ class MusicServiceDescription:
         Whether the Music Service can work on this server (platform, credentials).
     unavailable_hint : str
         What the Server Operator can do when it can't work here.
-    build : Callable[[], AbstractMusicServiceAdapter] | None
-        Builds a ready adapter for a new Game Session, or None when Game Sessions
-        with this Music Service are only created through its login.
+    build : Callable[[CoverStore], AbstractMusicServiceAdapter] | None
+        Builds a ready adapter for a new Game Session, publishing its album
+        covers in the given store, or None when Game Sessions with this Music
+        Service are only created through its login.
     login_hint : str
         Where a Host creates Game Sessions with a Music Service that has no
         ``build``.
@@ -53,7 +55,7 @@ class MusicServiceDescription:
 
     can_work: Callable[[], bool]
     unavailable_hint: str
-    build: Callable[[], AbstractMusicServiceAdapter] | None
+    build: Callable[[CoverStore], AbstractMusicServiceAdapter] | None
     login_hint: str = ""
 
 
@@ -83,7 +85,7 @@ MUSIC_SERVICES: dict[MusicServiceType, MusicServiceDescription] = {
     MusicServiceType.MOCK: MusicServiceDescription(
         can_work=lambda: True,
         unavailable_hint="",
-        build=MockMusicService,
+        build=lambda _cover_store: MockMusicService(),
     ),
 }
 

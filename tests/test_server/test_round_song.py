@@ -50,7 +50,7 @@ def client(music_service: SkippingMusicService) -> TestClient:
     music_services = {
         **MUSIC_SERVICES,
         MusicServiceType.MOCK: replace(
-            MUSIC_SERVICES[MusicServiceType.MOCK], build=lambda: music_service
+            MUSIC_SERVICES[MusicServiceType.MOCK], build=lambda _covers: music_service
         ),
     }
     server = Server(music_service=MusicServiceType.MOCK, music_services=music_services)

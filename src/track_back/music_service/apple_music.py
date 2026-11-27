@@ -7,7 +7,7 @@ from pathlib import Path
 
 from track_back.game.song import Song
 from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
-from track_back.music_service.covers import cover_store, cover_url
+from track_back.music_service.covers import CoverStore, cover_url
 from track_back.music_service.error import MusicServiceError
 
 OSA_SCRIPT_PATH = "osascript"
@@ -36,15 +36,22 @@ end run
 
 
 class AppleMusicAdapter(AbstractMusicServiceAdapter):
-    """Uses AppleScripts to interact with Apple Music."""
+    """Uses AppleScripts to interact with Apple Music.
+
+    Parameters
+    ----------
+    cover_store : CoverStore
+        Where the album covers of the current Songs are published.
+    """
 
     service_name = "Apple Music"
 
-    def __init__(self) -> None:
+    def __init__(self, cover_store: CoverStore) -> None:
         if not self.running_on_macos():
             raise MusicServiceError("Apple Music is only supported on macOS!")
         if not self.music_app_is_running():
             raise MusicServiceError("Apple Music is not running!")
+        self._cover_store = cover_store
 
     def current_song(self) -> Song:
         """Get the currently playing song."""
@@ -103,7 +110,7 @@ class AppleMusicAdapter(AbstractMusicServiceAdapter):
             if result.stdout.strip() != "ok" or not artwork_path.is_file():
                 return ""
             image = _resized_to_jpeg(artwork_path) or artwork_path.read_bytes()
-        return cover_url(cover_store.add(image))
+        return cover_url(self._cover_store.add(image))
 
     def start_playback(self) -> None:
         """Start playing music."""

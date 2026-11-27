@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from track_back import __version__
 from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
 from track_back.game.game_logic import GameLogic
-from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
+from track_back.music_service.covers import COVER_URL_PREFIX, CoverStore
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import (
     MUSIC_SERVICES,
@@ -220,6 +220,8 @@ class Server:
         to build its adapter for a new Game Session.
     game_sessions : GameSessionManager | None
         The registry of this server's Game Sessions; a new, empty one by default.
+    cover_store : CoverStore | None
+        The album covers this server hands out; a new, empty one by default.
     """
 
     def __init__(
@@ -230,11 +232,13 @@ class Server:
             MusicServiceType, MusicServiceDescription
         ] = MUSIC_SERVICES,
         game_sessions: GameSessionManager | None = None,
+        cover_store: CoverStore | None = None,
     ) -> None:
         self.music_service = music_service
         self.game_sessions = (
             GameSessionManager() if game_sessions is None else game_sessions
         )
+        self.cover_store = CoverStore() if cover_store is None else cover_store
         self.music_services = music_services
         self.available_music_services = available_music_services(
             music_service, music_services
@@ -358,7 +362,7 @@ class Server:
                 detail=self.music_services[music_service_type].login_hint,
             )
         try:
-            music_service = build()
+            music_service = build(self.cover_store)
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -381,9 +385,8 @@ class Server:
         joinable_session_names = self.game_sessions.joinable_session_names()
         return JSONResponse(content={"sessions": joinable_session_names})
 
-    @staticmethod
-    async def _get_cover(cover_id: str) -> Response:
-        image = cover_store.get(cover_id)
+    async def _get_cover(self, cover_id: str) -> Response:
+        image = self.cover_store.get(cover_id)
         if image is None:
             raise HTTPException(status_code=404, detail="Unknown cover.")
         return Response(content=image, media_type="image/jpeg")

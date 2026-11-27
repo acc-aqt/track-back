@@ -9,7 +9,7 @@ import pytest
 from track_back.game.game_logic import GameLogic
 from track_back.game.player import Player
 from track_back.music_service.apple_music import AppleMusicAdapter
-from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
+from track_back.music_service.covers import COVER_URL_PREFIX, CoverStore
 from track_back.music_service.error import MusicServiceError
 
 
@@ -25,7 +25,7 @@ def test_full_game_one_round() -> None:
     player_1 = Player("Elton")
     player_2 = Player("John")
 
-    music_service = AppleMusicAdapter()
+    music_service = AppleMusicAdapter(CoverStore())
     game = GameLogic(
         target_song_count=1,
         music_service=music_service,
@@ -113,32 +113,40 @@ class FakeMac:
 
 
 @pytest.fixture
-def fake_mac(monkeypatch: pytest.MonkeyPatch) -> Callable[[FakeMac], AppleMusicAdapter]:
+def covers() -> CoverStore:
+    return CoverStore()
+
+
+@pytest.fixture
+def fake_mac(
+    monkeypatch: pytest.MonkeyPatch, covers: CoverStore
+) -> Callable[[FakeMac], AppleMusicAdapter]:
     always = staticmethod(lambda: True)
     monkeypatch.setattr(AppleMusicAdapter, "running_on_macos", always)
     monkeypatch.setattr(AppleMusicAdapter, "music_app_is_running", always)
 
     def adapter_on(mac: FakeMac) -> AppleMusicAdapter:
         monkeypatch.setattr(subprocess, "run", mac.run)
-        return AppleMusicAdapter()
+        return AppleMusicAdapter(covers)
 
     return adapter_on
 
 
-def _served_cover(url: str) -> bytes | None:
+def _served_cover(covers: CoverStore, url: str) -> bytes | None:
     assert url.startswith(COVER_URL_PREFIX)
-    return cover_store.get(url.removeprefix(COVER_URL_PREFIX))
+    return covers.get(url.removeprefix(COVER_URL_PREFIX))
 
 
 def test_current_song_has_resized_cover(
     fake_mac: Callable[[FakeMac], AppleMusicAdapter],
+    covers: CoverStore,
 ) -> None:
     adapter = fake_mac(FakeMac(artwork=ORIGINAL_ARTWORK))
 
     song = adapter.current_song()
 
     assert song.title == "Yesterday"
-    assert _served_cover(song.album_cover_url) == RESIZED_COVER
+    assert _served_cover(covers, song.album_cover_url) == RESIZED_COVER
 
 
 def test_current_song_without_artwork_has_no_cover(
@@ -151,22 +159,24 @@ def test_current_song_without_artwork_has_no_cover(
 
 def test_cover_falls_back_to_original_artwork_when_sips_fails(
     fake_mac: Callable[[FakeMac], AppleMusicAdapter],
+    covers: CoverStore,
 ) -> None:
     adapter = fake_mac(FakeMac(artwork=ORIGINAL_ARTWORK, sips_works=False))
 
     song = adapter.current_song()
 
-    assert _served_cover(song.album_cover_url) == ORIGINAL_ARTWORK
+    assert _served_cover(covers, song.album_cover_url) == ORIGINAL_ARTWORK
 
 
 def test_cover_falls_back_to_original_artwork_when_sips_is_missing(
     fake_mac: Callable[[FakeMac], AppleMusicAdapter],
+    covers: CoverStore,
 ) -> None:
     adapter = fake_mac(FakeMac(artwork=ORIGINAL_ARTWORK, sips_missing=True))
 
     song = adapter.current_song()
 
-    assert _served_cover(song.album_cover_url) == ORIGINAL_ARTWORK
+    assert _served_cover(covers, song.album_cover_url) == ORIGINAL_ARTWORK
 
 
 def test_hanging_artwork_export_leaves_song_without_cover(
