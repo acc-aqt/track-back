@@ -222,6 +222,10 @@ const FADE_DURATION = 1000
 
 const log = msg => {
   const logBox = document.getElementById('log')
+  if (logBox.classList.contains('log-empty')) {
+    logBox.classList.remove('log-empty')
+    logBox.textContent = ''
+  }
   logBox.textContent += msg + '\n'
   logBox.scrollTop = logBox.scrollHeight
 }
@@ -635,7 +639,7 @@ async function joinGame () {
   }
 }
 
-// Hosting: "Host a game" creates the Game Session with the Host Options, which
+// Hosting: "Host a Game" creates the Game Session with the Host Options, which
 // start as these defaults. The Host Options strip under the button summarises
 // them and opens and closes the panel for editing them.
 const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'

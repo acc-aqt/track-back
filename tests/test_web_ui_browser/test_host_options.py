@@ -68,7 +68,7 @@ def test_hosting_uses_values_edited_before_closing(page: Page, base_url: str) ->
     page.get_by_label("Target Song Count").fill("3")
     host_options_strip(page).click()
 
-    page.get_by_role("button", name="Host a game").click()
+    page.get_by_role("button", name="Host a Game").click()
 
     expect(page.get_by_role("button", name="Start!")).to_be_visible()
     expect(page.get_by_text("Joined game: Friday Party")).to_be_visible()
@@ -92,7 +92,7 @@ def test_invalid_count_shows_an_inline_error_and_no_dialog(
     page.get_by_label("Target Song Count").fill("0")
     host_options_strip(page).click()
 
-    page.get_by_role("button", name="Host a game").click()
+    page.get_by_role("button", name="Host a Game").click()
 
     expect(page.get_by_role("alert")).to_contain_text("valid number greater than 0")
     expect(host_options_strip(page)).to_have_attribute("aria-expanded", "true")
@@ -115,7 +115,7 @@ def test_taken_name_opens_host_options_with_the_error(
     page.goto(base_url)
     page.get_by_label("Username").fill("alice")
 
-    page.get_by_role("button", name="Host a game").click()
+    page.get_by_role("button", name="Host a Game").click()
 
     expect(page.get_by_role("alert")).to_contain_text("already exists")
     expect(host_options_strip(page)).to_have_attribute("aria-expanded", "true")
@@ -129,7 +129,7 @@ def test_target_song_count_is_remembered_after_a_reload(
     page.get_by_label("Username").fill("alice")
     host_options_strip(page).click()
     page.get_by_label("Target Song Count").fill("4")
-    page.get_by_role("button", name="Host a game").click()
+    page.get_by_role("button", name="Host a Game").click()
     expect(page.get_by_role("button", name="Start!")).to_be_visible()
 
     page.reload()
