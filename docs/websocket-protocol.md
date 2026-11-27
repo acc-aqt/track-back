@@ -36,7 +36,7 @@ Use `wss://` when the server runs with SSL.
 
 1. The client calls `POST /join`. The server registers the name and broadcasts `player_joined` to everyone already connected.
 2. The client opens the WebSocket. The server sends `welcome` and attaches the socket to the player.
-3. The host calls `POST /start`. It fails with 409 if the game is already running or if any registered player has no open WebSocket. On success, every player receives `your_turn`.
+3. The host calls `POST /start`. It fails with 409 if the game is already running or over, or if any registered player has no open WebSocket. On success, every player receives `your_turn`.
 
 A client may also open the WebSocket in the lobby without calling `POST /join` first. The server then registers the name silently: it sends `welcome` to that client, but nobody receives `player_joined`.
 

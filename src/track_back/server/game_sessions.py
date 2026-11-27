@@ -86,6 +86,7 @@ class GameSession:
 
     def start(self) -> list[OutgoingMessage]:
         """Start the game and ask every Player for their first Guess."""
+        self._check_not_over()
         if self.is_running:
             raise GameAlreadyRunningError(self.session_name)
         if not self.players:
