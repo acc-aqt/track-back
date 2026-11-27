@@ -4,6 +4,19 @@ The REST endpoints (`/create`, `/list-sessions`, `/join`, `/start`) are describe
 
 All frames are text frames that contain one JSON object. Every object has a `type` field.
 
+## Wire names and glossary terms
+
+Some wire names predate [`GLOSSARY.md`](../GLOSSARY.md). They stay as they are so that existing clients and servers keep working together, but they mean the glossary terms below.
+
+| Wire name | Glossary term |
+| --- | --- |
+| `game_id` (path, HTTP bodies, Spotify login state) | Game Session Name |
+| `username`, `user_name` | Username of a Player |
+| `song_list` | Timeline |
+| `your_turn` | Asks a Player for a Guess of the current Song |
+| `next_player` (in `your_turn`) | The Player asked for the Guess |
+| `user_disconnected` | A Player became a Disconnected Player |
+
 ## Endpoint
 
 ```
