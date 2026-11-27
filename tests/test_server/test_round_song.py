@@ -1,6 +1,7 @@
 """Every Guess in a Round is judged against the Song read when the Round started."""
 
 from contextlib import ExitStack
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -48,7 +49,9 @@ def music_service() -> SkippingMusicService:
 def client(music_service: SkippingMusicService) -> TestClient:
     music_services = {
         **MUSIC_SERVICES,
-        MusicServiceType.MOCK: lambda: music_service,
+        MusicServiceType.MOCK: replace(
+            MUSIC_SERVICES[MusicServiceType.MOCK], build=lambda: music_service
+        ),
     }
     server = Server(music_service=MusicServiceType.MOCK, music_services=music_services)
     return TestClient(server.app)

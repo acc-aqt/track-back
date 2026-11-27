@@ -29,11 +29,11 @@ from track_back.game.messages import (
     player_rejoined_message,
 )
 from track_back.game.player import Player
-from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import (
     MUSIC_SERVICES,
+    MusicServiceDescription,
     MusicServiceType,
     available_music_services,
 )
@@ -219,8 +219,9 @@ class Server:
         unless the Host picks another available one.
     port : int
         The port the server listens on; `run` replaces it with the port it binds.
-    music_services : Mapping[MusicServiceType, Callable[[], AbstractMusicServiceAdapter]]
-        How to build the adapter of each Music Service a Game Session is created with.
+    music_services : Mapping[MusicServiceType, MusicServiceDescription]
+        The description of each Music Service: whether it can work here and how
+        to build its adapter for a new Game Session.
     """
 
     def __init__(
@@ -228,12 +229,14 @@ class Server:
         music_service: MusicServiceType,
         port: int = config.DEFAULT_PORT,
         music_services: Mapping[
-            MusicServiceType, Callable[[], AbstractMusicServiceAdapter]
+            MusicServiceType, MusicServiceDescription
         ] = MUSIC_SERVICES,
     ) -> None:
         self.music_service = music_service
         self.music_services = music_services
-        self.available_music_services = available_music_services(music_service)
+        self.available_music_services = available_music_services(
+            music_service, music_services
+        )
         self.port = port
         self.app = self.create_app()
         self._ready_callbacks: list[Callable[[], None]] = []
@@ -346,8 +349,14 @@ class Server:
                 f"this server. Available: {available}.",
             )
 
+        build = self.music_services[music_service_type].build
+        if build is None:
+            raise HTTPException(
+                status_code=400,
+                detail=self.music_services[music_service_type].login_hint,
+            )
         try:
-            music_service = self.music_services[music_service_type]()
+            music_service = build()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 

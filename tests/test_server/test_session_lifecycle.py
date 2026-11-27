@@ -50,7 +50,7 @@ def test_create_with_unknown_music_service_is_rejected(client: TestClient) -> No
 def test_create_accepts_every_music_service_the_server_reports(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every service /music-services offers the Web UI creates a game."""
+    """Every service /music-services offers creates a game; Spotify via its login."""
     monkeypatch.setattr(sys, "platform", "darwin")
     for key in ("SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"):
         monkeypatch.setenv(key, "value")
@@ -71,7 +71,8 @@ def test_create_accepts_every_music_service_the_server_reports(
                 "music_service_type": music_service_type,
             },
         )
-        assert response.status_code == 201
+        expected = 400 if music_service_type == "spotify" else 201
+        assert response.status_code == expected
 
 
 @pytest.mark.parametrize(
