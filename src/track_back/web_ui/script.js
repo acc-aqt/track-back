@@ -457,6 +457,15 @@ const serverMessageHandlers = {
   user_disconnected: data => log(`❌ ${data.message}`)
 }
 
+// Messages only sent once the Game Session has started.
+const GAME_STARTED_MESSAGE_TYPES = new Set([
+  'your_turn',
+  'guess_result',
+  'other_player_guess',
+  'player_rejoined',
+  'game_over'
+])
+
 function connectWebSocket () {
   const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -487,6 +496,9 @@ function connectWebSocket () {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data)
+      if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
+        hideLobbyQr()
+      }
       if (Object.hasOwn(serverMessageHandlers, data.type)) {
         serverMessageHandlers[data.type](data)
       } else {
