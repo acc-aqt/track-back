@@ -3,7 +3,7 @@
 let socket
 let sessionName
 let username
-let isHostingSpotifySession = false
+let isHost = false
 
 let serverUrl = ''
 
@@ -54,11 +54,148 @@ function getServerUrl () {
 
 function startApp () {
   console.log('🌐 Using server URL:', serverUrl)
+  prefillStoredUsername()
+  handleJoinLink()
 }
 
-const LOCAL_HOSTNAMES = ['localhost', '127.0.0.1', '']
-if (!LOCAL_HOSTNAMES.includes(window.location.hostname)) {
-  document.querySelector('#musicServiceDropdown option[value="mock"]')?.remove()
+const USERNAME_STORAGE_KEY = 'trackback.username'
+
+const loadStored = key => {
+  try {
+    return localStorage.getItem(key) || ''
+  } catch {
+    return ''
+  }
+}
+
+const store = (key, value) => {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Storage can be unavailable (private mode); the value is then just not remembered.
+  }
+}
+
+function prefillStoredUsername () {
+  const input = document.getElementById('username')
+  if (!input.value) {
+    input.value = loadStored(USERNAME_STORAGE_KEY)
+  }
+}
+
+// Join link: /?join=<Game Session Name>[&username=<Username>][&host=1]
+// Used by the Spotify callback redirect (with host=1) and the Lobby QR code.
+function readJoinLink () {
+  const url = new URL(window.location.href)
+  const session = url.searchParams.get('join')
+  const linkUsername = url.searchParams.get('username')
+  const host = url.searchParams.get('host') === '1'
+  if (session === null && linkUsername === null && !host) {
+    return null
+  }
+  url.searchParams.delete('join')
+  url.searchParams.delete('username')
+  url.searchParams.delete('host')
+  window.history.replaceState(window.history.state, '', url)
+  return session ? { session, username: linkUsername, host } : null
+}
+
+async function handleJoinLink () {
+  const link = readJoinLink()
+  if (!link) {
+    return
+  }
+  isHost = link.host
+  const input = document.getElementById('username')
+  if (link.username) {
+    input.value = link.username.trim()
+  }
+  if (isValidUsername(input.value.trim())) {
+    await joinSession(link.session)
+  } else {
+    askUsernameThenJoin(link.session)
+  }
+}
+
+function askUsernameThenJoin (session) {
+  showSessionChoice([session])
+  document.getElementById('joinGameTitle').textContent =
+    'Enter your username to join'
+  document.getElementById('username').focus()
+}
+
+// Music Service choice in Game Setup: "Music: <service> · change".
+const MUSIC_SERVICE_LABELS = {
+  spotify: 'Spotify 📻🎶',
+  applemusic: 'Apple Music 🍎🎶',
+  mock: 'Mock Music Service'
+}
+
+// Older servers have no /music-services; offer the real services as before.
+const OLDER_SERVER_MUSIC_SERVICES = {
+  default: 'spotify',
+  available: ['spotify', 'applemusic'],
+  fromOlderServer: true
+}
+
+// Returns null, after telling the Host, if the Music Services can't be fetched.
+async function fetchMusicServices () {
+  try {
+    const res = await fetch(`${serverUrl}/music-services`)
+    if (res.status === 404) {
+      return OLDER_SERVER_MUSIC_SERVICES
+    }
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+    return await res.json()
+  } catch (err) {
+    console.error('❌ Failed to fetch music services:', err)
+    alert('⚠️ Failed to fetch the Music Services. Please try again.')
+    return null
+  }
+}
+
+// Fill the Music line for the given services; `preferred` wins if still available.
+function showMusicServiceChoice (services, preferred = null) {
+  const dropdown = document.getElementById('musicServiceDropdown')
+  dropdown.replaceChildren(
+    ...services.available.map(service => {
+      const option = document.createElement('option')
+      option.value = service
+      option.textContent = MUSIC_SERVICE_LABELS[service] || service
+      return option
+    })
+  )
+  dropdown.value = services.available.includes(preferred)
+    ? preferred
+    : services.default
+
+  const showDropdown = Boolean(services.fromOlderServer)
+  document.getElementById('musicServiceName').textContent =
+    MUSIC_SERVICE_LABELS[dropdown.value] || dropdown.value
+  document.getElementById('musicServiceChange').hidden =
+    services.available.length < 2
+  document.getElementById('musicServiceLine').hidden = showDropdown
+  document.getElementById('musicServicePicker').hidden = !showDropdown
+}
+
+async function loadMusicServiceChoice (preferred = null) {
+  const services = await fetchMusicServices()
+  if (services) {
+    showMusicServiceChoice(services, preferred)
+  }
+  return services
+}
+
+function selectedMusicService () {
+  return document.getElementById('musicServiceDropdown').value
+}
+
+document.getElementById('musicServiceChangeBtn').onclick = () => {
+  document.getElementById('musicServiceLine').hidden = true
+  document.getElementById('musicServicePicker').hidden = false
+  document.getElementById('musicServiceDropdown').focus()
 }
 
 let currentGuessSong = null
@@ -189,7 +326,31 @@ function handleGuessRequest (data) {
   setupDragDrop()
 }
 
+function showLobbyQr () {
+  const img = document.getElementById('lobbyQrImg')
+  img.onerror = hideLobbyQr
+  img.onload = () => {
+    document.getElementById('lobby-qr').hidden = false
+  }
+  img.src = `${serverUrl}/join-qr.svg?session=${encodeURIComponent(sessionName)}`
+}
+
+function hideLobbyQr () {
+  const img = document.getElementById('lobbyQrImg')
+  img.onload = null
+  document.getElementById('lobby-qr').hidden = true
+}
+
+function toggleLobbyQrSize () {
+  const img = document.getElementById('lobbyQrImg')
+  const bigger = img.classList.toggle('bigger')
+  const button = document.getElementById('lobbyQrToggleBtn')
+  button.textContent = bigger ? 'Show smaller' : 'Show bigger'
+  button.setAttribute('aria-pressed', String(bigger))
+}
+
 function showTimeline (list) {
+  hideLobbyQr()
   document.getElementById('timelineHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'
@@ -300,6 +461,15 @@ const serverMessageHandlers = {
   user_disconnected: data => log(`❌ ${data.message}`)
 }
 
+// Messages only sent once the Game Session has started.
+const GAME_STARTED_MESSAGE_TYPES = new Set([
+  'your_turn',
+  'guess_result',
+  'other_player_guess',
+  'player_rejoined',
+  'game_over'
+])
+
 function connectWebSocket () {
   const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -330,6 +500,9 @@ function connectWebSocket () {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data)
+      if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
+        hideLobbyQr()
+      }
       if (Object.hasOwn(serverMessageHandlers, data.type)) {
         serverMessageHandlers[data.type](data)
       } else {
@@ -364,51 +537,53 @@ window.addEventListener('online', () => {
     connectWebSocket()
   }
 })
-async function listAndChooseGameSessions () {
+async function fetchJoinableSessions () {
   try {
-    document.getElementById('joinGameConfigBox').hidden = false
-
     const res = await fetch(`${serverUrl}/list-sessions`)
     const data = await res.json()
     if (!res.ok) {
       handleHttpError(data)
-      return
+      return null
     }
-
-    const sessions = data.sessions || []
-    const dropdown = document.getElementById('sessionDropdown')
-    const joinButton = document.getElementById('joinSelectedSessionBtn')
-
-    dropdown.innerHTML = ''
-
-    if (sessions.length === 0) {
-      alert('❌ No available game sessions.')
-      return
-    }
-
-    sessions.forEach((sessionId, index) => {
-      const option = document.createElement('option')
-      option.value = sessionId
-      option.textContent = `${index + 1}. ${sessionId}`
-      dropdown.appendChild(option)
-    })
-
-    joinButton.onclick = async () => {
-      const selectedSessionName = dropdown.value
-      if (!selectedSessionName) {
-        alert('❌ Please select a session.')
-        return
-      }
-      sessionName = selectedSessionName
-      const success = await joinGame()
-      if (success) {
-        document.getElementById('controls-waiting-for-start').hidden = false
-      }
-    }
+    return data.sessions || []
   } catch (err) {
     console.error('❌ Failed to fetch sessions:', err)
     alert('⚠️ Failed to fetch game sessions.')
+    return null
   }
+}
+
+function showSessionChoice (sessions) {
+  document.getElementById('joinGameConfigBox').hidden = false
+  document.getElementById('joinGameTitle').textContent = 'Select a Game Session to join'
+
+  const dropdown = document.getElementById('sessionDropdown')
+  dropdown.replaceChildren(
+    ...sessions.map((name, index) => {
+      const option = document.createElement('option')
+      option.value = name
+      option.textContent = `${index + 1}. ${name}`
+      return option
+    })
+  )
+
+  document.getElementById('joinSelectedSessionBtn').onclick = async () => {
+    if (!dropdown.value) {
+      alert('❌ Please select a session.')
+      return
+    }
+    await joinSession(dropdown.value)
+  }
+}
+
+async function joinSession (name) {
+  sessionName = name
+  const success = await joinGame()
+  if (success) {
+    document.getElementById('controls-new-or-join').hidden = true
+    document.getElementById('controls-waiting-for-start').hidden = false
+  }
+  return success
 }
 
 async function joinGame () {
@@ -431,8 +606,10 @@ async function joinGame () {
     }
 
     log(`✅ Joined game: ${sessionName}`)
+    store(USERNAME_STORAGE_KEY, username)
     connectWebSocket()
-    if (isHostingSpotifySession) {
+    showLobbyQr()
+    if (isHost) {
       document.getElementById('controls-start').hidden = false
     }
     document.getElementById('joinGameConfigBox').hidden = true
@@ -443,109 +620,189 @@ async function joinGame () {
   }
 }
 
-async function configureGame () {
-  username = readUsername()
-  if (!username) {
-    return
-  }
-  document.getElementById('gameConfigBox').hidden = false
+// Hosting: "Host a game" creates the Game Session right away with these
+// defaults; "Options" reveals them for editing first.
+const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'
+const MUSIC_SERVICE_STORAGE_KEY = 'trackback.musicService'
+const DEFAULT_TARGET_SONG_COUNT = 10
 
-  document.getElementById('controls-new-or-join').hidden = true
+const defaultSessionName = name => `Game-by-${name}`
 
-  document.getElementById('sessionNameInput').value = `Game-by-${username}`
+const loadStoredTargetSongCount = () => {
+  const count = parseInt(loadStored(TARGET_SONG_COUNT_STORAGE_KEY))
+  return count > 0 ? count : DEFAULT_TARGET_SONG_COUNT
 }
 
-async function createGame () {
+const rememberHostingChoice = (targetSongCount, musicServiceType) => {
+  store(TARGET_SONG_COUNT_STORAGE_KEY, String(targetSongCount))
+  store(MUSIC_SERVICE_STORAGE_KEY, musicServiceType)
+}
+
+const hostOptionsAreOpen = () => !document.getElementById('gameConfigBox').hidden
+
+let musicServicesLoadedFrom = null
+
+// Returns false if the Music Services could not be loaded.
+async function ensureMusicServiceChoice () {
+  if (musicServicesLoadedFrom === serverUrl) {
+    return true
+  }
+  const services = await loadMusicServiceChoice(
+    loadStored(MUSIC_SERVICE_STORAGE_KEY)
+  )
+  if (!services) {
+    return false
+  }
+  musicServicesLoadedFrom = serverUrl
+  return true
+}
+
+function fillHostOptions (name, targetSongCount) {
+  document.getElementById('sessionNameInput').value = name
+  document.getElementById('targetSongCountInput').value = String(targetSongCount)
+}
+
+async function openHostOptions (error = '') {
+  const errorLine = document.getElementById('hostOptionsError')
+  errorLine.textContent = error
+  errorLine.hidden = !error
+  if (hostOptionsAreOpen()) {
+    return
+  }
+  serverUrl = getServerUrl()
+  if (!(await ensureMusicServiceChoice())) {
+    return
+  }
+  const nameInput = document.getElementById('sessionNameInput')
+  if (!nameInput.value) {
+    const name = document.getElementById('username').value.trim()
+    fillHostOptions(
+      name ? defaultSessionName(name) : '',
+      loadStoredTargetSongCount()
+    )
+  }
+  document.getElementById('gameConfigBox').hidden = false
+  document.getElementById('hostOptionsBtn').setAttribute('aria-expanded', 'true')
+}
+
+function readHostOptions () {
+  const targetSongCount = parseInt(
+    document.getElementById('targetSongCountInput').value.trim()
+  )
+  if (isNaN(targetSongCount) || targetSongCount <= 0) {
+    alert('⚠️ Please enter a valid number greater than 0 for songs!')
+    return null
+  }
+
+  const name = document.getElementById('sessionNameInput').value.trim()
+  if (!name) {
+    alert('Please enter a Game Session Name!')
+    return null
+  }
+  if (!isValidSessionName(name)) {
+    alert(
+      `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+    )
+    return null
+  }
+  return { name, targetSongCount }
+}
+
+// A failed lookup counts as not listed; the server rejects taken names anyway.
+async function isListedSessionName (name) {
+  try {
+    const res = await fetch(`${serverUrl}/list-sessions`)
+    if (!res.ok) {
+      return false
+    }
+    const data = await res.json()
+    return (data.sessions || []).includes(name)
+  } catch (err) {
+    console.error('❌ Failed to fetch sessions:', err)
+    return false
+  }
+}
+
+async function hostGame () {
   serverUrl = getServerUrl()
   username = readUsername()
   if (!username) {
     return
   }
-  const songCountInput = document
-    .getElementById('targetSongCountInput')
-    .value.trim()
-  const targetSongCount = parseInt(songCountInput)
-
-  if (isNaN(targetSongCount) || targetSongCount <= 0) {
-    alert('⚠️ Please enter a valid number greater than 0 for songs!')
+  if (!(await ensureMusicServiceChoice())) {
     return
   }
-
-  sessionName = document.getElementById('sessionNameInput').value.trim()
-
-  if (!sessionName) {
-    alert('Please enter a game ID!')
+  const nameInput = document.getElementById('sessionNameInput')
+  if (!hostOptionsAreOpen()) {
+    fillHostOptions(defaultSessionName(username), loadStoredTargetSongCount())
+  } else if (!nameInput.value.trim()) {
+    nameInput.value = defaultSessionName(username)
+  }
+  const options = readHostOptions()
+  if (!options) {
     return
   }
-  if (!isValidSessionName(sessionName)) {
-    alert(
-      `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
-    )
-    return
-  }
-
-  const musicServiceType = document.getElementById('musicServiceDropdown').value
+  sessionName = options.name
+  const musicServiceType = selectedMusicService()
 
   if (musicServiceType === 'spotify') {
-    // ✨ Spotify: first login
-    const stateObject = {
-      game_id: sessionName,
-      target_song_count: targetSongCount
-    }
-
-    const stateParam = encodeURIComponent(JSON.stringify(stateObject))
-
-    const loginUrl = `${serverUrl}/spotify-login?state=${stateParam}`
-
-    document.getElementById('joinGameBtn').innerHTML =
-      'After login to Spotify: 📻&thinsp;🔑<br>Join the new game session 👋🏻'
-
-    document.getElementById('controls-new-or-join').hidden = false
-    document.getElementById('joinGameTitle').style.display = 'none'
-    document.getElementById('sessionDropdown').style.display = 'none'
-
-    document.getElementById('joinGameBtn').style.display = 'block'
-    document.getElementById('controls-start').hidden = true
-    document.getElementById('gameConfigBox').hidden = true
-
-    document.getElementById('configureGameBtn').style.display = 'none'
-
-    isHostingSpotifySession = true
-    window.open(loginUrl, '_blank')
-
-    log(`🎮 Created new spotify game session: ${sessionName}`)
-
-    // user returns later and clicks Join
-  } else {
-    try {
-      const res = await fetch(`${serverUrl}/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          game_id: sessionName,
-          target_song_count: targetSongCount,
-          music_service_type: musicServiceType
-        })
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        handleHttpError(data, '❌ Failed to create game')
-        return
-      }
-    } catch (err) {
-      console.error('❌ Failed to create music game:', err)
+    // Catch a taken name before the Spotify login; the callback still rejects
+    // names that /list-sessions doesn't show (running Game Sessions).
+    if (await isListedSessionName(sessionName)) {
+      const error = `Game session '${sessionName}' already exists. Choose a different name.`
+      log(`❌ Failed to create Game Session: ${error}`)
+      await openHostOptions(error)
       return
     }
-    document.getElementById('gameConfigBox').hidden = true
-    document.getElementById('controls-start').hidden = false
-
-    await joinGame()
+    // The Spotify callback creates the Game Session and redirects back with a
+    // join link, so the Host lands in the Lobby in this tab. The callback may
+    // land on another origin, so remember the choice before leaving.
+    store(USERNAME_STORAGE_KEY, username)
+    rememberHostingChoice(options.targetSongCount, musicServiceType)
+    const stateParam = encodeURIComponent(
+      JSON.stringify({
+        game_id: sessionName,
+        target_song_count: options.targetSongCount,
+        username
+      })
+    )
+    window.location.assign(`${serverUrl}/spotify-login?state=${stateParam}`)
+    return
   }
+
+  try {
+    const res = await fetch(`${serverUrl}/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_id: sessionName,
+        target_song_count: options.targetSongCount,
+        music_service_type: musicServiceType
+      })
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      handleHttpError(data, '❌ Failed to create Game Session')
+      if (res.status === 409 || hostOptionsAreOpen()) {
+        await openHostOptions(describeHttpError(data))
+      }
+      return
+    }
+  } catch (err) {
+    console.error('❌ Failed to create Game Session:', err)
+    log('❌ Failed to create Game Session: the server could not be reached.')
+    return
+  }
+  rememberHostingChoice(options.targetSongCount, musicServiceType)
+  document.getElementById('gameConfigBox').hidden = true
+  isHost = true
+
+  await joinSession(sessionName)
 }
 
-document.getElementById('configureGameBtn').onclick = () => configureGame()
-document.getElementById('createGameBtn').onclick = () => createGame()
+document.getElementById('hostGameBtn').onclick = () => hostGame()
+document.getElementById('hostOptionsBtn').onclick = () => openHostOptions()
 
 document.getElementById('joinGameBtn').onclick = async () => {
   serverUrl = getServerUrl()
@@ -554,27 +811,26 @@ document.getElementById('joinGameBtn').onclick = async () => {
     return
   }
 
-  const res = await fetch(`${serverUrl}/list-sessions`)
-  const data = await res.json()
-
-  if (!res.ok) {
-    handleHttpError(data)
+  const sessions = await fetchJoinableSessions()
+  if (!sessions) {
     return
   }
 
-  if (!data.sessions.length) {
+  if (!sessions.length) {
     alert('❌ No game sessions available to join.')
     return
   }
 
-  document.getElementById('controls-new-or-join').hidden = true
-
-  if (isHostingSpotifySession) {
-    await joinGame()
+  if (sessions.length === 1) {
+    await joinSession(sessions[0])
     return
   }
-  await listAndChooseGameSessions()
+
+  document.getElementById('controls-new-or-join').hidden = true
+  showSessionChoice(sessions)
 }
+
+document.getElementById('lobbyQrToggleBtn').onclick = () => toggleLobbyQrSize()
 
 document.getElementById('startGameBtn').onclick = async () => {
   serverUrl = getServerUrl()
@@ -597,6 +853,7 @@ document.getElementById('startGameBtn').onclick = async () => {
   }
 
   document.getElementById('controls-start').hidden = true
+  hideLobbyQr()
   document.getElementById('timelineHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'

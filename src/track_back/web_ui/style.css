@@ -45,7 +45,8 @@ body {
   #controls-waiting-for-start,
   #controls-start,
   #gameConfigBox,
-  #joinGameConfigBox
+  #joinGameConfigBox,
+  #lobby-qr
    {
   background: var(--section-main);
   padding: 1rem;
@@ -64,8 +65,21 @@ body {
 #controls-waiting-for-start[hidden],
 #controls-start[hidden],
 #gameConfigBox[hidden],
-#joinGameConfigBox[hidden] {
+#joinGameConfigBox[hidden],
+#lobby-qr[hidden] {
   display: none !important;
+}
+
+#lobbyQrImg {
+  width: 120px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+
+#lobbyQrImg.bigger {
+  width: 320px;
 }
 
 .input-group {
@@ -118,6 +132,39 @@ body {
 .input-group button:active {
   background-color: var(--accent);
   transform: translateY(0px);
+}
+
+#hostOptionsError[hidden],
+#musicServiceLine[hidden],
+#musicServiceChange[hidden],
+#musicServicePicker[hidden] {
+  display: none !important;
+}
+
+#hostOptionsLine,
+#musicServiceLine {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.config-error {
+  margin: 0;
+  font-family: sans-serif;
+  font-size: 0.9rem;
+  color: #b00020;
+  text-align: center;
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .input-group-configure-game[hidden] {

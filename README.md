@@ -35,7 +35,7 @@ uv tool install track-back
 
 (Or `pipx install track-back`.)
 
-2. Create your config. `init` asks for the port and, optionally, your Spotify credentials (see 3.1):
+2. Create your config. `init` asks which Music Service you use (`applemusic` or `spotify`, with your platform's default suggested), the port and, only if you choose `spotify`, your Spotify credentials (see 3 and 3.1):
 
 ```bash
 track-back-server init
@@ -47,7 +47,7 @@ track-back-server init
 track-back-server
 ```
 
-4. Open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
+4. The server opens the game in your default browser. If it can't, or you started it with `--no-browser` (e.g. on a headless machine), open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
 
 > Note: Call `track-back-server -h` to display help and information about optional arguments, and `track-back-server --version` to show the installed version.
 
@@ -73,7 +73,7 @@ The server reads its settings from these sources, highest precedence first. A va
 3. `.env` in the current working directory (or the nearest parent directory that has one)
 4. The per-user config file written by `track-back-server init`
 
-`track-back-server --port <port>` takes precedence over all of them.
+`track-back-server --port <port>` and `--music-service <service>` take precedence over all of them.
 
 ### 2.2 Per-user config file
 
@@ -92,12 +92,22 @@ Leave the values empty for features you don't use.
 | Variable | Purpose |
 | --- | --- |
 | `PORT` | Port the server listens on (default `4200`). |
+| `MUSIC_SERVICE` | Music Service the server uses: `applemusic`, `spotify` or `mock` (default `applemusic` on macOS, `spotify` elsewhere; see 3). |
 | `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 3.1). |
 | `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 5). |
 
 ---
 
 ## 3. Connect to a music service
+
+The Server Operator chooses the Music Service when starting the server. Every Game Session uses it, unless the Host switches to another one that's available on the server.
+
+- **Default:** Apple Music on macOS, Spotify on Windows and Linux.
+- **Switch:** re-run `track-back-server init`, set `MUSIC_SERVICE` in your config (see 2.3), or pass `track-back-server --music-service spotify|applemusic` for one start. The option takes precedence over `MUSIC_SERVICE`.
+- **Available services:** Apple Music on macOS, Spotify when `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` are all set, and the Mock Music Service only when the server was started with it.
+- **Per Game Session:** the hosting **Options** show "Music: <service> · change" (see 4.1). "change" lists the available services and only affects that Game Session; it's hidden when only one service is available.
+
+If the chosen Music Service can't work on this machine, the server refuses to start and prints how to fix it: run `track-back-server init` to add Spotify credentials, or use `--music-service spotify` instead of Apple Music on a machine that isn't a Mac. An unknown `MUSIC_SERVICE` value stops the server with a list of the valid values.
 
 ### 3.1 Spotify
 
@@ -111,7 +121,7 @@ Leave the values empty for features you don't use.
 
 #### 3.1.2 Setup
 
-1. Run `track-back-server init`, answer `y` to **Set up Spotify?** and enter the Client ID, Client Secret and redirect URI from 3.1.1. The suggested default redirect URI is the loopback one for your port.
+1. Run `track-back-server init`, answer `spotify` to **Music service** and enter the Client ID, Client Secret and redirect URI from 3.1.1. The suggested default redirect URI is the loopback one for your port.
 2. Open the Spotify app and log in with a registered account (see 3.1.1).
 3. Select a playlist to use in the game.
 
@@ -128,7 +138,7 @@ Leave the values empty for features you don't use.
 #### 3.2.2 Setup
 
 1. Open the Music app and select a playlist. Shuffle works well.
-2. Start the server (see 1.2) and create a game with **Apple Music**.
+2. Start the server (see 1.2) and host a game with **Apple Music** (see 4.1).
 3. On the first game, macOS asks whether your terminal may control **Music** and **System Events**. Allow both. You can change this later under **System Settings > Privacy & Security > Automation**.
 
 How it works: the server talks to the Music app via AppleScript. It starts playback, reads the title, artist, **Year** field and album artwork of the current track, and skips to the next track after each round.
@@ -151,18 +161,27 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 
 ### 4.1 Host a game
 
-1. Click **Configure new Game Session**.
-2. In **Game Setup**, choose the music service, a **Game Session Name** (defaults to `Game-by-<username>`) and the **Target Song Count** (at least 1): the first player whose timeline reaches it wins.
-3. Click **Create new Game Session**.
-   - **Spotify:** a Spotify login opens in a new tab. Log in, close the tab, and click **Join the new game session** in the game.
-   - **Apple Music:** the session is created and you join it directly.
-4. Wait until everyone has joined, then click **All players connected? Start!**
+1. Enter your **Username** and click **Host a game**. This creates a Game Session right away with these defaults:
+   - **Game Session Name:** `Game-by-<username>`
+   - **Target Song Count:** 10, or the one you used last time in this browser. The first player whose timeline reaches it wins.
+   - **Music Service:** the one you used last time if the server still offers it, otherwise the server's default (see 3).
+2. To change any of them first, click **Options** below the button. It shows the **Game Session Name**, the **Target Song Count** (at least 1) and a line **Music: <service> · change**. **change** lists the Music Services available on this server and is hidden when there's only one. Then click **Host a game**.
+   - If the Game Session Name is already taken, **Options** opens with the error so you can pick another name.
+   - The Target Song Count and Music Service are remembered in this browser for the next time you host.
+3. What happens next depends on the Music Service:
+   - **Spotify:** the Spotify login opens in the same tab. After you log in, you're taken back to the game and join your new Game Session automatically, with your Username kept (also when you opened the game on `localhost` and Spotify returns you to `127.0.0.1`). A failed login shows an error page.
+   - **Apple Music** (or the Mock Music Service): you join your new Game Session directly.
+4. In the **Lobby**, a QR code shows the link to your Game Session (**Show bigger** enlarges it). Friends scan it and only need to enter their Username. It disappears once the game starts.
+5. Wait until everyone has joined, then click **All players connected? Start!**
+
+> Against an older server without the Music Service choice, **Options** shows the full Spotify / Apple Music dropdown instead of the **Music** line, and the QR code is hidden.
 
 ### 4.2 Join a game
 
-1. Click **Join a Game**.
-2. Pick the session from the list and click **Join Selected Session**.
-3. Wait for the host to start the game.
+1. Scan the QR code in the Host's Lobby, or open the game and click **Join a Game**.
+   - When exactly one Game Session is open, you join it directly.
+   - Otherwise, pick the session from the list and click **Join Selected Session**.
+2. Wait for the Host to start the Game Session.
 
 ### 4.3 Play
 
@@ -171,7 +190,7 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 - The first player to reach the target song count wins.
 - If you lose your connection, join the same session again with the same username to continue.
 
-> The **Mock Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
+> The **Mock Music Service** (a fixed list of songs, no real playback) is meant for development. It's only available when the server was started with `--music-service mock`, as `make run` does.
 
 ---
 
@@ -218,7 +237,7 @@ source .venv/bin/activate  # Activates the virtual environment in your shell
 make test                  # Runs the tests with coverage
 make lint                  # Checks ruff lint, ruff format and mypy on src/, tests/ and scripts/ (same as CI)
 make format                # Applies ruff fixes and formatting
-make run                   # Starts the game server
+make run                   # Starts the game server with the Mock Music Service
 make openapi               # Regenerates docs/openapi.json
 ```
 

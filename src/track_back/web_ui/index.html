@@ -40,7 +40,62 @@
 
     <div id="controls-new-or-join">
       <div class="input-group">
-        <button id="configureGameBtn">Configure new Game Session</button>
+        <button id="hostGameBtn">Host a game 🎮</button>
+      </div>
+      <p id="hostOptionsLine">
+        <button
+          type="button"
+          id="hostOptionsBtn"
+          class="link-button"
+          aria-expanded="false"
+          aria-controls="gameConfigBox"
+        >
+          Options
+        </button>
+      </p>
+      <div id="gameConfigBox" class="config-box" hidden>
+        <div class="config-title">Options ⚙️</div>
+
+        <p id="hostOptionsError" class="config-error" role="alert" hidden></p>
+
+        <div id="musicServiceChoice">
+          <p id="musicServiceLine" hidden>
+            Music: <span id="musicServiceName"></span
+            ><span id="musicServiceChange">
+              ·
+              <button type="button" id="musicServiceChangeBtn" class="link-button">
+                change
+              </button></span
+            >
+          </p>
+          <div id="musicServicePicker" class="input-group" hidden>
+            <label id="musicServiceDropdownLabel" for="musicServiceDropdown">
+              Choose a music service:
+            </label>
+            <select id="musicServiceDropdown"></select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label id="sessionNameInputLabel" for="sessionNameInput">
+            Game Session Name:
+          </label>
+          <input type="text" id="sessionNameInput" />
+        </div>
+
+        <div class="input-group">
+          <label id="targetSongCountInputLabel" for="targetSongCountInput">
+            Target Song Count:
+          </label>
+          <input
+            id="targetSongCountInput"
+            type="number"
+            value="10"
+            min="1"
+            step="1"
+            required
+          />
+        </div>
       </div>
       <div class="input-group">
         <button id="joinGameBtn">Join a Game 👋🏻</button>
@@ -48,7 +103,7 @@
     </div>
 
     <div id="joinGameConfigBox" class="config-box" hidden>
-      <div id="joinGameTitle" class="config-title">Select game to join</div>
+      <div id="joinGameTitle" class="config-title">Select a Game Session to join</div>
 
       <div class="input-group">
         <select id="sessionDropdown"></select>
@@ -58,45 +113,6 @@
       </div>
     </div>
 
-    <div id="gameConfigBox" class="config-box" hidden>
-      <div class="config-title">Game Setup 🎮</div>
-
-      <div class="input-group">
-        <label id="musicServiceDropdownLabel" for="musicServiceDropdown">
-          Choose a music service:
-        </label>
-        <select id="musicServiceDropdown">
-          <option value="spotify">Spotify 📻🎶</option>
-          <option value="applemusic">Apple Music 🍎🎶</option>
-          <option value="mock">Mock Music Service</option>
-        </select>
-      </div>
-
-      <div class="input-group">
-        <label id="sessionNameInputLabel" for="sessionNameInput">
-          Game Session Name:
-        </label>
-        <input type="text" id="sessionNameInput" />
-      </div>
-
-      <div class="input-group">
-        <label id="targetSongCountInputLabel" for="targetSongCountInput">
-          Target Song Count:
-        </label>
-        <input
-          id="targetSongCountInput"
-          type="number"
-          value="10"
-          min="1"
-          step="1"
-          required
-        />
-      </div>
-
-      <div class="input-group">
-        <button id="createGameBtn">Create new Game Session</button>
-      </div>
-    </div>
     <div id="controls-waiting-for-start" hidden>
       <label>Waiting for all players to connect and the game to start...</label>
     </div>
@@ -107,6 +123,14 @@
           All players connected? Start!<br />
           👩🏻‍🎤👨🏽‍🎤🧑🏻‍🎤👩🏽‍🎤👨🏻‍🎤🧑🏽‍🎤
         </button>
+      </div>
+    </div>
+
+    <div id="lobby-qr" hidden>
+      <label>Friends can scan this to join 📱</label>
+      <img id="lobbyQrImg" alt="QR code to join this Game Session" />
+      <div class="input-group">
+        <button id="lobbyQrToggleBtn" aria-pressed="false">Show bigger</button>
       </div>
     </div>
 
