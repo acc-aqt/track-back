@@ -708,6 +708,21 @@ function readHostOptions () {
   return { name, targetSongCount }
 }
 
+// A failed lookup counts as not listed; the server rejects taken names anyway.
+async function isListedSessionName (name) {
+  try {
+    const res = await fetch(`${serverUrl}/list-sessions`)
+    if (!res.ok) {
+      return false
+    }
+    const data = await res.json()
+    return (data.sessions || []).includes(name)
+  } catch (err) {
+    console.error('❌ Failed to fetch sessions:', err)
+    return false
+  }
+}
+
 async function hostGame () {
   serverUrl = getServerUrl()
   username = readUsername()
@@ -731,6 +746,14 @@ async function hostGame () {
   const musicServiceType = selectedMusicService()
 
   if (musicServiceType === 'spotify') {
+    // Catch a taken name before the Spotify login; the callback still rejects
+    // names that /list-sessions doesn't show (running Game Sessions).
+    if (await isListedSessionName(sessionName)) {
+      const error = `Game session '${sessionName}' already exists. Choose a different name.`
+      log(`❌ Failed to create Game Session: ${error}`)
+      await openHostOptions(error)
+      return
+    }
     // The Spotify callback creates the Game Session and redirects back with a
     // join link, so the Host lands in the Lobby in this tab. The callback may
     // land on another origin, so remember the choice before leaving.
