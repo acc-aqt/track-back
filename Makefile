@@ -48,7 +48,7 @@ test:
 
 .PHONY: run
 run:              ## Start the game server
-	$(ENV_PREFIX)track-back-server
+	$(ENV_PREFIX)track-back-server --no-browser
 
 .PHONY: openapi
 openapi:          ## Regenerate docs/openapi.json
