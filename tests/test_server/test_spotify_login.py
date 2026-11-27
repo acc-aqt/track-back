@@ -53,7 +53,7 @@ def test_callback_redirects_host_into_the_new_game_session(
     assert response.status_code == 303
     assert (
         response.headers["location"]
-        == "/?join=Spiel%20f%C3%BCr%20alle&username=Anna%20L%C3%BC"
+        == "/?join=Spiel%20f%C3%BCr%20alle&username=Anna%20L%C3%BC&host=1"
     )
     assert game_session_manager.get_game_session("Spiel für alle") is not None
 

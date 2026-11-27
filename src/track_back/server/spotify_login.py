@@ -83,7 +83,7 @@ def spotify_callback(request: Request) -> Response:
     Returns
     -------
     Response
-        A 303 redirect to ``/?join=<session>&username=<username>`` if login and setup
+        A 303 redirect to ``/?join=<session>&username=<username>&host=1`` if login and setup
         succeeded, or an error message if any part of the process failed.
 
     """
@@ -123,5 +123,6 @@ def spotify_callback(request: Request) -> Response:
     join_query = (
         f"join={quote(state.game_id, safe='')}"
         f"&username={quote(state.username, safe='')}"
+        "&host=1"
     )
     return RedirectResponse(f"/?{join_query}", status_code=303)
