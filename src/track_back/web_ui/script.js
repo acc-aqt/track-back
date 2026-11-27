@@ -342,7 +342,7 @@ function handleGuessRequest (data) {
 
   document.getElementById('newSongContainer').style.display = 'block'
 
-  setupDragDrop()
+  setDragDropEnabled(true)
 }
 
 function showLobbyQr () {
@@ -985,42 +985,51 @@ document.getElementById('startGameBtn').onclick = async () => {
   document.getElementById('songCount').style.display = 'block'
 }
 
-const setupDragDrop = () => {
+// Created once; enabled for each Round until its Guess is sent.
+const dragDrop = (() => {
   const timeline = document.getElementById('songTimeline')
   const newSongContainer = document.getElementById('newSongContainer')
 
-  new Sortable(timeline, {
-    group: 'songs',
-    animation: 150,
-    sort: true,
-    draggable: '.song-entry',
-    filter: ':not(#new-song)',
-    preventOnFilter: true,
-    scroll: true,
-    scrollSensitivity: 300,
-    scrollSpeed: 5,
-    onAdd: evt => {
-      if (evt.item.id === 'new-song') {
-        const newIndex = evt.newIndex
+  return [
+    new Sortable(timeline, {
+      group: 'songs',
+      animation: 150,
+      sort: true,
+      disabled: true,
+      draggable: '.song-entry',
+      filter: ':not(#new-song)',
+      preventOnFilter: true,
+      scroll: true,
+      scrollSensitivity: 300,
+      scrollSpeed: 5,
+      onAdd: evt => {
+        if (evt.item.id === 'new-song') {
+          const newIndex = evt.newIndex
 
-        evt.item.remove()
+          evt.item.remove()
 
-        socket.send(JSON.stringify({ type: 'guess', index: newIndex }))
+          socket.send(JSON.stringify({ type: 'guess', index: newIndex }))
 
-        Sortable.get(timeline).option('disabled', true)
-        Sortable.get(newSongContainer).option('disabled', true)
+          setDragDropEnabled(false)
+        }
+      },
+      onStart: () => {
+        timeline.classList.add('drag-active')
+      },
+      onEnd: () => {
+        timeline.classList.remove('drag-active')
       }
-    },
-    onStart: () => {
-      timeline.classList.add('drag-active')
-    },
-    onEnd: () => {
-      timeline.classList.remove('drag-active')
-    }
-  })
+    }),
+    new Sortable(newSongContainer, {
+      group: 'songs',
+      sort: false,
+      disabled: true
+    })
+  ]
+})()
 
-  new Sortable(newSongContainer, {
-    group: 'songs',
-    sort: false
-  })
+function setDragDropEnabled (enabled) {
+  for (const sortable of dragDrop) {
+    sortable.option('disabled', !enabled)
+  }
 }
