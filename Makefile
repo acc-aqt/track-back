@@ -25,10 +25,12 @@ create-venv:
 	@python3 -m venv .venv
 	@./.venv/bin/pip install -U pip
 	@./.venv/bin/pip install -e ".[test,lint]"
+	@./.venv/bin/playwright install chromium
 
 .PHONY: install
 install:          ## Install the project in dev mode.
 	$(ENV_PREFIX)pip install -e .[test]
+	$(ENV_PREFIX)playwright install chromium
 
 
 .PHONY: lint

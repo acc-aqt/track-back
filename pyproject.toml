@@ -43,7 +43,14 @@ track-back-server = "track_back.server.main:main"
 
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-asyncio", "coverage", "pytest-cov"]
+test = [
+  "pytest",
+  "pytest-asyncio",
+  "coverage",
+  "pytest-cov",
+  "playwright",
+  "pytest-playwright",
+]
 
 lint = [
   "ruff==0.17.5",
