@@ -1,7 +1,10 @@
 """Discover the addresses other devices can reach this machine on."""
 
 import ipaddress
+import logging
 import socket
+
+logger = logging.getLogger(__name__)
 
 # Connecting a UDP socket sends no packets; it only selects the outgoing interface.
 _ROUTE_PROBE_ADDRESS = ("192.0.2.1", 80)
@@ -29,6 +32,22 @@ def lan_ipv4_addresses() -> list[str]:
             continue
         addresses.append(candidate)
     return addresses
+
+
+def lan_ipv4_addresses_or_empty() -> list[str]:
+    """Return this machine's non-loopback IPv4 addresses, or none if discovery fails.
+
+    Returns
+    -------
+    list[str]
+        The addresses from `lan_ipv4_addresses`, or an empty list (with a logged
+        warning) if the network can't be queried.
+    """
+    try:
+        return lan_ipv4_addresses()
+    except OSError:
+        logger.warning("Could not discover LAN addresses.", exc_info=True)
+        return []
 
 
 def _default_route_address() -> list[str]:

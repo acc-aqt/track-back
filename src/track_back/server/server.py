@@ -164,11 +164,7 @@ class Server:
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
         use_ssl = bool(ssl_keyfile and ssl_certfile)
-        try:
-            lan_addresses = network.lan_ipv4_addresses()
-        except OSError:
-            logger.warning("Could not discover LAN addresses.", exc_info=True)
-            lan_addresses = []
+        lan_addresses = network.lan_ipv4_addresses_or_empty()
         print(startup_hint(port, use_ssl=use_ssl, lan_addresses=lan_addresses))
 
         if use_ssl:
