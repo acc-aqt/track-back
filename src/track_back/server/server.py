@@ -5,17 +5,20 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from importlib.resources import files
 from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from game.errors import GameAlreadyRunningError, MusicPlaybackError
-from game.game_logic import GameLogic
-from game.messages import (
+from track_back import __version__
+from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
+from track_back.game.game_logic import GameLogic
+from track_back.game.messages import (
     NEW_ROUND_TEXT,
     YOUR_TURN_TEXT,
     MessageType,
@@ -24,10 +27,11 @@ from game.messages import (
     player_rejoined_message,
     your_turn_message,
 )
-from game.user import User
-from music_service.error import MusicServiceError
-from music_service.selection import MUSIC_SERVICES, MusicServiceType
-from server.errors import (
+from track_back.game.user import User
+from track_back.music_service.error import MusicServiceError
+from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
+from track_back.server import network
+from track_back.server.errors import (
     AlreadyConnectedError,
     NotAMemberError,
     PlayersNotConnectedError,
@@ -35,22 +39,24 @@ from server.errors import (
     UserAlreadyRegisteredError,
     UserNotRegisteredError,
 )
-from server.game_sessions import GameSession, game_session_manager
-from server.names import (
+from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.names import (
     USER_NAME_MAX_LENGTH,
     GameId,
     TargetSongCount,
     UserName,
     is_valid_name,
 )
-from server.spotify_login import router as spotify_auth_router
-from server.websocket_handler import (
+from track_back.server.spotify_login import router as spotify_auth_router
+from track_back.server.websocket_handler import (
     WebSocketGameHandler,
     notify_players_owed_card,
     send_ws_message,
 )
 
 logger = logging.getLogger(__name__)
+
+WEB_UI_DIR = files("track_back") / "web_ui"
 
 DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
     AlreadyConnectedError: 409,
@@ -121,6 +127,31 @@ CLIENT_MESSAGE_HANDLERS: dict[str, ClientMessageHandler] = {
 }
 
 
+def startup_hint(port: int, *, use_ssl: bool, lan_addresses: list[str]) -> str:
+    """Tell the host which URLs open the Web UI.
+
+    Parameters
+    ----------
+    port : int
+        The port the server listens on.
+    use_ssl : bool
+        Whether the server serves HTTPS.
+    lan_addresses : list[str]
+        The addresses other devices can reach this machine on.
+
+    Returns
+    -------
+    str
+        One sentence naming the ``localhost`` URL and one URL per LAN address.
+    """
+    scheme = "https" if use_ssl else "http"
+    hint = f"Open {scheme}://localhost:{port} on this machine"
+    if not lan_addresses:
+        return f"{hint}."
+    lan_urls = " or ".join(f"{scheme}://{address}:{port}" for address in lan_addresses)
+    return f"{hint}, or {lan_urls} on other devices."
+
+
 class Server:
     """Encapsulates the FastAPI application."""
 
@@ -132,7 +163,11 @@ class Server:
         ssl_keyfile = os.getenv("SSL_KEYFILE")
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
-        if ssl_keyfile and ssl_certfile:
+        use_ssl = bool(ssl_keyfile and ssl_certfile)
+        lan_addresses = network.lan_ipv4_addresses_or_empty()
+        print(startup_hint(port, use_ssl=use_ssl, lan_addresses=lan_addresses))
+
+        if use_ssl:
             logger.info("Running server with SSL.")
             uvicorn.run(
                 self.app,
@@ -147,7 +182,7 @@ class Server:
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
-        app = FastAPI(title="TrackBack", version="0.1.0")
+        app = FastAPI(title="TrackBack", version=__version__)
 
         app.add_middleware(
             CORSMiddleware,
@@ -162,11 +197,23 @@ class Server:
         app.post("/start")(self._start_game_session)
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
         app.include_router(spotify_auth_router)
+        app.get("/server_config.js", include_in_schema=False)(self._server_config)
 
         for error_type in DOMAIN_ERROR_STATUS_CODES:
             app.add_exception_handler(error_type, self._domain_error_response)
 
+        app.mount("/", StaticFiles(directory=str(WEB_UI_DIR), html=True), name="web_ui")
+
         return app
+
+    @staticmethod
+    async def _server_config(request: Request) -> Response:
+        """Point the bundled Web UI at the origin it was loaded from."""
+        config = {"TRACK_BACK_SERVER_URL": str(request.base_url).rstrip("/")}
+        return Response(
+            content=f"window.TRACK_BACK_CONFIG = {json.dumps(config)};\n",
+            media_type="text/javascript",
+        )
 
     @staticmethod
     async def _domain_error_response(_request: Request, exc: Exception) -> JSONResponse:

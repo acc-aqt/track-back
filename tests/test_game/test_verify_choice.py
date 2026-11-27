@@ -2,8 +2,8 @@
 
 import pytest
 
-from game.game_logic import GameLogic
-from game.song import Song
+from track_back.game.game_logic import GameLogic
+from track_back.game.song import Song
 
 song_70s = Song("Bohemian Rhapsody", "Queen", 1975)
 song_80s = Song("Hier kommt Alex", "Die Toten Hosen", 1988)

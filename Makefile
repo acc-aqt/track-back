@@ -33,14 +33,14 @@ install:          ## Install the project in dev mode.
 
 .PHONY: lint
 lint:             ## Check linting, formatting and types (same as CI, modifies nothing)
-	$(ENV_PREFIX)ruff check src tests --no-fix
-	$(ENV_PREFIX)ruff format --check src tests
-	$(ENV_PREFIX)mypy src tests
+	$(ENV_PREFIX)ruff check src tests scripts --no-fix
+	$(ENV_PREFIX)ruff format --check src tests scripts
+	$(ENV_PREFIX)mypy src tests scripts
 
 .PHONY: format
 format:           ## Apply ruff fixes and formatting
-	$(ENV_PREFIX)ruff check src tests --fix
-	$(ENV_PREFIX)ruff format src tests
+	$(ENV_PREFIX)ruff check src tests scripts --fix
+	$(ENV_PREFIX)ruff format src tests scripts
 
 .PHONY: test
 test:
@@ -52,4 +52,4 @@ run:              ## Start the game server
 
 .PHONY: openapi
 openapi:          ## Regenerate docs/openapi.json
-	$(ENV_PREFIX)python -c "import json; from server.server import Server; print(json.dumps(Server().app.openapi(), indent=2))" > docs/openapi.json
+	$(ENV_PREFIX)python -c "import json; from track_back.server.server import Server; print(json.dumps(Server().app.openapi(), indent=2))" > docs/openapi.json

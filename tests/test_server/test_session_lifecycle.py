@@ -1,16 +1,18 @@
 import json
 import re
 from collections.abc import Callable
-from pathlib import Path
+from importlib.resources import files
 
 import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
-from music_service.apple_music import AppleMusicAdapter
-from music_service.error import MusicServiceError
-from server.game_sessions import GameSession, game_session_manager
-from server.names import GAME_ID_MAX_LENGTH
+from track_back.music_service.apple_music import AppleMusicAdapter
+from track_back.music_service.error import MusicServiceError
+from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.names import GAME_ID_MAX_LENGTH
+
+WEB_UI = files("track_back") / "web_ui"
 
 
 def test_ping_before_start_keeps_session_alive(
@@ -44,7 +46,7 @@ def test_create_with_unknown_music_service_is_rejected(client: TestClient) -> No
 
 
 def _music_service_dropdown_values() -> list[str]:
-    index_html = (Path(__file__).parents[2] / "web_ui" / "index.html").read_text()
+    index_html = (WEB_UI / "index.html").read_text()
     dropdown = re.search(
         r'<select id="musicServiceDropdown">(.*?)</select>', index_html, re.DOTALL
     )
@@ -187,7 +189,7 @@ GAME_IDS_THE_BROWSER_REJECTS = [
 
 
 def _browser_script() -> str:
-    return (Path(__file__).parents[2] / "web_ui" / "script.js").read_text()
+    return (WEB_UI / "script.js").read_text()
 
 
 def test_browser_name_pattern_is_the_one_under_test() -> None:

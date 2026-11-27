@@ -4,7 +4,7 @@ import json
 from enum import Enum
 from typing import Any, Protocol
 
-from server.errors import UserAlreadyRegisteredError, UserNotRegisteredError
+from track_back.server.errors import UserAlreadyRegisteredError, UserNotRegisteredError
 
 
 class ClientConnection(Protocol):

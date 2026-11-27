@@ -2,9 +2,9 @@
 
 import pytest
 
-from game.game_logic import GameLogic
-from game.user import User
-from music_service.apple_music import AppleMusicAdapter
+from track_back.game.game_logic import GameLogic
+from track_back.game.user import User
+from track_back.music_service.apple_music import AppleMusicAdapter
 
 
 @pytest.mark.skipif(

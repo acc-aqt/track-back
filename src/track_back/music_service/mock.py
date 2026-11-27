@@ -1,7 +1,7 @@
 """Contains a mock music service for testing purposes."""
 
-from game.song import Song
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
+from track_back.game.song import Song
+from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
 
 
 class MockMusicService(AbstractMusicServiceAdapter):
