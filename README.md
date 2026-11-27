@@ -161,7 +161,7 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 
 ### 4.1 Host a game
 
-1. Enter your **Username** and click **Host a game**. This creates a Game Session right away with these defaults:
+1. Enter your **Username** and click **Host a Game**. This creates a Game Session right away with these defaults:
    - **Game Session Name:** `Game-by-<username>`
    - **Target Song Count:** 10, or the one you used last time in this browser. The first player whose timeline reaches it wins.
    - **Music Service:** the one you used last time if the server still offers it, otherwise the server's default (see 3).

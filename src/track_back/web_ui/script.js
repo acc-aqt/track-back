@@ -207,6 +207,10 @@ const FADE_DURATION = 1000
 
 const log = msg => {
   const logBox = document.getElementById('log')
+  if (logBox.classList.contains('log-empty')) {
+    logBox.classList.remove('log-empty')
+    logBox.textContent = ''
+  }
   logBox.textContent += msg + '\n'
   logBox.scrollTop = logBox.scrollHeight
 }
