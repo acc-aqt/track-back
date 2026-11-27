@@ -27,6 +27,16 @@ class LoginState(BaseModel):
     username: Username
 
 
+def _state_error_message(error: ValidationError) -> str:
+    """Name the first state field that failed validation."""
+    first_error = error.errors()[0]
+    field_path = first_error["loc"]
+    if not field_path:
+        return "Failed to parse state"
+    field_name = field_path[0]
+    return f"Missing or invalid {field_name} (state)"
+
+
 def get_spotify_oauth() -> SpotifyOAuth:
     """Get Spotify OAuth object."""
     scope = "user-read-playback-state,user-modify-playback-state"
@@ -101,13 +111,7 @@ def spotify_callback(request: Request) -> Response:
     try:
         state = LoginState.model_validate_json(state_raw)
     except ValidationError as error:
-        location = error.errors()[0]["loc"]
-        message = (
-            f"Missing or invalid {location[0]} (state)"
-            if location
-            else "Failed to parse state"
-        )
-        return HTMLResponse(f"❌ {message}", status_code=400)
+        return HTMLResponse(f"❌ {_state_error_message(error)}", status_code=400)
 
     sp_oauth = get_spotify_oauth()
     token_info = sp_oauth.get_access_token(code)
