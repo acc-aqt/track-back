@@ -2,14 +2,11 @@
 
 import json
 import logging
-import os
-import socket
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
 
-import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -27,7 +24,7 @@ from track_back.music_service.selection import (
     MusicServiceType,
     available_music_services,
 )
-from track_back.server import config, join_qr, network
+from track_back.server import config, join_qr, network, runner
 from track_back.server.errors import (
     AlreadyConnectedError,
     GameSessionNotFoundError,
@@ -139,74 +136,6 @@ CLIENT_MESSAGE_HANDLERS: dict[str, ClientMessageHandler] = {
 }
 
 
-def startup_hint(port: int, *, use_ssl: bool, lan_addresses: list[str]) -> str:
-    """Tell the host which URLs open the Web UI.
-
-    Parameters
-    ----------
-    port : int
-        The port the server listens on.
-    use_ssl : bool
-        Whether the server serves HTTPS.
-    lan_addresses : list[str]
-        The addresses other devices can reach this machine on.
-
-    Returns
-    -------
-    str
-        One sentence naming the ``localhost`` URL and one URL per LAN address.
-    """
-    hint = f"Open {base_url('localhost', port, use_ssl=use_ssl)} on this machine"
-    if not lan_addresses:
-        return f"{hint}."
-    lan_urls = " or ".join(
-        base_url(address, port, use_ssl=use_ssl) for address in lan_addresses
-    )
-    return f"{hint}, or {lan_urls} on other devices."
-
-
-def base_url(host: str, port: int, *, use_ssl: bool) -> str:
-    """Build the server's URL on ``host``, without a trailing slash."""
-    scheme = "https" if use_ssl else "http"
-    return f"{scheme}://{host}:{port}"
-
-
-def _ssl_files() -> tuple[str, str] | None:
-    keyfile = os.getenv("SSL_KEYFILE")
-    certfile = os.getenv("SSL_CERTFILE")
-    if keyfile and certfile:
-        return keyfile, certfile
-    return None
-
-
-def uses_ssl() -> bool:
-    """Tell whether the SSL config asks the server to serve HTTPS.
-
-    Returns
-    -------
-    bool
-        True when both ``SSL_KEYFILE`` and ``SSL_CERTFILE`` are set.
-    """
-    return _ssl_files() is not None
-
-
-class _ReadyNotifyingServer(uvicorn.Server):
-    """Uvicorn server that runs callbacks once it accepts connections."""
-
-    def __init__(
-        self, config: uvicorn.Config, ready_callbacks: list[Callable[[], None]]
-    ) -> None:
-        super().__init__(config)
-        self._ready_callbacks = ready_callbacks
-
-    async def startup(self, sockets: list[socket.socket] | None = None) -> None:
-        await super().startup(sockets=sockets)
-        if not self.started:
-            return
-        for callback in self._ready_callbacks:
-            callback()
-
-
 class Server:
     """Encapsulates the FastAPI application.
 
@@ -253,36 +182,10 @@ class Server:
         """Run the callback once the server accepts connections."""
         self._ready_callbacks.append(callback)
 
-    def _serve(
-        self, port: int, ssl_keyfile: str | None = None, ssl_certfile: str | None = None
-    ) -> None:
-        uvicorn_config = uvicorn.Config(
-            self.app,
-            host="0.0.0.0",  # noqa: S104
-            port=port,
-            ssl_keyfile=ssl_keyfile,
-            ssl_certfile=ssl_certfile,
-        )
-        _ReadyNotifyingServer(uvicorn_config, self._ready_callbacks).run()
-
     def run(self, port: int) -> None:
-        """Start the Uvicorn server."""
+        """Start serving the app on the port, printing where to open the Web UI."""
         self.port = port
-        ssl_files = _ssl_files()
-        lan_addresses = network.lan_ipv4_addresses_or_empty()
-        print(
-            startup_hint(
-                port, use_ssl=ssl_files is not None, lan_addresses=lan_addresses
-            )
-        )
-
-        if ssl_files is not None:
-            logger.info("Running server with SSL.")
-            ssl_keyfile, ssl_certfile = ssl_files
-            self._serve(port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile)
-        else:
-            logger.info("Running server without SSL.")
-            self._serve(port)
+        runner.serve(self.app, port, self._ready_callbacks)
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
@@ -397,7 +300,9 @@ class Server:
         self.game_sessions.get_game_session(session)
         lan_addresses = network.lan_ipv4_addresses_or_empty()
         host = lan_addresses[0] if lan_addresses else "localhost"
-        url = base_url(host, self.port, use_ssl=uses_ssl()) + join_qr.join_path(session)
+        url = runner.base_url(
+            host, self.port, use_ssl=runner.uses_ssl()
+        ) + join_qr.join_path(session)
         return Response(content=join_qr.render_svg(url), media_type="image/svg+xml")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:

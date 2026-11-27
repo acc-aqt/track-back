@@ -15,7 +15,8 @@ from track_back.music_service.selection import (
     default_music_service,
 )
 from track_back.server import config, init_config
-from track_back.server.server import Server, base_url, uses_ssl
+from track_back.server.runner import base_url, uses_ssl
+from track_back.server.server import Server
 
 logger = logging.getLogger(__name__)
 
