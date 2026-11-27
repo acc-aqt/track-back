@@ -38,3 +38,20 @@ def test_main_runs_server(monkeypatch: pytest.MonkeyPatch) -> None:
     main_module.main()
 
     mock_server.run.assert_called_once_with(port=4321)
+
+
+def test_main_uses_port_from_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+    sys.argv = ["server/main.py"]
+    monkeypatch.delenv("PORT", raising=False)
+
+    main_module = importlib.import_module("server.main")
+
+    mock_server = mock.MagicMock()
+    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
+    monkeypatch.setattr(
+        main_module, "load_dotenv", lambda: monkeypatch.setenv("PORT", "5555")
+    )
+
+    main_module.main()
+
+    mock_server.run.assert_called_once_with(port=5555)
