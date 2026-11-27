@@ -278,7 +278,7 @@ def test_playback_failure_on_start_is_reported_as_server_error(
         assert response.status_code == 500
         assert response.json() == {
             "detail": "Failed to play music. Please check if music service "
-            "Dummy Music Service is running!"
+            "Mock Music Service is running!"
         }
 
         monkeypatch.undo()

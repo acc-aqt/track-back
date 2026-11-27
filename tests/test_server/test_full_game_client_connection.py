@@ -35,7 +35,7 @@ def test_full_game_client_connection(
     game_session = get_session(game_id)
 
     assert game_session.game_logic.target_song_count == 2
-    assert game_session.game_logic.music_service.service_name == "Dummy Music Service"
+    assert game_session.game_logic.music_service.service_name == "Mock Music Service"
     assert len(game_session.connection_manager.user_connections) == 0
 
     response = client.post(

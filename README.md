@@ -170,7 +170,7 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 - The first player to reach the target song count wins.
 - If you lose your connection, join the same session again with the same username to continue.
 
-> The **Dummy Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
+> The **Mock Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
 
 ## 5. Development setup (not necessary to run the game)
 
