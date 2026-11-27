@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import tomllib
+import webbrowser
 from pathlib import Path
 from unittest import mock
 
@@ -467,3 +468,94 @@ def test_mock_music_service_option_starts_server(
     server = run_main(monkeypatch, ["--music-service", "mock"])
 
     server.run.assert_called_once()
+
+
+@pytest.fixture
+def browser(monkeypatch: pytest.MonkeyPatch) -> mock.MagicMock:
+    fake_open = mock.MagicMock(return_value=True)
+    monkeypatch.setattr("webbrowser.open", fake_open)
+    monkeypatch.delenv("SSL_KEYFILE", raising=False)
+    monkeypatch.delenv("SSL_CERTFILE", raising=False)
+    return fake_open
+
+
+def signal_ready(server: mock.MagicMock) -> None:
+    for registration in server.call_when_ready.call_args_list:
+        registration.args[0]()
+
+
+def test_browser_opens_localhost_url_once_server_is_ready(
+    monkeypatch: pytest.MonkeyPatch, browser: mock.MagicMock
+) -> None:
+    server = run_main(monkeypatch, ["--port", "5000"])
+    browser.assert_not_called()
+
+    signal_ready(server)
+
+    browser.assert_called_once_with("http://localhost:5000/")
+
+
+@pytest.mark.parametrize(
+    ("ssl_env", "expected_url"),
+    [
+        (
+            {"SSL_KEYFILE": "key.pem", "SSL_CERTFILE": "cert.pem"},
+            "https://localhost:4200/",
+        ),
+        ({"SSL_KEYFILE": "key.pem"}, "http://localhost:4200/"),
+    ],
+)
+def test_browser_url_scheme_follows_ssl_config(
+    monkeypatch: pytest.MonkeyPatch,
+    browser: mock.MagicMock,
+    ssl_env: dict[str, str],
+    expected_url: str,
+) -> None:
+    for name, value in ssl_env.items():
+        monkeypatch.setenv(name, value)
+
+    server = run_main(monkeypatch, [])
+    signal_ready(server)
+
+    browser.assert_called_once_with(expected_url)
+
+
+def test_no_browser_flag_keeps_browser_closed(
+    monkeypatch: pytest.MonkeyPatch, browser: mock.MagicMock
+) -> None:
+    server = run_main(monkeypatch, ["--no-browser"])
+    signal_ready(server)
+
+    browser.assert_not_called()
+    server.run.assert_called_once_with(port=4200)
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        {"side_effect": webbrowser.Error("no runnable browser")},
+        {"return_value": False},
+    ],
+)
+def test_browser_failure_logs_warning_and_keeps_server_running(
+    monkeypatch: pytest.MonkeyPatch,
+    browser: mock.MagicMock,
+    caplog: pytest.LogCaptureFixture,
+    failure: dict[str, object],
+) -> None:
+    browser.configure_mock(**failure)
+    server = run_main(monkeypatch, [])
+
+    signal_ready(server)
+
+    assert "Could not open a browser" in caplog.text
+    server.run.assert_called_once_with(port=4200)
+
+
+def test_help_lists_no_browser_flag(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit):
+        run_main(monkeypatch, ["-h"])
+
+    assert "--no-browser" in capsys.readouterr().out

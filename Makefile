@@ -48,7 +48,7 @@ test:
 
 .PHONY: run
 run:              ## Start the game server with the Mock Music Service
-	$(ENV_PREFIX)track-back-server --music-service mock
+	$(ENV_PREFIX)track-back-server --music-service mock --no-browser
 
 .PHONY: openapi
 openapi:          ## Regenerate docs/openapi.json

@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import sys
+import webbrowser
 from pathlib import Path
 
 from track_back import __version__
@@ -13,7 +14,9 @@ from track_back.music_service.selection import (
     default_music_service,
 )
 from track_back.server import config, init_config
-from track_back.server.server import Server
+from track_back.server.server import Server, uses_ssl
+
+logger = logging.getLogger(__name__)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--env-file",
         type=Path,
         help="Load config from this dotenv file before .env and the user config.",
+    )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Don't open the Web UI in the default browser on start.",
     )
     return parser
 
@@ -92,6 +100,16 @@ def usable_music_service(args: argparse.Namespace) -> MusicServiceType:
     return music_service
 
 
+def open_browser(url: str) -> None:
+    """Open the URL in the default browser, logging a warning if that fails."""
+    try:
+        opened = webbrowser.open(url)
+    except webbrowser.Error:
+        opened = False
+    if not opened:
+        logger.warning("Could not open a browser. Open %s by hand.", url)
+
+
 def main() -> None:
     """Run the chosen subcommand, or start the server when none is given."""
     parser = build_parser()
@@ -111,6 +129,10 @@ def main() -> None:
         sys.exit(1)
 
     server = Server(music_service=music_service)
+    if not args.no_browser:
+        scheme = "https" if uses_ssl() else "http"
+        url = f"{scheme}://localhost:{port}/"
+        server.call_when_ready(lambda: open_browser(url))
     server.run(port=port)
 
 

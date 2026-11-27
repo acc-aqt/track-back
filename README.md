@@ -47,7 +47,7 @@ track-back-server init
 track-back-server
 ```
 
-4. Open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
+4. The server opens the game in your default browser. If it can't, or you started it with `--no-browser` (e.g. on a headless machine), open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
 
 > Note: Call `track-back-server -h` to display help and information about optional arguments, and `track-back-server --version` to show the installed version.
 
