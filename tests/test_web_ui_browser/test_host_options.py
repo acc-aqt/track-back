@@ -217,3 +217,20 @@ def test_opening_while_the_music_services_load_fetches_them_once(
         re.compile(r"Spotify · Edit$", re.IGNORECASE)
     )
     assert len(requests) == 1
+
+
+def test_strip_shows_the_service_when_the_server_url_is_relative(
+    page: Page, base_url: str
+) -> None:
+    page.route("**/server_config.js", lambda route: route.abort())
+    page.route("http://localhost:4200/**", lambda route: route.abort())
+    page.goto(base_url)
+    page.get_by_label("Server").fill("")
+    page.get_by_label("Username").fill("alice")
+
+    host_options_strip(page).click()
+
+    expect(page.get_by_label("Target Song Count")).to_be_visible()
+    expect(host_options_strip(page)).to_have_accessible_name(
+        re.compile(r"^10 songs · Mock · Edit$", re.IGNORECASE)
+    )

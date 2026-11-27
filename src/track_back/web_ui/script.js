@@ -716,7 +716,9 @@ function fillDefaultSessionName () {
 
 function hostOptionsSummaryParts () {
   const count = parseInt(document.getElementById('targetSongCountInput').value)
-  const service = musicServicesLoadedFrom ? selectedMusicService() : ''
+  const loaded =
+    musicServicesLoadedFrom !== null && musicServicesLoadedFrom === serverUrl
+  const service = loaded ? selectedMusicService() : ''
   return [
     count > 0 ? `${count} ${count === 1 ? 'song' : 'songs'}` : '',
     service ? MUSIC_SERVICE_SHORT_LABELS[service] || service : ''
