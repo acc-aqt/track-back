@@ -41,7 +41,7 @@ The number of Songs a Player's Timeline must hold to win, chosen by the Host.
 _Avoid_: Winning score, Goal
 
 **Music Service**:
-The external service that plays a Game Session's Songs, chosen by the Host.
+The external service that plays a Game Session's Songs, chosen by the Server Operator; the Host may switch it for their Game Session among the services available on the server.
 _Avoid_: Provider, Adapter, Backend
 
 **Mock Music Service**:
