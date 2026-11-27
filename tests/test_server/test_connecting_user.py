@@ -103,7 +103,7 @@ def test_disconnecting_users(
         assert _is_active(game_session, USER_1) is True
         assert _is_active(game_session, USER_2) is False
 
-    # the last user disconnecting removes the session
+    # the last user disconnecting keeps the running game for rejoin
     assert len(game_session.connection_manager.user_connections) == 0
     assert len(game_session.game_logic.users) == 2
     assert _is_active(game_session, USER_1) is False
@@ -111,7 +111,7 @@ def test_disconnecting_users(
 
     response = client.get("list-sessions")
     assert response.status_code == 200
-    assert response.json() == {"sessions": []}
+    assert response.json() == {"sessions": [game_id]}
 
 
 def test_reconnect_after_disconnect(
