@@ -105,7 +105,7 @@ The Server Operator chooses the Music Service when starting the server. Every Ga
 - **Default:** Apple Music on macOS, Spotify on Windows and Linux.
 - **Switch:** re-run `track-back-server init`, set `MUSIC_SERVICE` in your config (see 2.3), or pass `track-back-server --music-service spotify|applemusic` for one start. The option takes precedence over `MUSIC_SERVICE`.
 - **Available services:** Apple Music on macOS, Spotify when `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` are all set, and the Mock Music Service only when the server was started with it.
-- **Per Game Session:** Game Setup shows "Music: <service> · change". "change" lists the available services and only affects that Game Session; it's hidden when only one service is available.
+- **Per Game Session:** the hosting **Options** show "Music: <service> · change" (see 4.1). "change" lists the available services and only affects that Game Session; it's hidden when only one service is available.
 
 If the chosen Music Service can't work on this machine, the server refuses to start and prints how to fix it: run `track-back-server init` to add Spotify credentials, or use `--music-service spotify` instead of Apple Music on a machine that isn't a Mac. An unknown `MUSIC_SERVICE` value stops the server with a list of the valid values.
 
@@ -138,7 +138,7 @@ If the chosen Music Service can't work on this machine, the server refuses to st
 #### 3.2.2 Setup
 
 1. Open the Music app and select a playlist. Shuffle works well.
-2. Start the server (see 1.2) and create a game with **Apple Music**.
+2. Start the server (see 1.2) and host a game with **Apple Music** (see 4.1).
 3. On the first game, macOS asks whether your terminal may control **Music** and **System Events**. Allow both. You can change this later under **System Settings > Privacy & Security > Automation**.
 
 How it works: the server talks to the Music app via AppleScript. It starts playback, reads the title, artist, **Year** field and album artwork of the current track, and skips to the next track after each round.
@@ -161,18 +161,27 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 
 ### 4.1 Host a game
 
-1. Click **Configure new Game Session**.
-2. In **Game Setup**, choose the music service, a **Game Session Name** (defaults to `Game-by-<username>`) and the **Target Song Count** (at least 1): the first player whose timeline reaches it wins.
-3. Click **Create new Game Session**.
-   - **Spotify:** the Spotify login opens in the same tab. After you log in, you're taken back to the game and join your new session automatically, with your Username kept (also when you opened the game on `localhost` and Spotify returns you to `127.0.0.1`).
-   - **Apple Music:** the session is created and you join it directly.
-4. Wait until everyone has joined, then click **All players connected? Start!**
+1. Enter your **Username** and click **Host a game**. This creates a Game Session right away with these defaults:
+   - **Game Session Name:** `Game-by-<username>`
+   - **Target Song Count:** 10, or the one you used last time in this browser. The first player whose timeline reaches it wins.
+   - **Music Service:** the one you used last time if the server still offers it, otherwise the server's default (see 3).
+2. To change any of them first, click **Options** below the button. It shows the **Game Session Name**, the **Target Song Count** (at least 1) and a line **Music: <service> · change**. **change** lists the Music Services available on this server and is hidden when there's only one. Then click **Host a game**.
+   - If the Game Session Name is already taken, **Options** opens with the error so you can pick another name.
+   - The Target Song Count and Music Service are remembered in this browser for the next time you host.
+3. What happens next depends on the Music Service:
+   - **Spotify:** the Spotify login opens in the same tab. After you log in, you're taken back to the game and join your new session automatically, with your Username kept (also when you opened the game on `localhost` and Spotify returns you to `127.0.0.1`). A failed login shows an error page.
+   - **Apple Music** (or the Mock Music Service): you join your new session directly.
+4. In the **Lobby**, a QR code shows the link to your Game Session (**Show bigger** enlarges it). Friends scan it and only need to enter their Username. It disappears once the game starts.
+5. Wait until everyone has joined, then click **All players connected? Start!**
+
+> Against an older server without the Music Service choice, **Options** shows the full Spotify / Apple Music dropdown instead of the **Music** line, and the QR code is hidden.
 
 ### 4.2 Join a game
 
-1. Click **Join a Game**.
-2. Pick the session from the list and click **Join Selected Session**.
-3. Wait for the host to start the game.
+1. Scan the QR code in the Host's Lobby, or open the game and click **Join a Game**.
+   - When exactly one Game Session is open, you join it directly.
+   - Otherwise, pick the session from the list and click **Join Selected Session**.
+2. Wait for the host to start the game.
 
 ### 4.3 Play
 

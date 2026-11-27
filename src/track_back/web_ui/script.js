@@ -60,21 +60,25 @@ function startApp () {
 
 const USERNAME_STORAGE_KEY = 'trackback.username'
 
-const loadStoredUsername = () => {
+const loadStored = key => {
   try {
-    return localStorage.getItem(USERNAME_STORAGE_KEY) || ''
+    return localStorage.getItem(key) || ''
   } catch {
     return ''
   }
 }
 
-const storeUsername = name => {
+const store = (key, value) => {
   try {
-    localStorage.setItem(USERNAME_STORAGE_KEY, name)
+    localStorage.setItem(key, value)
   } catch {
-    // Storage can be unavailable (private mode); the Username is then just not remembered.
+    // Storage can be unavailable (private mode); the value is then just not remembered.
   }
 }
+
+const loadStoredUsername = () => loadStored(USERNAME_STORAGE_KEY)
+
+const storeUsername = name => store(USERNAME_STORAGE_KEY, name)
 
 function prefillStoredUsername () {
   const input = document.getElementById('username')
@@ -604,93 +608,150 @@ async function joinGame () {
   }
 }
 
-async function configureGame () {
-  username = readUsername()
-  if (!username) {
-    return
-  }
-  serverUrl = getServerUrl()
-  await loadMusicServiceChoice()
-  document.getElementById('gameConfigBox').hidden = false
+// Hosting: "Host a game" creates the Game Session right away with these
+// defaults; "Options" reveals them for editing first.
+const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'
+const MUSIC_SERVICE_STORAGE_KEY = 'trackback.musicService'
+const DEFAULT_TARGET_SONG_COUNT = 10
 
-  document.getElementById('controls-new-or-join').hidden = true
 
-  document.getElementById('sessionNameInput').value = `Game-by-${username}`
+const loadStoredTargetSongCount = () => {
+  const count = parseInt(loadStored(TARGET_SONG_COUNT_STORAGE_KEY))
+  return count > 0 ? count : DEFAULT_TARGET_SONG_COUNT
 }
 
-async function createGame () {
-  serverUrl = getServerUrl()
-  username = readUsername()
-  if (!username) {
+const rememberHostingChoice = (targetSongCount, musicServiceType) => {
+  store(TARGET_SONG_COUNT_STORAGE_KEY, String(targetSongCount))
+  store(MUSIC_SERVICE_STORAGE_KEY, musicServiceType)
+}
+
+const hostOptionsAreOpen = () => !document.getElementById('gameConfigBox').hidden
+
+let musicServicesLoadedFrom = null
+
+async function ensureMusicServiceChoice () {
+  if (musicServicesLoadedFrom !== serverUrl) {
+    await loadMusicServiceChoice(loadStored(MUSIC_SERVICE_STORAGE_KEY))
+    musicServicesLoadedFrom = serverUrl
+  }
+}
+
+function fillHostOptions (name, targetSongCount) {
+  document.getElementById('sessionNameInput').value = name
+  document.getElementById('targetSongCountInput').value = String(targetSongCount)
+}
+
+async function openHostOptions (error = '') {
+  const errorLine = document.getElementById('hostOptionsError')
+  errorLine.textContent = error
+  errorLine.hidden = !error
+  if (hostOptionsAreOpen()) {
     return
   }
-  const songCountInput = document
-    .getElementById('targetSongCountInput')
-    .value.trim()
-  const targetSongCount = parseInt(songCountInput)
+  serverUrl = getServerUrl()
+  await ensureMusicServiceChoice()
+  const nameInput = document.getElementById('sessionNameInput')
+  if (!nameInput.value) {
+    const name = document.getElementById('username').value.trim()
+    fillHostOptions(name ? `Game-by-${name}` : '', loadStoredTargetSongCount())
+  }
+  document.getElementById('gameConfigBox').hidden = false
+  document.getElementById('hostOptionsBtn').setAttribute('aria-expanded', 'true')
+}
 
+function readHostOptions () {
+  const targetSongCount = parseInt(
+    document.getElementById('targetSongCountInput').value.trim()
+  )
   if (isNaN(targetSongCount) || targetSongCount <= 0) {
     alert('⚠️ Please enter a valid number greater than 0 for songs!')
-    return
+    return null
   }
 
-  sessionName = document.getElementById('sessionNameInput').value.trim()
-
-  if (!sessionName) {
-    alert('Please enter a game ID!')
-    return
+  const name = document.getElementById('sessionNameInput').value.trim()
+  if (!name) {
+    alert('Please enter a Game Session Name!')
+    return null
   }
-  if (!isValidSessionName(sessionName)) {
+  if (!isValidSessionName(name)) {
     alert(
       `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
     )
+    return null
+  }
+  return { name, targetSongCount }
+}
+
+async function hostGame () {
+  serverUrl = getServerUrl()
+  username = readUsername()
+  if (!username) {
     return
   }
-
+  await ensureMusicServiceChoice()
+  const nameInput = document.getElementById('sessionNameInput')
+  if (!hostOptionsAreOpen()) {
+    fillHostOptions(`Game-by-${username}`, loadStoredTargetSongCount())
+  } else if (!nameInput.value.trim()) {
+    nameInput.value = `Game-by-${username}`
+  }
+  const options = readHostOptions()
+  if (!options) {
+    return
+  }
+  sessionName = options.name
   const musicServiceType = selectedMusicService()
 
   if (musicServiceType === 'spotify') {
     // The Spotify callback creates the Game Session and redirects back with a
-    // join link, so the Host lands in the Lobby in this tab.
+    // join link, so the Host lands in the Lobby in this tab. The callback may
+    // land on another origin, so remember the choice before leaving.
     storeUsername(username)
+    rememberHostingChoice(options.targetSongCount, musicServiceType)
     const stateParam = encodeURIComponent(
       JSON.stringify({
         game_id: sessionName,
-        target_song_count: targetSongCount,
+        target_song_count: options.targetSongCount,
         username
       })
     )
     window.location.assign(`${serverUrl}/spotify-login?state=${stateParam}`)
-  } else {
-    try {
-      const res = await fetch(`${serverUrl}/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          game_id: sessionName,
-          target_song_count: targetSongCount,
-          music_service_type: musicServiceType
-        })
-      })
-      const data = await res.json()
+    return
+  }
 
-      if (!res.ok) {
-        handleHttpError(data, '❌ Failed to create game')
-        return
+  try {
+    const res = await fetch(`${serverUrl}/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_id: sessionName,
+        target_song_count: options.targetSongCount,
+        music_service_type: musicServiceType
+      })
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      handleHttpError(data, '❌ Failed to create game')
+      if (res.status === 409 || hostOptionsAreOpen()) {
+        await openHostOptions(describeHttpError(data))
       }
-    } catch (err) {
-      console.error('❌ Failed to create music game:', err)
       return
     }
-    document.getElementById('gameConfigBox').hidden = true
-    isHost = true
-
-    await joinGame()
+  } catch (err) {
+    console.error('❌ Failed to create music game:', err)
+    log('❌ Failed to create game: the server could not be reached.')
+    return
   }
+  rememberHostingChoice(options.targetSongCount, musicServiceType)
+  document.getElementById('gameConfigBox').hidden = true
+  isHost = true
+
+  await joinSession(sessionName)
 }
 
-document.getElementById('configureGameBtn').onclick = () => configureGame()
-document.getElementById('createGameBtn').onclick = () => createGame()
+document.getElementById('hostGameBtn').onclick = () => hostGame()
+document.getElementById('hostOptionsBtn').onclick = () => openHostOptions()
 
 document.getElementById('joinGameBtn').onclick = async () => {
   serverUrl = getServerUrl()
