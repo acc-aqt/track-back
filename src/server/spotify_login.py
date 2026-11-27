@@ -7,13 +7,14 @@ import os
 import spotipy
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import TypeAdapter, ValidationError
 from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.oauth2 import SpotifyOAuth
 
 from game.game_logic import GameLogic
 from music_service.spotify import SpotifyAdapter
 from server.game_sessions import game_session_manager
-from server.names import GAME_ID_MAX_LENGTH, is_valid_name
+from server.names import GAME_ID_MAX_LENGTH, TargetSongCount, is_valid_name
 
 router = APIRouter()
 
@@ -92,8 +93,14 @@ def spotify_callback(request: Request) -> HTMLResponse:
 
     if not game_id or not is_valid_name(str(game_id), GAME_ID_MAX_LENGTH):
         return HTMLResponse("❌ Missing or invalid game_id (state)", status_code=400)
-    if not target_song_count:
-        return HTMLResponse("❌ Missing target_song_count", status_code=400)
+    try:
+        target_song_count = TypeAdapter(TargetSongCount).validate_python(
+            target_song_count
+        )
+    except ValidationError:
+        return HTMLResponse(
+            "❌ Missing or invalid target_song_count (state)", status_code=400
+        )
 
     sp_oauth = get_spotify_oauth()
     token_info = sp_oauth.get_access_token(code)

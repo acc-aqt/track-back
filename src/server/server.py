@@ -4,30 +4,32 @@ import json
 import logging
 import os
 from collections.abc import Awaitable, Callable
-from typing import Annotated, Any
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from game.errors import MusicPlaybackError
+from game.errors import GameAlreadyRunningError, MusicPlaybackError
 from game.game_logic import GameLogic
 from game.messages import MessageType, game_over_message, your_turn_message
 from game.user import User
 from music_service.error import MusicServiceError
 from music_service.selection import MUSIC_SERVICES, MusicServiceType
 from server.errors import (
+    PlayersNotConnectedError,
     SessionAlreadyExistsError,
     UserAlreadyRegisteredError,
     UserNotRegisteredError,
 )
 from server.game_sessions import GameSession, game_session_manager
 from server.names import (
-    GAME_ID_MAX_LENGTH,
-    NAME_PATTERN,
     USER_NAME_MAX_LENGTH,
+    GameId,
+    TargetSongCount,
+    UserName,
     is_valid_name,
 )
 from server.spotify_login import router as spotify_auth_router
@@ -35,11 +37,10 @@ from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
 logger = logging.getLogger(__name__)
 
-UserName = Annotated[str, Field(max_length=USER_NAME_MAX_LENGTH, pattern=NAME_PATTERN)]
-GameId = Annotated[str, Field(max_length=GAME_ID_MAX_LENGTH, pattern=NAME_PATTERN)]
-
 DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
+    GameAlreadyRunningError: 409,
     MusicPlaybackError: 500,
+    PlayersNotConnectedError: 409,
     SessionAlreadyExistsError: 409,
     UserAlreadyRegisteredError: 409,
     UserNotRegisteredError: 404,
@@ -50,7 +51,7 @@ class CreateGameRequest(BaseModel):
     """Request model for creating a game session."""
 
     game_id: GameId
-    target_song_count: int
+    target_song_count: TargetSongCount
     music_service_type: MusicServiceType
 
 
@@ -264,6 +265,10 @@ class Server:
                 status_code=404, detail=f"Game session {game_id} not found."
             )
 
+        game = session.game_logic
+        if game.running:
+            raise GameAlreadyRunningError(game_id)
+
         connection_manager = session.connection_manager
 
         if len(connection_manager.get_registered_user_names()) < 1:
@@ -271,32 +276,21 @@ class Server:
                 status_code=400, detail="Not enough players to start the game."
             )
 
+        if unconnected := connection_manager.get_unconnected_user_names():
+            raise PlayersNotConnectedError(unconnected)
+
         user_names = connection_manager.get_registered_user_names()
         users = [User(name=user_name) for user_name in user_names]
 
-        game = session.game_logic
-
         game.start_game(users)
 
-        players_to_notify = game.round.get_players_to_notify_for_next_turn()
-
-        for player in players_to_notify:
+        for player in game.round.get_players_to_notify_for_next_turn():
             ws = connection_manager.get_websocket(player.name)
-            if not ws:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"{player.name} is not connected via WebSocket.",
-                )
-
+            if ws is None:
+                continue
             await ws.send_text(json.dumps(your_turn_message(player)))
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "type": "game_start",
-                "message": f"Game {game_id} started.",
-            },
-        )
+        return JSONResponse(content={"message": f"Game {game_id} started."})
 
     async def _websocket_endpoint(
         self, websocket: WebSocket, game_id: str, username: str

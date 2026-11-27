@@ -51,6 +51,21 @@ def test_callback_rejects_invalid_game_id(callback_client: TestClient) -> None:
     assert game_session_manager.sessions == {}
 
 
+@pytest.mark.parametrize("target_song_count", [0, -1, "zero"])
+def test_callback_rejects_target_song_count_below_one(
+    callback_client: TestClient, target_song_count: object
+) -> None:
+    """The callback applies the same Target Song Count rule as /create."""
+    state = json.dumps(
+        {"game_id": "spotify-game", "target_song_count": target_song_count}
+    )
+    response = callback_client.get(
+        "/spotify-callback", params={"code": "abc", "state": state}
+    )
+    assert response.status_code == 400
+    assert game_session_manager.sessions == {}
+
+
 def test_login_asks_only_for_playback_permissions(
     monkeypatch: pytest.MonkeyPatch, client: TestClient
 ) -> None:

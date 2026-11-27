@@ -20,3 +20,10 @@ class SessionAlreadyExistsError(Exception):
 
     def __init__(self, game_id: str) -> None:
         super().__init__(f"Session '{game_id}' already exists. Choose different ID.")
+
+
+class PlayersNotConnectedError(Exception):
+    """Some registered players have no live connection."""
+
+    def __init__(self, usernames: list[str]) -> None:
+        super().__init__(f"Players not connected: {', '.join(usernames)}.")
