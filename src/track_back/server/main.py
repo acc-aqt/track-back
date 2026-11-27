@@ -6,7 +6,7 @@ import os
 
 from dotenv import find_dotenv, load_dotenv
 
-from server.server import Server
+from track_back.server.server import Server
 
 
 def parse_args() -> tuple[int, int]:

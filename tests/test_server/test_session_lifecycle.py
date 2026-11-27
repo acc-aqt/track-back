@@ -7,10 +7,10 @@ import pytest
 from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
-from music_service.apple_music import AppleMusicAdapter
-from music_service.error import MusicServiceError
-from server.game_sessions import GameSession, game_session_manager
-from server.names import GAME_ID_MAX_LENGTH
+from track_back.music_service.apple_music import AppleMusicAdapter
+from track_back.music_service.error import MusicServiceError
+from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.names import GAME_ID_MAX_LENGTH
 
 
 def test_ping_before_start_keeps_session_alive(

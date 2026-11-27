@@ -13,9 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from game.errors import GameAlreadyRunningError, MusicPlaybackError
-from game.game_logic import GameLogic
-from game.messages import (
+from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
+from track_back.game.game_logic import GameLogic
+from track_back.game.messages import (
     NEW_ROUND_TEXT,
     YOUR_TURN_TEXT,
     MessageType,
@@ -24,10 +24,10 @@ from game.messages import (
     player_rejoined_message,
     your_turn_message,
 )
-from game.user import User
-from music_service.error import MusicServiceError
-from music_service.selection import MUSIC_SERVICES, MusicServiceType
-from server.errors import (
+from track_back.game.user import User
+from track_back.music_service.error import MusicServiceError
+from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
+from track_back.server.errors import (
     AlreadyConnectedError,
     NotAMemberError,
     PlayersNotConnectedError,
@@ -35,16 +35,16 @@ from server.errors import (
     UserAlreadyRegisteredError,
     UserNotRegisteredError,
 )
-from server.game_sessions import GameSession, game_session_manager
-from server.names import (
+from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.names import (
     USER_NAME_MAX_LENGTH,
     GameId,
     TargetSongCount,
     UserName,
     is_valid_name,
 )
-from server.spotify_login import router as spotify_auth_router
-from server.websocket_handler import (
+from track_back.server.spotify_login import router as spotify_auth_router
+from track_back.server.websocket_handler import (
     WebSocketGameHandler,
     notify_players_owed_card,
     send_ws_message,

@@ -11,10 +11,10 @@ from pydantic import TypeAdapter, ValidationError
 from spotipy.cache_handler import MemoryCacheHandler
 from spotipy.oauth2 import SpotifyOAuth
 
-from game.game_logic import GameLogic
-from music_service.spotify import SpotifyAdapter
-from server.game_sessions import game_session_manager
-from server.names import GameId, TargetSongCount
+from track_back.game.game_logic import GameLogic
+from track_back.music_service.spotify import SpotifyAdapter
+from track_back.server.game_sessions import game_session_manager
+from track_back.server.names import GameId, TargetSongCount
 
 router = APIRouter()
 

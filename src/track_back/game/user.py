@@ -1,6 +1,6 @@
 """Contains the user class."""
 
-from game.song import Song
+from track_back.game.song import Song
 
 
 class User:

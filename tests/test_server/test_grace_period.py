@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 
-from server.game_sessions import (
+from track_back.server.game_sessions import (
     EMPTY_SESSION_GRACE_PERIOD_SECONDS,
     game_session_manager,
 )

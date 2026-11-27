@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from itertools import pairwise
 from typing import Any
 
-from game.errors import MusicPlaybackError
-from game.messages import MessageType
-from game.simultaneous_round import SimultaneousRound
-from game.song import Song
-from game.user import User
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
-from music_service.error import MusicServiceError
+from track_back.game.errors import MusicPlaybackError
+from track_back.game.messages import MessageType
+from track_back.game.simultaneous_round import SimultaneousRound
+from track_back.game.song import Song
+from track_back.game.user import User
+from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from track_back.music_service.error import MusicServiceError
 
 
 @dataclass(frozen=True)

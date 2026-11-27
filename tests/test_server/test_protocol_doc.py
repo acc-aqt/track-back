@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from game.messages import MessageType
-from server.server import CLIENT_MESSAGE_HANDLERS
+from track_back.game.messages import MessageType
+from track_back.server.server import CLIENT_MESSAGE_HANDLERS
 
 PROTOCOL_DOC = Path(__file__).parents[2] / "docs" / "websocket-protocol.md"
 

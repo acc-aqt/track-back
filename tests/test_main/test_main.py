@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from server.main import parse_args
+from track_back.server.main import parse_args
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,7 @@ def test_parse_args(
 def test_main_runs_server(monkeypatch: pytest.MonkeyPatch) -> None:
     sys.argv = ["server/main.py", "--port", "4321", "--log-level", "DEBUG"]
 
-    main_module = importlib.import_module("server.main")
+    main_module = importlib.import_module("track_back.server.main")
 
     mock_server = mock.MagicMock()
     monkeypatch.setattr(main_module, "Server", lambda: mock_server)
@@ -50,7 +50,7 @@ def test_main_uses_port_from_dotenv_in_working_directory(
     (tmp_path / ".env").write_text("PORT=5555\n")
     monkeypatch.chdir(tmp_path)
 
-    main_module = importlib.import_module("server.main")
+    main_module = importlib.import_module("track_back.server.main")
 
     mock_server = mock.MagicMock()
     monkeypatch.setattr(main_module, "Server", lambda: mock_server)

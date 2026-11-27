@@ -18,7 +18,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 
 [project.scripts]
-track-back-server = "server.main:main"
+track-back-server = "track_back.server.main:main"
 
 
 [project.optional-dependencies]
@@ -83,7 +83,7 @@ ignore = [
 unfixable = ["ERA001", "F841"] # commented code
  
 [tool.ruff.lint.isort]
-known-first-party = ["game", "music_service", "server"]
+known-first-party = ["track_back"]
  
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["D100", "D101", "D102", "D103", "D104", "PLR2004", "S101"]

@@ -1,6 +1,6 @@
-from game.game_logic import GameLogic
-from game.user import User
-from music_service.mock import MockMusicService
+from track_back.game.game_logic import GameLogic
+from track_back.game.user import User
+from track_back.music_service.mock import MockMusicService
 
 
 def test_two_players_simulteneous_game() -> None:

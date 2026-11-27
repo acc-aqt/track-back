@@ -3,8 +3,8 @@ from collections.abc import Callable, Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from server.game_sessions import GameSession, game_session_manager
-from server.server import Server
+from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.server import Server
 
 CreateGame = Callable[[str], None]
 CreateAndJoin = Callable[..., None]

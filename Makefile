@@ -52,4 +52,4 @@ run:              ## Start the game server
 
 .PHONY: openapi
 openapi:          ## Regenerate docs/openapi.json
-	$(ENV_PREFIX)python -c "import json; from server.server import Server; print(json.dumps(Server().app.openapi(), indent=2))" > docs/openapi.json
+	$(ENV_PREFIX)python -c "import json; from track_back.server.server import Server; print(json.dumps(Server().app.openapi(), indent=2))" > docs/openapi.json

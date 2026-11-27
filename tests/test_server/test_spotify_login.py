@@ -7,8 +7,8 @@ import pytest
 import spotipy
 from fastapi.testclient import TestClient
 
-from server import spotify_login
-from server.game_sessions import game_session_manager
+from track_back.server import spotify_login
+from track_back.server.game_sessions import game_session_manager
 
 
 class FakeOAuth:

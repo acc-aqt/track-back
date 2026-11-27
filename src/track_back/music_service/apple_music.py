@@ -3,9 +3,9 @@
 import subprocess
 import sys
 
-from game.song import Song
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
-from music_service.error import MusicServiceError
+from track_back.game.song import Song
+from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from track_back.music_service.error import MusicServiceError
 
 OSA_SCRIPT_PATH = "osascript"
 
