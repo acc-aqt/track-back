@@ -45,7 +45,8 @@ body {
   #controls-waiting-for-start,
   #controls-start,
   #gameConfigBox,
-  #joinGameConfigBox
+  #joinGameConfigBox,
+  #lobby-qr
    {
   background: var(--section-main);
   padding: 1rem;
@@ -64,8 +65,21 @@ body {
 #controls-waiting-for-start[hidden],
 #controls-start[hidden],
 #gameConfigBox[hidden],
-#joinGameConfigBox[hidden] {
+#joinGameConfigBox[hidden],
+#lobby-qr[hidden] {
   display: none !important;
+}
+
+#lobbyQrImg {
+  width: 120px;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+
+#lobbyQrImg.bigger {
+  width: 320px;
 }
 
 .input-group {
