@@ -239,14 +239,20 @@
             "title": "Target Song Count"
           },
           "music_service_type": {
-            "$ref": "#/components/schemas/MusicServiceType"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MusicServiceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
           "game_id",
-          "target_song_count",
-          "music_service_type"
+          "target_song_count"
         ],
         "title": "CreateGameRequest",
         "description": "Request model for creating a game session."
