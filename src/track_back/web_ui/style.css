@@ -269,9 +269,14 @@ body {
   overflow-y: auto;
   font-family: monospace;
   font-size: 0.9rem;
-  margin-top: 0.5rem;
+  margin-top: 8px;
   text-align: left;
+}
 
+#log.log-empty {
+  height: auto;
+  text-align: center;
+  color: var(--text-dark);
 }
 
 
