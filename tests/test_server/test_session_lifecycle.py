@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from music_service.apple_music import AppleMusicAdapter
 from music_service.error import MusicServiceError
 from server.game_sessions import GameSession, game_session_manager
+from server.names import GAME_ID_MAX_LENGTH
 
 
 def test_ping_before_start_keeps_session_alive(
@@ -172,10 +173,34 @@ NAMES_THE_BROWSER_REJECTS = [
 ]
 
 
+BROWSER_GAME_ID_RULE = (
+    "const isValidGameId = id =>\n"
+    "  id.length <= GAME_ID_MAX_LENGTH && NAME_PATTERN.test(id)"
+)
+
+GAME_IDS_THE_BROWSER_ACCEPTS = [*NAMES_THE_BROWSER_ACCEPTS, "g" * GAME_ID_MAX_LENGTH]
+GAME_IDS_THE_BROWSER_REJECTS = [
+    *NAMES_THE_BROWSER_REJECTS,
+    "g" * (GAME_ID_MAX_LENGTH + 1),
+    "<script>",
+]
+
+
+def _browser_script() -> str:
+    return (Path(__file__).parents[2] / "web_ui" / "script.js").read_text()
+
+
 def test_browser_name_pattern_is_the_one_under_test() -> None:
     """The name cases below are checked against this exact browser pattern."""
-    script = (Path(__file__).parents[2] / "web_ui" / "script.js").read_text()
-    assert f"const NAME_PATTERN = {BROWSER_NAME_PATTERN}" in script
+    assert f"const NAME_PATTERN = {BROWSER_NAME_PATTERN}" in _browser_script()
+
+
+def test_browser_game_id_rule_is_the_one_under_test() -> None:
+    """The browser checks game ids with the name pattern and the server's cap."""
+    script = _browser_script()
+    assert f"const GAME_ID_MAX_LENGTH = {GAME_ID_MAX_LENGTH}\n" in script
+    assert BROWSER_GAME_ID_RULE in script
+    assert "if (!isValidGameId(gameId)) {" in script
 
 
 @pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_ACCEPTS)
@@ -196,47 +221,22 @@ def test_server_rejects_user_names_the_browser_rejects(
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("game_id", NAMES_THE_BROWSER_ACCEPTS)
+@pytest.mark.parametrize("game_id", GAME_IDS_THE_BROWSER_ACCEPTS)
 def test_server_accepts_game_ids_the_browser_accepts(
     create_game: Callable[[str], None], game_id: str
 ) -> None:
-    """Game ids follow the same rule as user names."""
+    """Any game id the browser lets through can be created."""
     create_game(game_id)
 
 
-@pytest.mark.parametrize("game_id", NAMES_THE_BROWSER_REJECTS)
+@pytest.mark.parametrize("game_id", GAME_IDS_THE_BROWSER_REJECTS)
 def test_server_rejects_game_ids_the_browser_rejects(
     client: TestClient, game_id: str
 ) -> None:
-    """A game id the name rule blocks is a 422 on /create."""
+    """Any game id the browser blocks is a 422 on /create."""
     response = client.post(
         "/create",
         json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
-    )
-    assert response.status_code == 422
-
-
-def test_server_rejects_game_ids_over_40_characters(client: TestClient) -> None:
-    """Game ids are capped at 40 characters."""
-    response = client.post(
-        "/create",
-        json={
-            "game_id": "g" * 41,
-            "target_song_count": 2,
-            "music_service_type": "mock",
-        },
-    )
-    assert response.status_code == 422
-
-
-def test_create_rejects_markup_in_game_id(client: TestClient) -> None:
-    response = client.post(
-        "/create",
-        json={
-            "game_id": "<script>",
-            "target_song_count": 2,
-            "music_service_type": "mock",
-        },
     )
     assert response.status_code == 422
 
