@@ -1,6 +1,7 @@
 import importlib
 import logging
 import sys
+import tomllib
 from pathlib import Path
 from unittest import mock
 
@@ -58,3 +59,23 @@ def test_main_uses_port_from_dotenv_in_working_directory(
     main_module.main()
 
     mock_server.run.assert_called_once_with(port=5555)
+
+
+def test_version_flag_prints_package_version_and_exits(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pyproject = Path(__file__).parents[2] / "pyproject.toml"
+    expected_version = tomllib.loads(pyproject.read_text())["project"]["version"]
+    sys.argv = ["track-back-server", "--version"]
+
+    main_module = importlib.import_module("track_back.server.main")
+
+    mock_server = mock.MagicMock()
+    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main_module.main()
+
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out.strip() == f"track-back-server {expected_version}"
+    mock_server.run.assert_not_called()

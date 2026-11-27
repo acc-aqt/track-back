@@ -6,12 +6,16 @@ import os
 
 from dotenv import find_dotenv, load_dotenv
 
+from track_back import __version__
 from track_back.server.server import Server
 
 
 def parse_args() -> tuple[int, int]:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Start the TrackBack game server.")
+    parser.add_argument(
+        "--version", action="version", version=f"track-back-server {__version__}"
+    )
     parser.add_argument("--port", type=int, help="Port to run the server on.")
     parser.add_argument(
         "--log-level",
