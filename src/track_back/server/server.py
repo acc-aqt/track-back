@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
+from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -36,7 +37,7 @@ from track_back.music_service.selection import (
     MusicServiceType,
     available_music_services,
 )
-from track_back.server import network
+from track_back.server import config, join_qr, network
 from track_back.server.errors import (
     AlreadyConnectedError,
     NotAPlayerError,
@@ -150,12 +151,18 @@ def startup_hint(port: int, *, use_ssl: bool, lan_addresses: list[str]) -> str:
     str
         One sentence naming the ``localhost`` URL and one URL per LAN address.
     """
-    scheme = "https" if use_ssl else "http"
-    hint = f"Open {scheme}://localhost:{port} on this machine"
+    hint = f"Open {_base_url('localhost', port, use_ssl=use_ssl)} on this machine"
     if not lan_addresses:
         return f"{hint}."
-    lan_urls = " or ".join(f"{scheme}://{address}:{port}" for address in lan_addresses)
+    lan_urls = " or ".join(
+        _base_url(address, port, use_ssl=use_ssl) for address in lan_addresses
+    )
     return f"{hint}, or {lan_urls} on other devices."
+
+
+def _base_url(host: str, port: int, *, use_ssl: bool) -> str:
+    scheme = "https" if use_ssl else "http"
+    return f"{scheme}://{host}:{port}"
 
 
 def uses_ssl() -> bool:
@@ -194,11 +201,16 @@ class Server:
     music_service : MusicServiceType
         The Music Service chosen by the Server Operator. Game Sessions use it
         unless the Host picks another available one.
+    port : int
+        The port the server listens on; `run` replaces it with the port it binds.
     """
 
-    def __init__(self, music_service: MusicServiceType) -> None:
+    def __init__(
+        self, music_service: MusicServiceType, port: int = config.DEFAULT_PORT
+    ) -> None:
         self.music_service = music_service
         self.available_music_services = available_music_services(music_service)
+        self.port = port
         self.app = self.create_app()
         self._ready_callbacks: list[Callable[[], None]] = []
 
@@ -220,6 +232,7 @@ class Server:
 
     def run(self, port: int) -> None:
         """Start the Uvicorn server."""
+        self.port = port
         ssl_keyfile = os.getenv("SSL_KEYFILE")
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
@@ -255,6 +268,14 @@ class Server:
                 404: {"description": "Unknown cover."},
             },
         )(self._get_cover)
+        app.get(
+            "/join-qr.svg",
+            response_class=Response,
+            responses={
+                200: {"content": {"image/svg+xml": {}}},
+                404: {"description": "Unknown Game Session."},
+            },
+        )(self._get_join_qr)
         app.post("/join")(self._join_game_session)
         app.post("/start")(self._start_game_session)
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
@@ -332,6 +353,17 @@ class Server:
         if image is None:
             raise HTTPException(status_code=404, detail="Unknown cover.")
         return Response(content=image, media_type="image/jpeg")
+
+    async def _get_join_qr(self, session: SessionName) -> Response:
+        if not game_session_manager.get_game_session(session):
+            raise HTTPException(
+                status_code=404, detail=f"Game session {session} not found."
+            )
+        lan_addresses = network.lan_ipv4_addresses_or_empty()
+        host = lan_addresses[0] if lan_addresses else "localhost"
+        base_url = _base_url(host, self.port, use_ssl=uses_ssl())
+        url = f"{base_url}/?join={quote(session, safe='')}"
+        return Response(content=join_qr.render_svg(url), media_type="image/svg+xml")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
         game_session_manager.remove_expired_sessions()
