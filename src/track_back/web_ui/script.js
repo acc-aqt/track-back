@@ -1,3 +1,4 @@
+import { createRoundFlow } from './round-flow.js'
 import * as screen from './screen.js'
 import * as server from './server-client.js'
 
@@ -9,7 +10,6 @@ let isHost = false
 const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
 const USERNAME_MAX_LENGTH = 20
 const SESSION_NAME_MAX_LENGTH = 40
-const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
 // Without the server's configuration script, ask for the server URL.
 server.loadServerConfig().then(loaded => {
@@ -175,13 +175,6 @@ document.getElementById('musicServiceDropdown').onchange = () => {
   updateHostOptionsSummary()
 }
 
-let currentGuessSong = null
-let pauseAfterGuess = false
-let queuedGuessRequest = null
-
-const WRONG_GUESS_DISPLAY_TIME = 2000
-const FADE_DURATION = 1000
-
 const log = msg => {
   const logBox = document.getElementById('log')
   if (logBox.classList.contains('log-empty')) {
@@ -223,177 +216,27 @@ const readUsername = () => {
   return name
 }
 
-// Spotify sends a full URL, Apple Music a path on the server.
-const coverSrc = song => {
-  const url = song.album_cover_url
-  return url ? server.resolveServerUrl(url) : FALLBACK_COVER
-}
-
-const buildSongEntry = (song, extraClass = '') => {
-  const entry = document.createElement('div')
-  entry.className = extraClass ? `song-entry ${extraClass}` : 'song-entry'
-
-  const cover = document.createElement('img')
-  cover.className = 'song-cover'
-  cover.alt = 'cover'
-  cover.onerror = () => {
-    cover.onerror = null
-    cover.src = FALLBACK_COVER
-  }
-  cover.src = coverSrc(song)
-
-  const details = document.createElement('div')
-  details.className = 'song-details'
-  const title = document.createElement('strong')
-  title.textContent = song.title
-  details.append(
-    title,
-    ` (${song.release_year})`,
-    document.createElement('br'),
-    `by ${song.artist}`
-  )
-
-  entry.append(cover, details)
-  return entry
-}
-
-function handleGuessRequest (data) {
-  if (pauseAfterGuess) {
-    queuedGuessRequest = data
-    return
-  }
-  const isForMe = data.next_player === username
-  if (!isForMe) {
-    return
-  }
-
-  showTimeline(data.song_list || [])
-
-  const dummyCovers = [
-    'dummy-cover/cover1.webp',
-    'dummy-cover/cover2.webp',
-    'dummy-cover/cover3.webp',
-    'dummy-cover/cover4.webp',
-    'dummy-cover/cover5.webp',
-    'dummy-cover/cover6.webp'
-  ]
-  const randomCover =
-    dummyCovers[Math.floor(Math.random() * dummyCovers.length)]
-
-  document.getElementById('newSongContainer').innerHTML = `
-    <div class="song-entry highlight" id="new-song">
-      <img src="${randomCover}" alt="cover" class="song-cover" />
-      <div class="song-details">
-        <strong>Drag the song to the right place in the timeline.</strong>
-      </div>
-    </div>
-  `
-
-  screen.showScreen('playing', { newSong: true })
-
-  setDragDropEnabled(true)
-}
-
-function showTimeline (list) {
-  screen.showScreen('playing')
-  document.getElementById('songCount').textContent = `Song count: ${list.length}`
-  document
-    .getElementById('songTimeline')
-    .replaceChildren(...list.map(s => buildSongEntry(s)))
-}
-
-function handleGuessResult (data) {
-  if (data.result === 'correct') {
-    log(`✅ Guess was correct: ${data.message}`)
-    document.getElementById(
-      'songCount'
-    ).textContent = `Song count: ${data.song_list.length}`
-  } else {
-    log(`❌ Guess was wrong: ${data.message}`)
-  }
-
-  const list = data.song_list || []
-
-  const timeline = document.getElementById('songTimeline')
-
-  screen.showScreen('playing')
-
-  // Update the timeline first (without the guess)
-  timeline.replaceChildren(...list.map(s => buildSongEntry(s)))
-
-  if (data.result === 'wrong') {
-    const wrongSong = data.last_song || {}
-    const guessedIndex = Number(data.last_index ?? 0)
-
-    const wrongSongEl = buildSongEntry(wrongSong, 'wrong-guess')
-    const wrongLabel = document.createElement('span')
-    wrongLabel.className = 'wrong-label'
-    wrongSongEl.prepend(wrongLabel)
-
-    const children = timeline.children
-
-    if (guessedIndex >= 0 && guessedIndex < children.length) {
-      timeline.insertBefore(wrongSongEl, children[guessedIndex])
-    } else {
-      timeline.appendChild(wrongSongEl)
-    }
-
-    setTimeout(() => {
-      wrongSongEl.classList.add('fade-out')
-      setTimeout(() => {
-        wrongSongEl.remove()
-      }, FADE_DURATION)
-    }, WRONG_GUESS_DISPLAY_TIME)
-
-    pauseAfterGuess = true
-    setTimeout(() => {
-      pauseAfterGuess = false
-
-      // If a guess request came in while we were paused, now we handle it
-      if (queuedGuessRequest) {
-        handleGuessRequest(queuedGuessRequest)
-        queuedGuessRequest = null
-      }
-    }, WRONG_GUESS_DISPLAY_TIME + FADE_DURATION)
-  }
-}
-
-const handleGameOver = data => {
-  log(`🏁 Game Over! Winner: ${data.winner}`)
-  screen.showScreen('gameOver')
-  const winnerHeader = document.getElementById('winnerHeader')
-  const winnerIsYou = data.winner === username
-  winnerHeader.replaceChildren(
-    ...(winnerIsYou
-      ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
-      : [
-          'Game over.',
-          document.createElement('br'),
-          `${data.winner} won the game.`
-        ])
-  )
-}
+const roundFlow = createRoundFlow({
+  log,
+  sendGuess: index => connection.send({ type: 'guess', index })
+})
 
 const serverMessageHandlers = {
-  your_turn: handleGuessRequest,
-  guess_result: data => {
-    if (data.player === username) {
-      handleGuessResult(data)
-    }
-  },
+  your_turn: data => roundFlow.guessRequest(data),
+  guess_result: data => roundFlow.guessResult(data),
   welcome: data => log(`👋🏻 ${data.message}`),
   player_joined: data => log(`👋🏻 ${data.message}`),
   player_rejoined: data => {
     if (data.user_name === username) {
-      showTimeline(data.song_list || [])
-      log('👋🏻 Welcome back! Waiting for the others to guess.')
+      roundFlow.rejoin(data.song_list)
     } else {
       log(`👋🏻 ${data.message}`)
     }
   },
   error: data => log(`🚨 Error: ${data.message}`),
   other_player_guess: data => log(`🧑🏽‍🎤 ${data.message}`),
-  game_over: handleGameOver,
+  game_over: data =>
+    roundFlow.gameOver({ winner: data.winner, winnerIsYou: data.winner === username }),
   user_disconnected: data => log(`❌ ${data.message}`)
 }
 
@@ -772,54 +615,5 @@ document.getElementById('startGameBtn').onclick = async () => {
   // The first Round's Song may already be on screen.
   if (screen.currentScreen() === 'lobby') {
     screen.showScreen('playing')
-  }
-}
-
-// Created once; enabled for each Round until its Guess is sent.
-const dragDrop = (() => {
-  const timeline = document.getElementById('songTimeline')
-  const newSongContainer = document.getElementById('newSongContainer')
-
-  return [
-    new Sortable(timeline, {
-      group: 'songs',
-      animation: 150,
-      sort: true,
-      disabled: true,
-      draggable: '.song-entry',
-      filter: ':not(#new-song)',
-      preventOnFilter: true,
-      scroll: true,
-      scrollSensitivity: 300,
-      scrollSpeed: 5,
-      onAdd: evt => {
-        if (evt.item.id === 'new-song') {
-          const newIndex = evt.newIndex
-
-          evt.item.remove()
-
-          connection.send({ type: 'guess', index: newIndex })
-
-          setDragDropEnabled(false)
-        }
-      },
-      onStart: () => {
-        timeline.classList.add('drag-active')
-      },
-      onEnd: () => {
-        timeline.classList.remove('drag-active')
-      }
-    }),
-    new Sortable(newSongContainer, {
-      group: 'songs',
-      sort: false,
-      disabled: true
-    })
-  ]
-})()
-
-function setDragDropEnabled (enabled) {
-  for (const sortable of dragDrop) {
-    sortable.option('disabled', !enabled)
   }
 }
