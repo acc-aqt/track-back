@@ -10,6 +10,8 @@ from unittest import mock
 
 import pytest
 
+from track_back.music_service.selection import MusicServiceType
+
 
 @pytest.fixture(autouse=True)
 def user_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
@@ -22,13 +24,29 @@ def user_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     return config_dir
 
 
+SPOTIFY_KEYS = ["SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"]
+
+
+def unset_env(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    """Unset ``name`` and also undo any value a dotenv file loads later."""
+    monkeypatch.setenv(name, "")
+    monkeypatch.delenv(name)
+
+
+@pytest.fixture(autouse=True)
+def mock_music_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in SPOTIFY_KEYS:
+        unset_env(monkeypatch, key)
+    monkeypatch.setenv("MUSIC_SERVICE", "mock")
+
+
 def run_main(monkeypatch: pytest.MonkeyPatch, argv: list[str]) -> mock.MagicMock:
     monkeypatch.setattr(sys, "argv", ["track-back-server", *argv])
     main_module = importlib.import_module("track_back.server.main")
-    mock_server = mock.MagicMock()
-    monkeypatch.setattr(main_module, "Server", lambda: mock_server)
+    server = mock.MagicMock()
+    monkeypatch.setattr(main_module, "Server", mock.MagicMock(return_value=server))
     main_module.main()
-    return mock_server
+    return server
 
 
 @pytest.mark.parametrize(
@@ -272,14 +290,9 @@ def test_init_leaves_existing_config_unchanged_when_declined(
     assert (user_config_dir / ".env").read_bytes() == EXISTING_CONFIG
 
 
-SPOTIFY_KEYS = ["SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"]
-
-
 def test_server_started_from_unrelated_directory_uses_values_from_init(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    for key in SPOTIFY_KEYS:
-        monkeypatch.delenv(key, raising=False)
     run_init(monkeypatch, ["5000", "y", "my-id", "my-secret", ""])
     unrelated = tmp_path / "unrelated"
     unrelated.mkdir()
@@ -306,3 +319,151 @@ def test_init_asks_again_when_port_is_not_a_number(
     run_init(monkeypatch, ["abc", "5000", "n"])
 
     assert "PORT=5000\n" in (user_config_dir / ".env").read_text()
+
+
+def started_music_service(
+    monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> MusicServiceType:
+    run_main(monkeypatch, argv)
+    server_class = importlib.import_module("track_back.server.main").Server
+    server_class.assert_called_once()
+    music_service: MusicServiceType = server_class.call_args.kwargs["music_service"]
+    return music_service
+
+
+def set_spotify_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in SPOTIFY_KEYS:
+        monkeypatch.setenv(key, "value")
+
+
+@pytest.fixture
+def on_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+
+@pytest.fixture
+def on_linux(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "linux")
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_music_service_option_overrides_music_service_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MUSIC_SERVICE", "applemusic")
+
+    assert started_music_service(monkeypatch, ["--music-service", "mock"]) == "mock"
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_music_service_variable_overrides_platform_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_spotify_credentials(monkeypatch)
+    monkeypatch.setenv("MUSIC_SERVICE", "spotify")
+
+    assert started_music_service(monkeypatch, []) == "spotify"
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_music_service_from_user_config_is_used(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    unset_env(monkeypatch, "MUSIC_SERVICE")
+    user_config_dir.mkdir()
+    (user_config_dir / ".env").write_text("MUSIC_SERVICE=mock\n")
+
+    assert started_music_service(monkeypatch, []) == "mock"
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_default_music_service_on_macos_is_apple_music(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unset_env(monkeypatch, "MUSIC_SERVICE")
+
+    assert started_music_service(monkeypatch, []) == "applemusic"
+
+
+@pytest.mark.usefixtures("on_linux")
+def test_default_music_service_elsewhere_is_spotify(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unset_env(monkeypatch, "MUSIC_SERVICE")
+    set_spotify_credentials(monkeypatch)
+
+    assert started_music_service(monkeypatch, []) == "spotify"
+
+
+@pytest.mark.usefixtures("on_linux")
+def test_empty_music_service_variable_falls_back_to_platform_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MUSIC_SERVICE", "")
+    set_spotify_credentials(monkeypatch)
+
+    assert started_music_service(monkeypatch, []) == "spotify"
+
+
+def refused_start_message(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> str:
+    with pytest.raises(SystemExit) as exit_info:
+        run_main(monkeypatch, argv)
+
+    assert exit_info.value.code not in (0, None)
+    importlib.import_module("track_back.server.main").Server.assert_not_called()
+    message = capsys.readouterr().err.strip()
+    assert "\n" not in message
+    return message
+
+
+@pytest.mark.parametrize("missing", SPOTIFY_KEYS)
+@pytest.mark.usefixtures("on_linux")
+def test_spotify_without_credentials_refuses_to_start_and_suggests_init(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], missing: str
+) -> None:
+    set_spotify_credentials(monkeypatch)
+    monkeypatch.setenv(missing, "")
+
+    message = refused_start_message(monkeypatch, capsys, ["--music-service", "spotify"])
+
+    assert "track-back-server init" in message
+
+
+@pytest.mark.usefixtures("on_linux")
+def test_apple_music_on_non_mac_refuses_to_start_and_suggests_spotify(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("MUSIC_SERVICE", "applemusic")
+
+    message = refused_start_message(monkeypatch, capsys, [])
+
+    assert "macOS" in message
+    assert "Music app" in message
+    assert "--music-service spotify" in message
+
+
+def test_invalid_music_service_variable_refuses_to_start_and_lists_valid_values(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("MUSIC_SERVICE", "spotfy")
+
+    message = refused_start_message(monkeypatch, capsys, [])
+
+    assert "spotfy" in message
+    for valid in ("spotify", "applemusic", "mock"):
+        assert valid in message
+
+
+@pytest.mark.usefixtures("on_linux")
+def test_mock_music_service_option_starts_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unset_env(monkeypatch, "MUSIC_SERVICE")
+
+    server = run_main(monkeypatch, ["--music-service", "mock"])
+
+    server.run.assert_called_once()
