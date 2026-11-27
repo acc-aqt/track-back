@@ -1,7 +1,7 @@
 'use strict'
 
 let socket
-let gameId
+let sessionName
 let username
 let isHostingSpotifySession = false
 
@@ -13,7 +13,7 @@ const MAX_RECONNECT_ATTEMPTS = 10
 
 const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
 const USERNAME_MAX_LENGTH = 20
-const GAME_ID_MAX_LENGTH = 40
+const SESSION_NAME_MAX_LENGTH = 40
 const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
 function loadScript (url, onSuccess, onError) {
@@ -87,8 +87,8 @@ targetSongCountInput.addEventListener('input', () => {
 const isValidUsername = name =>
   name.length <= USERNAME_MAX_LENGTH && NAME_PATTERN.test(name)
 
-const isValidGameId = id =>
-  id.length <= GAME_ID_MAX_LENGTH && NAME_PATTERN.test(id)
+const isValidSessionName = id =>
+  id.length <= SESSION_NAME_MAX_LENGTH && NAME_PATTERN.test(id)
 
 const readUsername = () => {
   const name = document.getElementById('username').value.trim()
@@ -304,7 +304,7 @@ function connectWebSocket () {
   const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
   const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${encodeURIComponent(
-    gameId
+    sessionName
   )}/${encodeURIComponent(username)}`
 
   socket = new WebSocket(wsUrl)
@@ -394,12 +394,12 @@ async function listAndChooseGameSessions () {
     })
 
     joinButton.onclick = async () => {
-      const selectedGameId = dropdown.value
-      if (!selectedGameId) {
+      const selectedSessionName = dropdown.value
+      if (!selectedSessionName) {
         alert('❌ Please select a session.')
         return
       }
-      gameId = selectedGameId
+      sessionName = selectedSessionName
       const success = await joinGame()
       if (success) {
         document.getElementById('controls-waiting-for-start').hidden = false
@@ -420,7 +420,7 @@ async function joinGame () {
     const res = await fetch(`${serverUrl}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: gameId, user_name: username })
+      body: JSON.stringify({ game_id: sessionName, user_name: username })
     })
 
     const data = await res.json()
@@ -430,7 +430,7 @@ async function joinGame () {
       return false
     }
 
-    log(`✅ Joined game: ${gameId}`)
+    log(`✅ Joined game: ${sessionName}`)
     connectWebSocket()
     if (isHostingSpotifySession) {
       document.getElementById('controls-start').hidden = false
@@ -452,7 +452,7 @@ async function configureGame () {
 
   document.getElementById('controls-new-or-join').hidden = true
 
-  document.getElementById('gameIdInput').value = `Game-by-${username}`
+  document.getElementById('sessionNameInput').value = `Game-by-${username}`
 }
 
 async function createGame () {
@@ -471,15 +471,15 @@ async function createGame () {
     return
   }
 
-  gameId = document.getElementById('gameIdInput').value.trim()
+  sessionName = document.getElementById('sessionNameInput').value.trim()
 
-  if (!gameId) {
+  if (!sessionName) {
     alert('Please enter a game ID!')
     return
   }
-  if (!isValidGameId(gameId)) {
+  if (!isValidSessionName(sessionName)) {
     alert(
-      `Game IDs can have up to ${GAME_ID_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+      `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
     )
     return
   }
@@ -489,7 +489,7 @@ async function createGame () {
   if (musicServiceType === 'spotify') {
     // ✨ Spotify: first login
     const stateObject = {
-      game_id: gameId,
+      game_id: sessionName,
       target_song_count: targetSongCount
     }
 
@@ -513,7 +513,7 @@ async function createGame () {
     isHostingSpotifySession = true
     window.open(loginUrl, '_blank')
 
-    log(`🎮 Created new spotify game session: ${gameId}`)
+    log(`🎮 Created new spotify game session: ${sessionName}`)
 
     // user returns later and clicks Join
   } else {
@@ -522,7 +522,7 @@ async function createGame () {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          game_id: gameId,
+          game_id: sessionName,
           target_song_count: targetSongCount,
           music_service_type: musicServiceType
         })
@@ -583,7 +583,7 @@ document.getElementById('startGameBtn').onclick = async () => {
     const res = await fetch(`${serverUrl}/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: gameId })
+      body: JSON.stringify({ game_id: sessionName })
     })
     const data = await res.json()
     if (!res.ok) {

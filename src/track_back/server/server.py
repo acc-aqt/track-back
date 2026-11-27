@@ -43,7 +43,7 @@ from track_back.server.errors import (
 from track_back.server.game_sessions import GameSession, game_session_manager
 from track_back.server.names import (
     USERNAME_MAX_LENGTH,
-    GameId,
+    SessionName,
     TargetSongCount,
     Username,
     is_valid_name,
@@ -74,7 +74,7 @@ DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
 class CreateGameRequest(BaseModel):
     """Request model for creating a game session."""
 
-    game_id: GameId
+    game_id: SessionName
     target_song_count: TargetSongCount
     music_service_type: MusicServiceType
 
@@ -233,7 +233,7 @@ class Server:
 
     async def _create_game_session(self, req: CreateGameRequest) -> JSONResponse:
         game_session_manager.remove_expired_sessions()
-        game_id = req.game_id
+        session_name = req.game_id
         target_song_count = req.target_song_count
 
         try:
@@ -244,24 +244,25 @@ class Server:
         game = GameLogic(
             target_song_count=target_song_count, music_service=music_service
         )
-        game_session_manager.add_game(game_id, game)
+        game_session_manager.add_session(session_name, game)
 
         return JSONResponse(
-            status_code=201, content={"message": f"Game session {game_id} created."}
+            status_code=201,
+            content={"message": f"Game session {session_name} created."},
         )
 
     async def _list_joinable_game_sessions(self) -> JSONResponse:
         game_session_manager.remove_expired_sessions()
-        joinable_session_ids = [
-            session_id
-            for session_id, session in game_session_manager.sessions.items()
+        joinable_session_names = [
+            session_name
+            for session_name, session in game_session_manager.sessions.items()
             if session.game_logic.winner is None
             and (
                 not session.game_logic.running
                 or session.game_logic.has_disconnected_players()
             )
         ]
-        return JSONResponse(content={"sessions": joinable_session_ids})
+        return JSONResponse(content={"sessions": joinable_session_names})
 
     @staticmethod
     async def _get_cover(cover_id: str) -> Response:
@@ -272,21 +273,23 @@ class Server:
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
         game_session_manager.remove_expired_sessions()
-        game_id = req.game_id
+        session_name = req.game_id
         user_name = req.user_name
-        session = game_session_manager.get_game_session(game_id)
+        session = game_session_manager.get_game_session(session_name)
         if not session:
             raise HTTPException(
-                status_code=404, detail=f"Game session {game_id} not found."
+                status_code=404, detail=f"Game session {session_name} not found."
             )
         if session.game_logic.winner is not None:
             raise HTTPException(
-                status_code=409, detail=f"Game session {game_id} is already over."
+                status_code=409, detail=f"Game session {session_name} is already over."
             )
         if session.game_logic.running:
             session.check_can_rejoin(user_name)
             return JSONResponse(
-                content={"message": f"Player {user_name} can re-join game {game_id}."}
+                content={
+                    "message": f"Player {user_name} can rejoin game session {session_name}."
+                }
             )
 
         connection_manager = session.connection_manager
@@ -298,21 +301,23 @@ class Server:
         )
 
         return JSONResponse(
-            content={"message": f"Player {user_name} joined game {game_id}."}
+            content={
+                "message": f"Player {user_name} joined game session {session_name}."
+            }
         )
 
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
-        game_id = req.game_id
-        session = game_session_manager.get_game_session(game_id)
+        session_name = req.game_id
+        session = game_session_manager.get_game_session(session_name)
         if not session:
             raise HTTPException(
-                status_code=404, detail=f"Game session {game_id} not found."
+                status_code=404, detail=f"Game session {session_name} not found."
             )
 
         game = session.game_logic
         if game.running:
-            raise GameAlreadyRunningError(game_id)
+            raise GameAlreadyRunningError(session_name)
 
         connection_manager = session.connection_manager
 
@@ -330,7 +335,9 @@ class Server:
         game.start_game(players)
         await notify_players_owing_guess(connection_manager, game, GUESS_REQUEST_TEXT)
 
-        return JSONResponse(content={"message": f"Game {game_id} started."})
+        return JSONResponse(
+            content={"message": f"Game session {session_name} started."}
+        )
 
     async def _websocket_endpoint(
         self, websocket: WebSocket, game_id: str, username: str
@@ -438,12 +445,12 @@ class Server:
                 connection_manager, game_session.game_logic, NEW_ROUND_TEXT
             )
 
-        game_id = game_session.game_id
+        session_name = game_session.session_name
         if connection_manager.player_connections:
             return
         if game_session.game_logic.running:
             game_session_manager.mark_empty(game_session)
-            logger.info("Game session %s is empty; keeping it for rejoin", game_id)
+            logger.info("Game session %s is empty; keeping it for rejoin", session_name)
         else:
-            game_session_manager.remove_game_session(game_id)
-            logger.info("Removed empty game session %s", game_id)
+            game_session_manager.remove_game_session(session_name)
+            logger.info("Removed empty game session %s", session_name)

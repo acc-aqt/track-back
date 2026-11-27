@@ -17,8 +17,8 @@ EMPTY_SESSION_GRACE_PERIOD_SECONDS = 10 * 60
 class GameSession:
     """Holds the game logic and connection manager."""
 
-    def __init__(self, game_id: str, game_logic: GameLogic) -> None:
-        self.game_id = game_id
+    def __init__(self, session_name: str, game_logic: GameLogic) -> None:
+        self.session_name = session_name
         self.game_logic = game_logic
         self.connection_manager = ConnectionManager()
         self.empty_since: float | None = None
@@ -40,9 +40,9 @@ class GameSession:
         player = self.game_logic.get_player(username)
         joinable = self.game_logic.disconnected_player_names()
         if player is None:
-            raise NotAPlayerError(username, self.game_id, joinable)
+            raise NotAPlayerError(username, self.session_name, joinable)
         if player.is_connected:
-            raise AlreadyConnectedError(username, self.game_id, joinable)
+            raise AlreadyConnectedError(username, self.session_name, joinable)
         return player
 
 
@@ -53,20 +53,20 @@ class GameSessionManager:
         self.sessions: dict[str, GameSession] = {}
         self.clock = time.monotonic
 
-    def add_game(self, game_id: str, game: GameLogic) -> None:
+    def add_session(self, session_name: str, game: GameLogic) -> None:
         """Create and store a full GameLogic instance."""
-        if game_id in self.sessions:
-            raise SessionAlreadyExistsError(game_id)
-        self.sessions[game_id] = GameSession(game_id, game)
+        if session_name in self.sessions:
+            raise SessionAlreadyExistsError(session_name)
+        self.sessions[session_name] = GameSession(session_name, game)
 
-    def get_game_session(self, game_id: str) -> GameSession | None:
+    def get_game_session(self, session_name: str) -> GameSession | None:
         """Retrieve the game session by ID."""
-        return self.sessions.get(game_id)
+        return self.sessions.get(session_name)
 
-    def remove_game_session(self, game_id: str) -> None:
+    def remove_game_session(self, session_name: str) -> None:
         """Remove a game session by ID."""
-        if game_id in self.sessions:
-            del self.sessions[game_id]
+        if session_name in self.sessions:
+            del self.sessions[session_name]
 
     def mark_empty(self, session: GameSession) -> None:
         """Record that the session's last connection has left."""
@@ -74,9 +74,9 @@ class GameSessionManager:
 
     def remove_expired_sessions(self) -> None:
         """Remove sessions that have been empty for longer than the grace period."""
-        for game_id, session in list(self.sessions.items()):
+        for session_name, session in list(self.sessions.items()):
             if self._is_expired(session):
-                del self.sessions[game_id]
+                del self.sessions[session_name]
 
     def _is_expired(self, session: GameSession) -> bool:
         if session.empty_since is None or session.connection_manager.player_connections:

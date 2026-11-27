@@ -1,4 +1,4 @@
-r"""Validation rules for user input: user names, game ids and the Target Song Count.
+r"""Validation rules for user input: usernames, Game Session Names and the Target Song Count.
 
 The name rule matches the browser's NAME_PATTERN in track_back/web_ui/script.js:
 /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
@@ -11,7 +11,7 @@ from typing import Annotated
 from pydantic import AfterValidator, Field
 
 USERNAME_MAX_LENGTH = 20
-GAME_ID_MAX_LENGTH = 40
+SESSION_NAME_MAX_LENGTH = 40
 
 
 def _is_name_character(character: str) -> bool:
@@ -40,5 +40,5 @@ def _name_validator(max_length: int) -> Callable[[str], str]:
 
 
 Username = Annotated[str, AfterValidator(_name_validator(USERNAME_MAX_LENGTH))]
-GameId = Annotated[str, AfterValidator(_name_validator(GAME_ID_MAX_LENGTH))]
+SessionName = Annotated[str, AfterValidator(_name_validator(SESSION_NAME_MAX_LENGTH))]
 TargetSongCount = Annotated[int, Field(ge=1)]

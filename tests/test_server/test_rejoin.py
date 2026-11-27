@@ -22,23 +22,27 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
     return message
 
 
-def _join(client: TestClient, game_id: str, username: str) -> int:
-    response = client.post("/join", json={"game_id": game_id, "user_name": username})
+def _join(client: TestClient, session_name: str, username: str) -> int:
+    response = client.post(
+        "/join", json={"game_id": session_name, "user_name": username}
+    )
     status: int = response.status_code
     return status
 
 
 @contextmanager
 def _started_game(
-    client: TestClient, create_and_join: Callable[..., None], game_id: str
+    client: TestClient, create_and_join: Callable[..., None], session_name: str
 ) -> Iterator[WebSocketTestSession]:
     """Start a game for alice and bob; yield alice's socket after bob dropped."""
-    create_and_join(game_id, "alice", "bob")
-    with client.websocket_connect(f"/ws/{game_id}/alice") as alice:
+    create_and_join(session_name, "alice", "bob")
+    with client.websocket_connect(f"/ws/{session_name}/alice") as alice:
         _receive(alice)
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             _receive(bob)
-            assert client.post("/start", json={"game_id": game_id}).status_code == 200
+            assert (
+                client.post("/start", json={"game_id": session_name}).status_code == 200
+            )
             assert _receive(alice)["type"] == "your_turn"
             assert _receive(bob)["type"] == "your_turn"
         assert _receive(alice)["type"] == "user_disconnected"
@@ -48,10 +52,10 @@ def _started_game(
 def test_websocket_reconnect_without_join_restores_player(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "auto-reconnect"
+    session_name = "auto-reconnect"
     with (
-        _started_game(client, create_and_join, game_id) as alice,
-        client.websocket_connect(f"/ws/{game_id}/bob") as bob,
+        _started_game(client, create_and_join, session_name) as alice,
+        client.websocket_connect(f"/ws/{session_name}/bob") as bob,
     ):
         assert _receive(bob)["type"] == "welcome"
         assert _receive(bob) == {
@@ -62,16 +66,16 @@ def test_websocket_reconnect_without_join_restores_player(
         }
         assert _receive(alice)["type"] == "player_rejoined"
         assert client.get("/list-sessions").json() == {"sessions": []}
-        assert _join(client, game_id, "bob") == 409
+        assert _join(client, session_name, "bob") == 409
 
 
 def test_manual_join_after_disconnect_then_connect(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "manual-rejoin"
-    with _started_game(client, create_and_join, game_id) as alice:
-        assert _join(client, game_id, "bob") == 200
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+    session_name = "manual-rejoin"
+    with _started_game(client, create_and_join, session_name) as alice:
+        assert _join(client, session_name, "bob") == 200
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob)["type"] == "welcome"
             assert _receive(bob)["type"] == "your_turn"
             assert _receive(alice) == {
@@ -86,13 +90,13 @@ def test_manual_join_after_disconnect_then_connect(
 def test_rejoin_after_guessing_sends_timeline_only(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "rejoin-after-guess"
-    create_and_join(game_id, "alice", "bob")
-    with client.websocket_connect(f"/ws/{game_id}/alice") as alice:
+    session_name = "rejoin-after-guess"
+    create_and_join(session_name, "alice", "bob")
+    with client.websocket_connect(f"/ws/{session_name}/alice") as alice:
         _receive(alice)
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             _receive(bob)
-            client.post("/start", json={"game_id": game_id})
+            client.post("/start", json={"game_id": session_name})
             _receive(alice)
             _receive(bob)
             bob.send_json({"type": "guess", "index": 0})
@@ -100,7 +104,7 @@ def test_rejoin_after_guessing_sends_timeline_only(
             assert _receive(alice)["type"] == "other_player_guess"
         assert _receive(alice)["type"] == "user_disconnected"
 
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob)["type"] == "welcome"
             rejoined = _receive(bob)
             assert rejoined["type"] == "player_rejoined"
@@ -124,10 +128,10 @@ def test_rejoin_after_guessing_sends_timeline_only(
 def test_join_running_game_rejects_non_players_and_connected_players(
     client: TestClient, create_and_join: Callable[..., None], username: str, detail: str
 ) -> None:
-    game_id = "join-rejected"
-    with _started_game(client, create_and_join, game_id):
+    session_name = "join-rejected"
+    with _started_game(client, create_and_join, session_name):
         response = client.post(
-            "/join", json={"game_id": game_id, "user_name": username}
+            "/join", json={"game_id": session_name, "user_name": username}
         )
         assert response.status_code == 409
         assert response.json()["detail"].startswith(detail)
@@ -159,16 +163,16 @@ def test_join_running_game_rejects_non_players_and_connected_players(
 def test_connect_to_running_game_rejects_non_players_and_connected_players(
     client: TestClient, create_and_join: Callable[..., None], username: str, reason: str
 ) -> None:
-    game_id = "connect-rejected"
+    session_name = "connect-rejected"
     with (
-        _started_game(client, create_and_join, game_id) as alice,
-        client.websocket_connect(f"/ws/{game_id}/{username}") as intruder,
+        _started_game(client, create_and_join, session_name) as alice,
+        client.websocket_connect(f"/ws/{session_name}/{username}") as intruder,
     ):
         assert _receive(intruder) == {"type": "error", "message": reason}
         with pytest.raises(WebSocketDisconnect):
             intruder.receive_json()
 
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob)["type"] == "welcome"
             assert _receive(alice)["type"] == "player_rejoined"
 
@@ -176,8 +180,8 @@ def test_connect_to_running_game_rejects_non_players_and_connected_players(
 def test_connect_to_finished_game_gets_game_over(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "finished"
-    with _started_game(client, create_and_join, game_id) as alice:
+    session_name = "finished"
+    with _started_game(client, create_and_join, session_name) as alice:
         alice.send_json({"type": "guess", "index": 0})
         assert _receive(alice)["type"] == "guess_result"
         assert _receive(alice)["type"] == "your_turn"
@@ -187,8 +191,8 @@ def test_connect_to_finished_game_gets_game_over(
             pass
 
         assert client.get("/list-sessions").json() == {"sessions": []}
-        assert _join(client, game_id, "bob") == 409
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        assert _join(client, session_name, "bob") == 409
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob) == {
                 "type": "game_over",
                 "winner": "alice",

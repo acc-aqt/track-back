@@ -23,11 +23,11 @@ def _clear_sessions() -> Iterator[None]:
 
 @pytest.fixture
 def create_game(client: TestClient) -> CreateGame:
-    def create(game_id: str) -> None:
+    def create(session_name: str) -> None:
         response = client.post(
             "/create",
             json={
-                "game_id": game_id,
+                "game_id": session_name,
                 "target_song_count": 2,
                 "music_service_type": "mock",
             },
@@ -39,11 +39,11 @@ def create_game(client: TestClient) -> CreateGame:
 
 @pytest.fixture
 def create_and_join(client: TestClient, create_game: CreateGame) -> CreateAndJoin:
-    def create_and_join(game_id: str, *player_names: str) -> None:
-        create_game(game_id)
+    def create_and_join(session_name: str, *player_names: str) -> None:
+        create_game(session_name)
         for user_name in player_names:
             response = client.post(
-                "/join", json={"game_id": game_id, "user_name": user_name}
+                "/join", json={"game_id": session_name, "user_name": user_name}
             )
             assert response.status_code == 200
 
@@ -52,8 +52,8 @@ def create_and_join(client: TestClient, create_game: CreateGame) -> CreateAndJoi
 
 @pytest.fixture
 def get_session() -> Callable[[str], GameSession]:
-    def get(game_id: str) -> GameSession:
-        session = game_session_manager.get_game_session(game_id)
+    def get(session_name: str) -> GameSession:
+        session = game_session_manager.get_game_session(session_name)
         assert session is not None
         return session
 

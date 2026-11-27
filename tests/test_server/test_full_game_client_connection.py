@@ -30,9 +30,9 @@ def test_full_game_client_connection(
     create_game: Callable[[str], None],
     get_session: Callable[[str], GameSession],
 ) -> None:
-    game_id = "test-session-123"
-    create_game(game_id)
-    game_session = get_session(game_id)
+    session_name = "test-session-123"
+    create_game(session_name)
+    game_session = get_session(session_name)
 
     assert game_session.game_logic.target_song_count == 2
     assert game_session.game_logic.music_service.service_name == "Mock Music Service"
@@ -40,32 +40,42 @@ def test_full_game_client_connection(
 
     response = client.post(
         "/create",
-        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
+        json={
+            "game_id": session_name,
+            "target_song_count": 2,
+            "music_service_type": "mock",
+        },
     )
     assert response.status_code == 409
 
-    response = client.post("/start", json={"game_id": game_id})
+    response = client.post("/start", json={"game_id": session_name})
     assert response.status_code == 400
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": PLAYER_1})
+    response = client.post(
+        "/join", json={"game_id": session_name, "user_name": PLAYER_1}
+    )
     assert response.status_code == 200
     assert len(game_session.connection_manager.player_connections) == 1
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": PLAYER_1})
+    response = client.post(
+        "/join", json={"game_id": session_name, "user_name": PLAYER_1}
+    )
     assert response.status_code == 409
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": PLAYER_2})
+    response = client.post(
+        "/join", json={"game_id": session_name, "user_name": PLAYER_2}
+    )
     assert response.status_code == 200
     assert len(game_session.connection_manager.player_connections) == 2
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/{PLAYER_1}") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/{PLAYER_2}") as ws2,
+        client.websocket_connect(f"/ws/{session_name}/{PLAYER_1}") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/{PLAYER_2}") as ws2,
     ):
         assert ws1.receive_json()["type"] == "welcome"
         assert ws2.receive_json()["type"] == "welcome"
 
-        response = client.post("/start", json={"game_id": game_id})
+        response = client.post("/start", json={"game_id": session_name})
         assert response.status_code == 200
         assert "type" not in response.json()
         assert ws1.receive_json()["type"] == "your_turn"

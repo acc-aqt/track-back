@@ -14,7 +14,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from track_back.game.game_logic import GameLogic
 from track_back.music_service.spotify import SpotifyAdapter
 from track_back.server.game_sessions import game_session_manager
-from track_back.server.names import GameId, TargetSongCount
+from track_back.server.names import SessionName, TargetSongCount
 
 router = APIRouter()
 
@@ -91,13 +91,13 @@ def spotify_callback(request: Request) -> HTMLResponse:
 
     try:
         state = json.loads(state_raw)
-        game_id = state.get("game_id")
+        session_name = state.get("game_id")
         target_song_count = state.get("target_song_count")
     except json.JSONDecodeError:
         return HTMLResponse("❌ Failed to parse state", status_code=400)
 
     try:
-        game_id = TypeAdapter(GameId).validate_python(game_id)
+        session_name = TypeAdapter(SessionName).validate_python(session_name)
     except ValidationError:
         return HTMLResponse("❌ Missing or invalid game_id (state)", status_code=400)
     try:
@@ -125,7 +125,7 @@ def spotify_callback(request: Request) -> HTMLResponse:
     adapter.authenticate(access_token)
     game = GameLogic(target_song_count=target_song_count, music_service=adapter)
 
-    game_session_manager.add_game(game_id, game)
+    game_session_manager.add_session(session_name, game)
 
     return HTMLResponse(
         content=f"✅ Logged in as <b>{html.escape(username)}</b>. "

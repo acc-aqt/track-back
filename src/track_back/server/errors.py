@@ -16,10 +16,12 @@ class PlayerNotRegisteredError(Exception):
 
 
 class SessionAlreadyExistsError(Exception):
-    """A game session with this ID already exists."""
+    """A game session with this name already exists."""
 
-    def __init__(self, game_id: str) -> None:
-        super().__init__(f"Session '{game_id}' already exists. Choose different ID.")
+    def __init__(self, session_name: str) -> None:
+        super().__init__(
+            f"Game session '{session_name}' already exists. Choose a different name."
+        )
 
 
 class PlayersNotConnectedError(Exception):
@@ -32,9 +34,9 @@ class PlayersNotConnectedError(Exception):
 class NotAPlayerError(Exception):
     """The name is not a player of the running game."""
 
-    def __init__(self, username: str, game_id: str, joinable: list[str]) -> None:
+    def __init__(self, username: str, session_name: str, joinable: list[str]) -> None:
         super().__init__(
-            f"Player '{username}' is not a player in game session {game_id}. "
+            f"Player '{username}' is not a player in game session {session_name}. "
             f"{_joinable_hint(joinable)}"
         )
 
@@ -42,9 +44,9 @@ class NotAPlayerError(Exception):
 class AlreadyConnectedError(Exception):
     """The player already holds a live connection to the running game."""
 
-    def __init__(self, username: str, game_id: str, joinable: list[str]) -> None:
+    def __init__(self, username: str, session_name: str, joinable: list[str]) -> None:
         super().__init__(
-            f"Player '{username}' is already connected to game session {game_id}. "
+            f"Player '{username}' is already connected to game session {session_name}. "
             f"{_joinable_hint(joinable)}"
         )
 

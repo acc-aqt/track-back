@@ -18,19 +18,21 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
     return message
 
 
-def _join(client: TestClient, game_id: str, username: str) -> int:
-    response = client.post("/join", json={"game_id": game_id, "user_name": username})
+def _join(client: TestClient, session_name: str, username: str) -> int:
+    response = client.post(
+        "/join", json={"game_id": session_name, "user_name": username}
+    )
     status: int = response.status_code
     return status
 
 
 def _start_solo_game_and_guess_once(
-    client: TestClient, create_and_join: Callable[..., None], game_id: str
+    client: TestClient, create_and_join: Callable[..., None], session_name: str
 ) -> None:
-    create_and_join(game_id, "solo")
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    create_and_join(session_name, "solo")
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert _receive(ws)["type"] == "welcome"
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
         assert _receive(ws)["type"] == "your_turn"
         ws.send_json({"type": "guess", "index": 0})
         assert _receive(ws)["type"] == "guess_result"
@@ -40,11 +42,11 @@ def _start_solo_game_and_guess_once(
 def test_solo_player_reconnects_and_finishes_the_game(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "solo-comeback"
-    _start_solo_game_and_guess_once(client, create_and_join, game_id)
+    session_name = "solo-comeback"
+    _start_solo_game_and_guess_once(client, create_and_join, session_name)
 
-    assert client.get("/list-sessions").json() == {"sessions": [game_id]}
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    assert client.get("/list-sessions").json() == {"sessions": [session_name]}
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert _receive(ws)["type"] == "welcome"
         assert _receive(ws)["type"] == "your_turn"
         ws.send_json({"type": "guess", "index": 1})
@@ -58,22 +60,24 @@ def test_solo_player_reconnects_and_finishes_the_game(
 def test_whole_room_disconnects_rejoins_and_continues(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "room-comeback"
-    create_and_join(game_id, "alice", "bob")
-    with client.websocket_connect(f"/ws/{game_id}/alice") as alice:
+    session_name = "room-comeback"
+    create_and_join(session_name, "alice", "bob")
+    with client.websocket_connect(f"/ws/{session_name}/alice") as alice:
         assert _receive(alice)["type"] == "welcome"
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob)["type"] == "welcome"
-            assert client.post("/start", json={"game_id": game_id}).status_code == 200
+            assert (
+                client.post("/start", json={"game_id": session_name}).status_code == 200
+            )
             assert _receive(alice)["type"] == "your_turn"
             assert _receive(bob)["type"] == "your_turn"
         assert _receive(alice)["type"] == "user_disconnected"
 
-    assert client.get("/list-sessions").json() == {"sessions": [game_id]}
-    with client.websocket_connect(f"/ws/{game_id}/alice") as alice:
+    assert client.get("/list-sessions").json() == {"sessions": [session_name]}
+    with client.websocket_connect(f"/ws/{session_name}/alice") as alice:
         assert _receive(alice)["type"] == "welcome"
         assert _receive(alice)["type"] == "your_turn"
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob)["type"] == "welcome"
             assert _receive(bob)["type"] == "your_turn"
             assert _receive(alice)["type"] == "player_rejoined"
@@ -101,12 +105,12 @@ def clock(monkeypatch: pytest.MonkeyPatch) -> FakeClock:
 def test_empty_session_is_kept_within_the_grace_period(
     client: TestClient, create_and_join: Callable[..., None], clock: FakeClock
 ) -> None:
-    game_id = "still-waiting"
-    _start_solo_game_and_guess_once(client, create_and_join, game_id)
+    session_name = "still-waiting"
+    _start_solo_game_and_guess_once(client, create_and_join, session_name)
 
     clock.now += EMPTY_SESSION_GRACE_PERIOD_SECONDS
-    assert client.get("/list-sessions").json() == {"sessions": [game_id]}
-    assert _join(client, game_id, "solo") == 200
+    assert client.get("/list-sessions").json() == {"sessions": [session_name]}
+    assert _join(client, session_name, "solo") == 200
 
 
 def test_empty_session_past_the_grace_period_is_removed(
@@ -131,11 +135,11 @@ def test_empty_session_past_the_grace_period_is_removed(
 def test_finished_game_is_removed_when_its_last_player_leaves(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "finished-and-gone"
-    create_and_join(game_id, "solo")
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    session_name = "finished-and-gone"
+    create_and_join(session_name, "solo")
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert _receive(ws)["type"] == "welcome"
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
         assert _receive(ws)["type"] == "your_turn"
         ws.send_json({"type": "guess", "index": 0})
         assert _receive(ws)["type"] == "guess_result"
@@ -143,7 +147,7 @@ def test_finished_game_is_removed_when_its_last_player_leaves(
         ws.send_json({"type": "guess", "index": 1})
         while _receive(ws)["type"] != "game_over":
             pass
-        assert _join(client, game_id, "solo") == 409
+        assert _join(client, session_name, "solo") == 409
 
         ws.close()
-        assert _join(client, game_id, "solo") == 404
+        assert _join(client, session_name, "solo") == 404
