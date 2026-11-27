@@ -5,6 +5,7 @@ from collections.abc import Callable
 import pytest
 from fastapi.testclient import TestClient
 
+from track_back.music_service.selection import MusicServiceType
 from track_back.server.server import Server
 
 
@@ -57,7 +58,9 @@ def test_websocket_endpoint_takes_precedence_over_the_web_ui(
 def test_server_config_points_the_web_ui_at_the_requesting_origin(
     base_url: str, expected_server_url: str
 ) -> None:
-    client = TestClient(Server().app, base_url=base_url)
+    client = TestClient(
+        Server(music_service=MusicServiceType.MOCK).app, base_url=base_url
+    )
     response = client.get("/server_config.js")
     assert response.status_code == 200
     assert "javascript" in response.headers["content-type"]

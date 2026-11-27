@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import socket
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from importlib.resources import files
@@ -30,7 +31,11 @@ from track_back.game.messages import (
 from track_back.game.player import Player
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
-from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
+from track_back.music_service.selection import (
+    MUSIC_SERVICES,
+    MusicServiceType,
+    available_music_services,
+)
 from track_back.server import network
 from track_back.server.errors import (
     AlreadyConnectedError,
@@ -76,7 +81,7 @@ class CreateGameRequest(BaseModel):
 
     game_id: SessionName
     target_song_count: TargetSongCount
-    music_service_type: MusicServiceType
+    music_service_type: MusicServiceType | None = None
 
 
 class JoinGameRequest(BaseModel):
@@ -153,33 +158,81 @@ def startup_hint(port: int, *, use_ssl: bool, lan_addresses: list[str]) -> str:
     return f"{hint}, or {lan_urls} on other devices."
 
 
-class Server:
-    """Encapsulates the FastAPI application."""
+def uses_ssl() -> bool:
+    """Tell whether the SSL config asks the server to serve HTTPS.
 
-    def __init__(self) -> None:
+    Returns
+    -------
+    bool
+        True when both ``SSL_KEYFILE`` and ``SSL_CERTFILE`` are set.
+    """
+    return bool(os.getenv("SSL_KEYFILE") and os.getenv("SSL_CERTFILE"))
+
+
+class _ReadyNotifyingServer(uvicorn.Server):
+    """Uvicorn server that runs callbacks once it accepts connections."""
+
+    def __init__(
+        self, config: uvicorn.Config, ready_callbacks: list[Callable[[], None]]
+    ) -> None:
+        super().__init__(config)
+        self._ready_callbacks = ready_callbacks
+
+    async def startup(self, sockets: list[socket.socket] | None = None) -> None:
+        await super().startup(sockets=sockets)
+        if not self.started:
+            return
+        for callback in self._ready_callbacks:
+            callback()
+
+
+class Server:
+    """Encapsulates the FastAPI application.
+
+    Parameters
+    ----------
+    music_service : MusicServiceType
+        The Music Service chosen by the Server Operator. Game Sessions use it
+        unless the Host picks another available one.
+    """
+
+    def __init__(self, music_service: MusicServiceType) -> None:
+        self.music_service = music_service
+        self.available_music_services = available_music_services(music_service)
         self.app = self.create_app()
+        self._ready_callbacks: list[Callable[[], None]] = []
+
+    def call_when_ready(self, callback: Callable[[], None]) -> None:
+        """Run the callback once the server accepts connections."""
+        self._ready_callbacks.append(callback)
+
+    def _serve(
+        self, port: int, ssl_keyfile: str | None = None, ssl_certfile: str | None = None
+    ) -> None:
+        uvicorn_config = uvicorn.Config(
+            self.app,
+            host="0.0.0.0",  # noqa: S104
+            port=port,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile,
+        )
+        _ReadyNotifyingServer(uvicorn_config, self._ready_callbacks).run()
 
     def run(self, port: int) -> None:
         """Start the Uvicorn server."""
         ssl_keyfile = os.getenv("SSL_KEYFILE")
         ssl_certfile = os.getenv("SSL_CERTFILE")
 
-        use_ssl = bool(ssl_keyfile and ssl_certfile)
+        use_ssl = uses_ssl()
         lan_addresses = network.lan_ipv4_addresses_or_empty()
         print(startup_hint(port, use_ssl=use_ssl, lan_addresses=lan_addresses))
 
         if use_ssl:
             logger.info("Running server with SSL.")
-            uvicorn.run(
-                self.app,
-                host="0.0.0.0",  # noqa: S104
-                port=port,
-                ssl_keyfile=ssl_keyfile,
-                ssl_certfile=ssl_certfile,
-            )
+            self._serve(port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile)
         else:
             logger.info("Running server without SSL.")
-            uvicorn.run(self.app, host="0.0.0.0", port=port)  # noqa: S104
+            self._serve(port)
 
     def create_app(self) -> FastAPI:
         """Initialize and configure the FastAPI app with middleware and routes."""
@@ -236,8 +289,17 @@ class Server:
         session_name = req.game_id
         target_song_count = req.target_song_count
 
+        music_service_type = req.music_service_type or self.music_service
+        if music_service_type not in self.available_music_services:
+            available = ", ".join(self.available_music_services)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Music Service {music_service_type} is not available on "
+                f"this server. Available: {available}.",
+            )
+
         try:
-            music_service = MUSIC_SERVICES[req.music_service_type]()
+            music_service = MUSIC_SERVICES[music_service_type]()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 

@@ -47,7 +47,7 @@ track-back-server init
 track-back-server
 ```
 
-4. Open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
+4. The server opens the game in your default browser. If it can't, or you started it with `--no-browser` (e.g. on a headless machine), open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
 
 > Note: Call `track-back-server -h` to display help and information about optional arguments, and `track-back-server --version` to show the installed version.
 
@@ -73,7 +73,7 @@ The server reads its settings from these sources, highest precedence first. A va
 3. `.env` in the current working directory (or the nearest parent directory that has one)
 4. The per-user config file written by `track-back-server init`
 
-`track-back-server --port <port>` takes precedence over all of them.
+`track-back-server --port <port>` and `--music-service <service>` take precedence over all of them.
 
 ### 2.2 Per-user config file
 
@@ -92,12 +92,21 @@ Leave the values empty for features you don't use.
 | Variable | Purpose |
 | --- | --- |
 | `PORT` | Port the server listens on (default `4200`). |
+| `MUSIC_SERVICE` | Music Service the server uses: `applemusic`, `spotify` or `mock` (default `applemusic` on macOS, `spotify` elsewhere; see 3). |
 | `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 3.1). |
 | `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 5). |
 
 ---
 
 ## 3. Connect to a music service
+
+The Server Operator chooses the Music Service when starting the server. Every Game Session uses it, unless the Host switches to another one that's available on the server.
+
+- **Default:** Apple Music on macOS, Spotify on Windows and Linux.
+- **Switch:** set `MUSIC_SERVICE` in your config (see 2.3), or pass `track-back-server --music-service spotify|applemusic` for one start. The option takes precedence over `MUSIC_SERVICE`.
+- **Available services:** Apple Music on macOS, Spotify when `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` are all set, and the Mock Music Service only when the server was started with it.
+
+If the chosen Music Service can't work on this machine, the server refuses to start and prints how to fix it: run `track-back-server init` to add Spotify credentials, or use `--music-service spotify` instead of Apple Music on a machine that isn't a Mac. An unknown `MUSIC_SERVICE` value stops the server with a list of the valid values.
 
 ### 3.1 Spotify
 
@@ -171,7 +180,7 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 - The first player to reach the target song count wins.
 - If you lose your connection, join the same session again with the same username to continue.
 
-> The **Mock Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
+> The **Mock Music Service** (a fixed list of songs, no real playback) is meant for development. It's only available when the server was started with `--music-service mock`, as `make run` does.
 
 ---
 
@@ -218,7 +227,7 @@ source .venv/bin/activate  # Activates the virtual environment in your shell
 make test                  # Runs the tests with coverage
 make lint                  # Checks ruff lint, ruff format and mypy on src/, tests/ and scripts/ (same as CI)
 make format                # Applies ruff fixes and formatting
-make run                   # Starts the game server
+make run                   # Starts the game server with the Mock Music Service
 make openapi               # Regenerates docs/openapi.json
 ```
 

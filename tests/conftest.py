@@ -3,6 +3,7 @@ from collections.abc import Callable, Iterator
 import pytest
 from fastapi.testclient import TestClient
 
+from track_back.music_service.selection import MusicServiceType
 from track_back.server.game_sessions import GameSession, game_session_manager
 from track_back.server.server import Server
 
@@ -12,7 +13,7 @@ CreateAndJoin = Callable[..., None]
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(Server().app)
+    return TestClient(Server(music_service=MusicServiceType.MOCK).app)
 
 
 @pytest.fixture(autouse=True)
