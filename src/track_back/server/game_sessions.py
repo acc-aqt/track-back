@@ -1,6 +1,7 @@
 """Module with the GameSession and GameSessionManager classes."""
 
 import time
+from collections.abc import Callable
 
 from track_back.game.errors import GameAlreadyRunningError
 from track_back.game.game_logic import GameLogic, GuessRejected
@@ -177,11 +178,17 @@ class GameSession:
 
 
 class GameSessionManager:
-    """Holds all game sessions."""
+    """Holds all game sessions.
 
-    def __init__(self) -> None:
+    Parameters
+    ----------
+    clock : Callable[[], float]
+        Returns the current time in seconds; it times the Rejoin grace period.
+    """
+
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         self.sessions: dict[str, GameSession] = {}
-        self.clock = time.monotonic
+        self.clock = clock
 
     def add_session(self, session_name: str, game: GameLogic) -> None:
         """Create and store a full GameLogic instance."""

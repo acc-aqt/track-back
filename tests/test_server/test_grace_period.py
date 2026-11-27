@@ -96,12 +96,13 @@ class FakeClock:
 
 
 @pytest.fixture
-def clock(
-    monkeypatch: pytest.MonkeyPatch, game_sessions: GameSessionManager
-) -> FakeClock:
-    fake_clock = FakeClock()
-    monkeypatch.setattr(game_sessions, "clock", fake_clock)
-    return fake_clock
+def clock() -> FakeClock:
+    return FakeClock()
+
+
+@pytest.fixture
+def game_sessions(clock: FakeClock) -> GameSessionManager:
+    return GameSessionManager(clock=clock)
 
 
 def test_empty_session_is_kept_within_the_grace_period(
