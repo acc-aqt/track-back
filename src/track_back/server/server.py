@@ -11,7 +11,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -166,6 +166,7 @@ class Server:
         app.post("/start")(self._start_game_session)
         app.websocket("/ws/{game_id}/{username}")(self._websocket_endpoint)
         app.include_router(spotify_auth_router)
+        app.get("/server_config.js", include_in_schema=False)(self._server_config)
 
         for error_type in DOMAIN_ERROR_STATUS_CODES:
             app.add_exception_handler(error_type, self._domain_error_response)
@@ -173,6 +174,15 @@ class Server:
         app.mount("/", StaticFiles(directory=str(WEB_UI_DIR), html=True), name="web_ui")
 
         return app
+
+    @staticmethod
+    async def _server_config(request: Request) -> Response:
+        """Point the bundled Web UI at the origin it was loaded from."""
+        config = {"TRACK_BACK_SERVER_URL": str(request.base_url).rstrip("/")}
+        return Response(
+            content=f"window.TRACK_BACK_CONFIG = {json.dumps(config)};\n",
+            media_type="text/javascript",
+        )
 
     @staticmethod
     async def _domain_error_response(_request: Request, exc: Exception) -> JSONResponse:
