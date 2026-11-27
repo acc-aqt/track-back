@@ -6,10 +6,15 @@ import logging
 from fastapi import WebSocket
 
 from game.game_logic import GameLogic
-from game.messages import MessageType, game_over_message, your_turn_message
-from game.user import User
+from game.messages import (
+    NEW_ROUND_TEXT,
+    MessageType,
+    game_over_message,
+    your_turn_message,
+)
 from music_service.error import MusicServiceError
 from server.connection_manager import ConnectionManager
+from server.game_sessions import GameSession
 
 logger = logging.getLogger(__name__)
 
@@ -19,70 +24,67 @@ async def send_ws_message(ws: WebSocket, msg_type: MessageType, message: str) ->
     await ws.send_text(json.dumps({"type": msg_type, "message": message}))
 
 
+async def notify_players_owed_card(
+    connection_manager: ConnectionManager, game: GameLogic, message: str
+) -> None:
+    """Send your_turn to every connected player who still owes a guess."""
+    for player in game.players_owed_card():
+        if websocket := connection_manager.get_websocket(player.name):
+            await websocket.send_text(json.dumps(your_turn_message(player, message)))
+        else:
+            logger.warning(
+                "Player %s has no WebSocket; they are notified on reconnect.",
+                player.name,
+            )
+
+
 class WebSocketGameHandler:
     """WebSocket handler for managing game connections and interactions."""
 
-    def __init__(self, connection_manager: ConnectionManager) -> None:
-        self.connection_manager = connection_manager
+    def __init__(self, session: GameSession) -> None:
+        self.session = session
+        self.connection_manager = session.connection_manager
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
-        if not self.connection_manager.user_is_registered(username):
-            self.connection_manager.register_user(username)
         await send_ws_message(
             websocket,
             MessageType.WELCOME,
             f"Welcome {username}, you're connected.",
         )
-
-        self.connection_manager.set_websocket(username, websocket)
+        self.session.connect(username, websocket)
 
     async def handle_guess(
-        self, websocket: WebSocket, username: str, index: int, game: GameLogic
+        self, websocket: WebSocket, username: str, index: int
     ) -> None:
         """Handle a guess from a player."""
+        game = self.session.game_logic
         try:
-            payload = game.handle_player_turn(username, index)
+            result = game.handle_player_turn(username, index)
         except MusicServiceError as e:
             await send_ws_message(websocket, MessageType.ERROR, str(e))
             return
 
+        payload = result.message
         await websocket.send_text(json.dumps(payload))
         if payload["type"] == MessageType.ERROR:
             return
 
-        if payload["type"] == MessageType.GUESS_RESULT:
-            await self.connection_manager.broadcast(
-                {
-                    "type": MessageType.OTHER_PLAYER_GUESS,
-                    "player": username,
-                    "result": payload["result"],
-                    "message": f"{username} made a guess. "
-                    f"Guess was {payload['result']}.",
-                    "next_player": payload.get("next_player"),
-                },
-                exclude=username,
-            )
+        await self.connection_manager.broadcast(
+            {
+                "type": MessageType.OTHER_PLAYER_GUESS,
+                "player": username,
+                "result": payload["result"],
+                "message": f"{username} made a guess. Guess was {payload['result']}.",
+            },
+            exclude=username,
+        )
 
-        if payload.get("game_over"):
+        if payload["game_over"]:
             await self.connection_manager.broadcast(
                 game_over_message(payload["winner"])
             )
-            return
-
-        await self.notify_next_round(game)
-
-    async def notify_next_round(self, game: GameLogic) -> None:
-        """Send your_turn to every player owed a card for a newly started round."""
-        for player in game.round.get_players_to_notify_for_next_turn():
-            await self._notify_for_next_turn(player)
-
-    async def _notify_for_next_turn(self, player: User) -> None:
-        if websocket := self.connection_manager.get_websocket(player.name):
-            message = your_turn_message(player, "New round! Make your guess!")
-            await websocket.send_text(json.dumps(message))
-        else:
-            logger.warning(
-                "Player %s has no WebSocket; they are notified on reconnect.",
-                player.name,
+        elif result.round_complete:
+            await notify_players_owed_card(
+                self.connection_manager, game, NEW_ROUND_TEXT
             )

@@ -97,7 +97,6 @@ def test_start_and_next_round_send_your_turn(
             "player": "alice",
             "result": "correct",
             "message": "alice made a guess. Guess was correct.",
-            "next_player": None,
         }
 
         ws2.send_json({"type": "guess", "index": 0})

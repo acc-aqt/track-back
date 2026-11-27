@@ -53,7 +53,7 @@ When a player's socket closes during a running game:
 
 ### After the game is over
 
-The game ends when a player's timeline reaches the Target Song Count. Every player receives `game_over`. The sockets stay open. A client that connects to a finished game receives `game_over` and the socket is closed. A finished game is removed when its last player disconnects.
+The game ends when a player's timeline reaches the Target Song Count. Every player receives `game_over`; nobody receives another `your_turn`. The sockets stay open. A client that connects to a finished game receives `game_over` and the socket is closed. A finished game is removed when its last player disconnects.
 
 Until then the finished game is deliberately not joinable: `GET /list-sessions` leaves it out, and `POST /join` on it returns 409 with `Game session <game_id> is already over.`
 
@@ -115,7 +115,6 @@ Sent only to the player who sent a valid `guess`.
 | `other_players` | list of Player | Every other player with their timeline. |
 | `game_over` | boolean | `true` if this guess won the game. |
 | `winner` | string | The winner's name, or `""` while the game continues. |
-| `next_player` | null | Present only when `game_over` is `false`. Always `null`. |
 
 ### `other_player_guess`
 
@@ -126,7 +125,6 @@ Sent to every other connected player after a player's `guess_result`.
 | `player` | string | The guessing player. |
 | `result` | string | `correct` or `wrong`. |
 | `message` | string | `<player> made a guess. Guess was <result>.` |
-| `next_player` | null | Always `null`. |
 
 ### `player_joined`
 
@@ -180,7 +178,7 @@ Messages the server sends:
 - `<username> has already guessed this song.`: a second `guess` in the same round.
 - `Invalid position <index>.`: `index` is outside the timeline.
 - A music-service error text, if the current song can't be read.
-- `<username> is not a member of this game.` / `<username> is already connected.`: rejected rejoin.
+- `User '<username>' is not member in game session <game_id>. Only one of the following users can be connected: <names>.` / `User '<username>' is already connected to game session <game_id>. Only one of the following users can be connected: <names>.`: rejected rejoin. `POST /join` on a running game returns the same text as a 409.
 
 ## Client to server messages
 

@@ -3,8 +3,13 @@
 import time
 
 from game.game_logic import GameLogic
-from server.connection_manager import ConnectionManager
-from server.errors import SessionAlreadyExistsError
+from game.user import User
+from server.connection_manager import ClientConnection, ConnectionManager
+from server.errors import (
+    AlreadyConnectedError,
+    NotAMemberError,
+    SessionAlreadyExistsError,
+)
 
 EMPTY_SESSION_GRACE_PERIOD_SECONDS = 10 * 60
 
@@ -17,6 +22,28 @@ class GameSession:
         self.game_logic = game_logic
         self.connection_manager = ConnectionManager()
         self.empty_since: float | None = None
+
+    def connect(self, username: str, websocket: ClientConnection) -> None:
+        """Attach the user's live socket and count a member as active again."""
+        if not self.connection_manager.user_is_registered(username):
+            self.connection_manager.register_user(username)
+        self.connection_manager.set_websocket(username, websocket)
+        self.game_logic.player_returned(username)
+
+    def disconnect(self, username: str) -> bool:
+        """Drop the user's socket and active flag; return True if the round advanced."""
+        self.connection_manager.unregister_user(username)
+        return self.game_logic.player_left(username)
+
+    def check_can_rejoin(self, username: str) -> User:
+        """Return the member of the running game, unless unknown or connected."""
+        member = self.game_logic.get_user(username)
+        joinable = self.game_logic.inactive_member_names()
+        if member is None:
+            raise NotAMemberError(username, self.game_id, joinable)
+        if member.is_active:
+            raise AlreadyConnectedError(username, self.game_id, joinable)
+        return member
 
 
 class GameSessionManager:
