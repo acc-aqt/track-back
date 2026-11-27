@@ -145,15 +145,17 @@ def test_reconnect_after_disconnect(
             )
             assert response.status_code == expected_status
 
-        assert len(game_session.connection_manager.user_connections) == 2
-        assert _is_active(game_session, USER_1) is True
-        assert _is_active(game_session, USER_2) is True
-        assert client.get("list-sessions").json() == {"sessions": []}
+        # /join on a running game only checks; the WebSocket connect rejoins
+        assert set(game_session.connection_manager.user_connections) == {USER_1}
+        assert _is_active(game_session, USER_2) is False
+        assert client.get("list-sessions").json() == {"sessions": [game_id]}
 
         with client.websocket_connect(f"/ws/{game_id}/{USER_2}") as ws2:
-            assert ws1.receive_json()["type"] == "player_rejoined"
             assert ws2.receive_json()["type"] == "welcome"
             assert ws2.receive_json()["type"] == "your_turn"
+            assert ws1.receive_json()["type"] == "player_rejoined"
+            assert _is_active(game_session, USER_2) is True
+            assert client.get("list-sessions").json() == {"sessions": []}
 
             ws2.send_json({"type": "guess", "index": 0})
             guess_result = ws2.receive_json()
@@ -169,6 +171,7 @@ def test_reconnect_after_disconnect(
 
         with client.websocket_connect(f"/ws/{game_id}/{USER_2}") as ws2:
             assert ws2.receive_json()["type"] == "welcome"
+            assert ws2.receive_json()["type"] == "player_rejoined"
 
             # already guessed this round
             ws2.send_json({"type": "guess", "index": 0})

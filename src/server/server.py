@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from game.errors import GameAlreadyRunningError, MusicPlaybackError
 from game.game_logic import GameLogic
-from game.messages import MessageType, your_turn_message
+from game.messages import MessageType, game_over_message, your_turn_message
 from game.user import User
 from music_service.error import MusicServiceError
 from music_service.selection import MUSIC_SERVICES, MusicServiceType
@@ -106,6 +106,14 @@ CLIENT_MESSAGE_HANDLERS: dict[str, ClientMessageHandler] = {
 }
 
 
+def _disconnected_member_names(session: GameSession) -> list[str]:
+    return [
+        user.name
+        for user in session.game_logic.users
+        if session.connection_manager.get_websocket(user.name) is None
+    ]
+
+
 class Server:
     """Encapsulates the FastAPI application."""
 
@@ -182,8 +190,8 @@ class Server:
         joinable_session_ids = [
             session_id
             for session_id, session in game_session_manager.sessions.items()
-            if not session.game_logic.running
-            or any(user.is_active is False for user in session.game_logic.users)
+            if session.game_logic.winner is None
+            and (not session.game_logic.running or _disconnected_member_names(session))
         ]
         return JSONResponse(content={"sessions": joinable_session_ids})
 
@@ -195,51 +203,14 @@ class Server:
             raise HTTPException(
                 status_code=404, detail=f"Game session {game_id} not found."
             )
+        if session.game_logic.winner is not None:
+            raise HTTPException(
+                status_code=409, detail=f"Game session {game_id} is already over."
+            )
         if session.game_logic.running:
-            user_to_reconnect = session.game_logic.get_user(user_name)
-            joinable_user_names = ", ".join(
-                [user.name for user in session.game_logic.users if not user.is_active]
-            )
-            if not user_to_reconnect:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"User '{user_name}' is not member in game session "
-                    f"{game_id}. Only one of the following users can be connected: "
-                    f"{joinable_user_names}.",
-                )
-            if user_to_reconnect.is_active:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"User '{user_name}' is already connected to "
-                    f"game session {game_id}. "
-                    f"Only one of the following users can be connected: "
-                    f"{joinable_user_names}.",
-                )
-            user_to_reconnect.is_active = True
-            session.connection_manager.register_user(user_name)
-
-            number_of_users = len(
-                session.connection_manager.get_registered_user_names()
-            )
-            user_names_string = ", ".join(
-                session.connection_manager.get_registered_user_names()
-            )
-
-            player_rejoined_message = {
-                "type": MessageType.PLAYER_REJOINED,
-                "message": (
-                    f"{user_name} re-joined the game! "
-                    f"There are now {number_of_users} players: "
-                    f"{user_names_string}."
-                ),
-                "song_list": [song.serialize() for song in user_to_reconnect.song_list],
-                "user_name": user_name,
-                "next_player": user_name,
-            }
-
-            await session.connection_manager.broadcast(player_rejoined_message)
+            self._check_can_rejoin(session, user_name)
             return JSONResponse(
-                content={"message": f"User {user_name} re-joined game {game_id}."}
+                content={"message": f"User {user_name} can re-join game {game_id}."}
             )
 
         session.connection_manager.register_user(user_name)
@@ -263,6 +234,27 @@ class Server:
         return JSONResponse(
             content={"message": f"User {user_name} joined game {game_id}."}
         )
+
+    @staticmethod
+    def _check_can_rejoin(session: GameSession, user_name: str) -> None:
+        """Raise unless the name is a member of the running game and not connected."""
+        game_id = session.game_id
+        joinable_user_names = ", ".join(_disconnected_member_names(session))
+        if not session.game_logic.get_user(user_name):
+            raise HTTPException(
+                status_code=409,
+                detail=f"User '{user_name}' is not member in game session "
+                f"{game_id}. Only one of the following users can be connected: "
+                f"{joinable_user_names}.",
+            )
+        if session.connection_manager.get_websocket(user_name) is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"User '{user_name}' is already connected to "
+                f"game session {game_id}. "
+                f"Only one of the following users can be connected: "
+                f"{joinable_user_names}.",
+            )
 
     async def _start_game_session(self, req: StartGameRequest) -> JSONResponse:
         """Start the game and notify the first player via WebSocket."""
@@ -313,19 +305,17 @@ class Server:
             logger.error("Game session %s not found.", game_id)
             return
 
-        connection_manager = game_session.connection_manager
-        handler = WebSocketGameHandler(connection_manager)
-        await handler.handle_connection(websocket, username)
-
         game = game_session.game_logic
-        players_owed_turn = (
-            game.round.get_players_to_notify_for_next_turn() if game.running else []
-        )
-        player = next(
-            (user for user in players_owed_turn if user.name == username), None
-        )
-        if player:
-            await websocket.send_text(json.dumps(your_turn_message(player)))
+        if game.winner is not None:
+            await websocket.send_text(json.dumps(game_over_message(game.winner.name)))
+            await websocket.close()
+            return
+
+        handler = WebSocketGameHandler(game_session.connection_manager)
+        if not game.running:
+            await handler.handle_connection(websocket, username)
+        elif not await self._rejoin(websocket, username, game_session, handler):
+            return
 
         try:
             while True:
@@ -333,11 +323,51 @@ class Server:
                 await self._handle_message(
                     websocket, username, raw_data, handler, game_session.game_logic
                 )
-                if game_session.game_logic.winner is not None:
-                    game_session_manager.remove_game_session(game_id)
 
         except WebSocketDisconnect:
             await self.handle_disconnection(username, game_session)
+
+    @staticmethod
+    async def _rejoin(
+        websocket: WebSocket,
+        username: str,
+        game_session: GameSession,
+        handler: WebSocketGameHandler,
+    ) -> bool:
+        """Put a member back into the running game; reject anyone else."""
+        connection_manager = game_session.connection_manager
+        member = game_session.game_logic.get_user(username)
+        if member is None or connection_manager.get_websocket(username) is not None:
+            reason = (
+                f"{username} is not a member of this game."
+                if member is None
+                else f"{username} is already connected."
+            )
+            await send_ws_message(websocket, MessageType.ERROR, reason)
+            await websocket.close(code=1008, reason=reason)
+            return False
+
+        await handler.handle_connection(websocket, username)
+        member.is_active = True
+
+        user_names = connection_manager.get_registered_user_names()
+        player_rejoined_message = {
+            "type": MessageType.PLAYER_REJOINED,
+            "message": (
+                f"{username} re-joined the game! "
+                f"There are now {len(user_names)} players: {', '.join(user_names)}."
+            ),
+            "song_list": [song.serialize() for song in member.song_list],
+            "user_name": username,
+        }
+        if game_session.game_logic.owes_guess(username):
+            await websocket.send_text(json.dumps(your_turn_message(member)))
+            await connection_manager.broadcast(
+                player_rejoined_message, exclude=username
+            )
+        else:
+            await connection_manager.broadcast(player_rejoined_message)
+        return True
 
     @staticmethod
     async def _handle_message(

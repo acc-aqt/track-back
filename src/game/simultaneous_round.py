@@ -25,6 +25,10 @@ class SimultaneousRound:
             }
         return None
 
+    def has_guessed(self, username: str) -> bool:
+        """Return True if the user already guessed the current song."""
+        return username in self.users_already_guessed
+
     def handle_turn_progression(self, username: str) -> dict[str, Any]:
         """Only when every user has guessed, the game will skip to the next track."""
         self.users_already_guessed.add(username)

@@ -28,3 +28,12 @@ def your_turn_message(player: User, message: str = "It's your turn!") -> dict[st
         "next_player": player.name,
         "song_list": [song.serialize() for song in player.song_list],
     }
+
+
+def game_over_message(winner: str) -> dict[str, Any]:
+    """Build the message announcing the winner of the game."""
+    return {
+        "type": MessageType.GAME_OVER,
+        "winner": winner,
+        "message": f"{winner} has won the game!",
+    }
