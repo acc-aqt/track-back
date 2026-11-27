@@ -64,12 +64,13 @@ class WebSocketGameHandler:
                 exclude=username,
             )
 
-        await self.notify_next_round(game)
-
         if payload.get("game_over"):
             await self.connection_manager.broadcast(
                 game_over_message(payload["winner"])
             )
+            return
+
+        await self.notify_next_round(game)
 
     async def notify_next_round(self, game: GameLogic) -> None:
         """Send your_turn to every player owed a card for a newly started round."""
