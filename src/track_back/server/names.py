@@ -1,6 +1,6 @@
 r"""Validation rules for user input: user names, game ids and the Target Song Count.
 
-The name rule matches the browser's NAME_PATTERN in web_ui/script.js:
+The name rule matches the browser's NAME_PATTERN in track_back/web_ui/script.js:
 /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
 """
 

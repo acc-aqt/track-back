@@ -1,4 +1,8 @@
-# 🎵 TrackBack
+<p align="center">
+  <img src="web_ui/assets/logo.svg" alt="TrackBack logo" width="96" />
+</p>
+
+# TrackBack
 
 [![Tests](https://github.com/acc-aqt/track-back/actions/workflows/test.yml/badge.svg)](https://github.com/acc-aqt/track-back/actions/workflows/test.yml)
 
@@ -10,91 +14,121 @@ You can play using your own playlists — it currently supports **Spotify** and 
 
 The game consists of a **Python-based server** and a [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) as frontend.
 
-> **Intended use / security:** TrackBack is a party game for friends on a local network. There are no accounts or authentication: anyone who can reach the server can create, list and join game sessions. Don't expose the server to the public internet unless you're fine with that.
-
 ---
 
 ## 1. Installation
 
+> **Intended use / security:** TrackBack is a party game for friends on a local network. There are no accounts or authentication: anyone who can reach the server can create, list and join game sessions. Don't expose the server to the public internet unless you're fine with that.
+
 ### 1.1 Requirements
 
-To run the game server, you need:
-
 - `Python 3.11` or higher
-- `pip`
+- [`uv`](https://docs.astral.sh/uv/getting-started/installation/) or [`pipx`](https://pipx.pypa.io/stable/installation/)
 
-You can check your installed versions as follows:
+### 1.2 Install and start
 
-```bash
-python3 --version
-pip --version
-```
-
-### 1.2 Install
-
-1. Clone the repository:
+1. Install TrackBack:
 
 ```bash
-git clone https://github.com/acc-aqt/track-back.git
-cd track-back
+uv tool install track-back
 ```
 
-(Or download the ZIP.)
+(Or `pipx install track-back`.)
 
-2. Install dependencies:
+2. Create your config. `init` asks for the port and, optionally, your Spotify credentials (see 3.1):
 
 ```bash
-pip install .
+track-back-server init
 ```
 
-### 1.3 Configure
-
-Copy `.env.example` to `.env`:
+3. Start the server:
 
 ```bash
-cp .env.example .env
+track-back-server
 ```
 
-`.env` holds your Spotify credentials (see 2.1.2) and, optionally, the SSL paths for HTTPS (see 3). Leave the values empty for features you don't use.
+4. Open the URL the server prints, e.g. `Open http://localhost:4200 on this machine, or http://192.168.1.20:4200 on other devices.` The other players open the second one on their own devices (see 4).
+
+> Note: Call `track-back-server -h` to display help and information about optional arguments, and `track-back-server --version` to show the installed version.
+
+### 1.3 Upgrade and uninstall
+
+```bash
+uv tool upgrade track-back     # or: pipx upgrade track-back
+uv tool uninstall track-back   # or: pipx uninstall track-back
+```
+
+Uninstalling leaves your config file in place (see 2.2). Delete it by hand if you don't need it anymore.
+
+---
+
+## 2. Configuration
+
+### 2.1 Where config comes from
+
+The server reads its settings from these sources, highest precedence first. A value set in an earlier source is never overridden by a later one:
+
+1. Environment variables
+2. The file passed with `track-back-server --env-file <path>`
+3. `.env` in the current working directory (or the nearest parent directory that has one)
+4. The per-user config file written by `track-back-server init`
+
+`track-back-server --port <port>` takes precedence over all of them.
+
+### 2.2 Per-user config file
+
+| OS | Location |
+| --- | --- |
+| macOS | `~/Library/Application Support/track-back/.env` |
+| Linux | `~/.config/track-back/.env` (or `$XDG_CONFIG_HOME/track-back/.env`) |
+| Windows | `%LOCALAPPDATA%\track-back\.env` |
+
+Re-run `track-back-server init` to replace it (it asks before overwriting), or edit it directly. To write a dotenv file of your own, start from [.env.example](.env.example).
+
+### 2.3 Variables
+
+Leave the values empty for features you don't use.
 
 | Variable | Purpose |
 | --- | --- |
-| `PORT` | Port the server listens on (default `4200`). `track-back-server --port <port>` takes precedence. |
-| `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 2.1.2). |
-| `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 3). |
+| `PORT` | Port the server listens on (default `4200`). |
+| `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 3.1). |
+| `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 5). |
 
 ---
 
-## 2. Connect to a music service
+## 3. Connect to a music service
 
-### 2.1 Spotify
+### 3.1 Spotify
 
-#### 2.1.1 Requirements
+#### 3.1.1 Requirements
 - Spotify Premium account (Spotify only allows playback control for Premium accounts)
 - A registered app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/)
    1. Log in and create a new app
-   2. Set a **redirect URI**. The path must be `/spotify-callback` for the Spotify login flow in this app to work, e.g. `https://your-domain.com/spotify-callback`.
+   2. Set a **redirect URI**. The path must be `/spotify-callback`. We recommend the loopback address `http://127.0.0.1:4200/spotify-callback` (with your port; Spotify doesn't accept `localhost`).
    3. Copy your **Client ID** and **Client Secret**
    4. Add authorized users under **Edit Settings > User Management**
 
-#### 2.1.2 Setup
+#### 3.1.2 Setup
 
-1. Fill in `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET` and `SPOTIPY_REDIRECT_URI` in your `.env` (see 1.3) with the values from 2.1.1.
-2. Open the Spotify app and log in with a registered account (see 2.1.1).
+1. Run `track-back-server init`, answer `y` to **Set up Spotify?** and enter the Client ID, Client Secret and redirect URI from 3.1.1. The suggested default redirect URI is the loopback one for your port.
+2. Open the Spotify app and log in with a registered account (see 3.1.1).
 3. Select a playlist to use in the game.
+
+> With the loopback redirect URI, the host must create Spotify games in a browser **on the server machine**, because Spotify sends the browser back to `127.0.0.1` after login. To log into Spotify from another device, the redirect URI has to point at the server's LAN address, and Spotify only accepts that over HTTPS: set up HTTPS (see 5) and use e.g. `https://192.168.1.20:4200/spotify-callback` in both the dashboard and your config.
 
 ---
 
-### 2.2 Apple Music
+### 3.2 Apple Music
 
-#### 2.2.1 Requirements
+#### 3.2.1 Requirements
 - macOS Catalina (10.15+)
 - Music app installed and running **on the same Mac as the game server**
 
-#### 2.2.2 Setup
+#### 3.2.2 Setup
 
 1. Open the Music app and select a playlist. Shuffle works well.
-2. Start the server (see 3) and create a game with **Apple Music**.
+2. Start the server (see 1.2) and create a game with **Apple Music**.
 3. On the first game, macOS asks whether your terminal may control **Music** and **System Events**. Allow both. You can change this later under **System Settings > Privacy & Security > Automation**.
 
 How it works: the server talks to the Music app via AppleScript. It starts playback, reads the title, artist, **Year** field and album artwork of the current track, and skips to the next track after each round.
@@ -105,44 +139,11 @@ How it works: the server talks to the Music app via AppleScript. It starts playb
 
 ---
 
-## 3. Start the server
-
-To start the game server run:
-
-```bash
-track-back-server
-```
-
-> Note: Call `track-back-server -h` to display help and information about optional arguments.
-
-#### Run with HTTPS (Optional)
-
-To serve the game securely via HTTPS, you can run the server with an SSL certificate.
-
-Step 1: Generate a self-signed certificate
-
-You can use OpenSSL to create a key and certificate:
-
-```bash
-openssl req -x509 -newkey rsa:4096 -nodes \
-  -keyout key.pem -out cert.pem -days 365
-```
-
-This will generate two files:
-- key.pem: Your private key
-- cert.pem: Your public certificate
-
-> Note: Self-signed certificates will show browser warnings unless manually trusted. For production, use certificates from a trusted CA like Let’s Encrypt.
-
-Step 2: Set `SSL_KEYFILE` and `SSL_CERTFILE` in your `.env` (see 1.3) to the paths of `key.pem` and `cert.pem`.
-
-If both variables are set, the server will automatically start with SSL enabled.
-
----
-
 ## 4. Play the game in the browser
 
-Open the [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html), or open `web_ui/index.html` locally. (The `index.html` in the repo root only redirects the GitHub Pages root to the Web UI.)
+The server serves the Web UI itself: open the URL it prints at start-up (e.g. `http://localhost:4200/` on the server machine, `http://<your-lan-ip>:4200/` on other devices) and the page already talks to that server.
+
+Alternatively, open the public [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html) on GitHub Pages. It's published from `src/track_back/web_ui/` by the Pages workflow on every push to `main`. (The `index.html` in the repo root only redirects the GitHub Pages root to the Web UI.)
 
 If the page doesn't come with a preconfigured server, it first shows a **Server** field. Enter your server's address, e.g. `http://localhost:4200` or `http://<your-lan-ip>:4200`.
 
@@ -172,7 +173,42 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 
 > The **Mock Music Service** option (a fixed list of songs, no real playback) is only shown when the Web UI runs on `localhost`. It's meant for development.
 
-## 5. Development setup (not necessary to run the game)
+---
+
+## 5. Advanced: HTTPS
+
+To serve the game via HTTPS, run the server with an SSL certificate. You need this to log into Spotify from a device other than the server machine (see 3.1.2).
+
+Step 1: Generate a self-signed certificate
+
+You can use OpenSSL to create a key and certificate:
+
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout key.pem -out cert.pem -days 365
+```
+
+This will generate two files:
+- key.pem: Your private key
+- cert.pem: Your public certificate
+
+> Note: Self-signed certificates will show browser warnings unless manually trusted. For production, use certificates from a trusted CA like Let’s Encrypt.
+
+Step 2: Set `SSL_KEYFILE` and `SSL_CERTFILE` in your config (see 2) to the absolute paths of `key.pem` and `cert.pem`.
+
+If both variables are set, the server will automatically start with SSL enabled, and the URLs it prints start with `https://`.
+
+---
+
+## 6. Development setup (not necessary to run the game)
+
+To run the server from a checkout, clone the repository and install it:
+
+```bash
+git clone https://github.com/acc-aqt/track-back.git
+cd track-back
+pip install .
+```
 
 For code development and testing:
 
@@ -180,13 +216,15 @@ For code development and testing:
 make create-venv           # Creates .venv/ and installs the package with test and lint extras
 source .venv/bin/activate  # Activates the virtual environment in your shell
 make test                  # Runs the tests with coverage
-make lint                  # Checks ruff lint, ruff format and mypy on src/ and tests/ (same as CI)
+make lint                  # Checks ruff lint, ruff format and mypy on src/, tests/ and scripts/ (same as CI)
 make format                # Applies ruff fixes and formatting
 make run                   # Starts the game server
 make openapi               # Regenerates docs/openapi.json
 ```
 
 The HTTP API is described in [docs/openapi.json](docs/openapi.json), the WebSocket messages in [docs/websocket-protocol.md](docs/websocket-protocol.md).
+
+Releases to PyPI and the one-time Trusted Publisher setup are described in [docs/releasing.md](docs/releasing.md).
 
 ---
 

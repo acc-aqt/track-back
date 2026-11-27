@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from music_service.covers import cover_store
+from track_back.music_service.covers import cover_store
 
 
 def test_stored_cover_is_served_as_jpeg(client: TestClient) -> None:

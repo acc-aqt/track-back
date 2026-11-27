@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any
 
-from game.user import User
+from track_back.game.user import User
 
 
 class MessageType(StrEnum):

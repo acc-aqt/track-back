@@ -2,10 +2,10 @@
 
 import time
 
-from game.game_logic import GameLogic
-from game.user import User
-from server.connection_manager import ClientConnection, ConnectionManager
-from server.errors import (
+from track_back.game.game_logic import GameLogic
+from track_back.game.user import User
+from track_back.server.connection_manager import ClientConnection, ConnectionManager
+from track_back.server.errors import (
     AlreadyConnectedError,
     NotAMemberError,
     SessionAlreadyExistsError,

@@ -2,8 +2,8 @@ from typing import Any
 
 import pytest
 
-from music_service.error import MusicServiceError
-from music_service.spotify import SpotifyAdapter
+from track_back.music_service.error import MusicServiceError
+from track_back.music_service.spotify import SpotifyAdapter
 
 
 class FakeSpotify:

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 
-from server.game_sessions import (
+from track_back.server.game_sessions import (
     EMPTY_SESSION_GRACE_PERIOD_SECONDS,
     game_session_manager,
 )
@@ -20,7 +20,8 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
 
 def _join(client: TestClient, game_id: str, user: str) -> int:
     response = client.post("/join", json={"game_id": game_id, "user_name": user})
-    return response.status_code
+    status: int = response.status_code
+    return status
 
 
 def _start_solo_game_and_guess_once(

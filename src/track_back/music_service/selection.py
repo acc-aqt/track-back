@@ -3,10 +3,10 @@
 from collections.abc import Callable
 from enum import StrEnum
 
-from music_service.abstract_adapter import AbstractMusicServiceAdapter
-from music_service.apple_music import AppleMusicAdapter
-from music_service.mock import MockMusicService
-from music_service.spotify import SpotifyAdapter
+from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from track_back.music_service.apple_music import AppleMusicAdapter
+from track_back.music_service.mock import MockMusicService
+from track_back.music_service.spotify import SpotifyAdapter
 
 
 class MusicServiceType(StrEnum):

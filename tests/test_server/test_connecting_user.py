@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 from fastapi.testclient import TestClient
 
-from server.game_sessions import GameSession
+from track_back.server.game_sessions import GameSession
 
 USER_1 = "testuser1"
 USER_2 = "testuser2"

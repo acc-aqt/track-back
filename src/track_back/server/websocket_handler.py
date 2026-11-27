@@ -5,16 +5,16 @@ import logging
 
 from fastapi import WebSocket
 
-from game.game_logic import GameLogic
-from game.messages import (
+from track_back.game.game_logic import GameLogic
+from track_back.game.messages import (
     NEW_ROUND_TEXT,
     MessageType,
     game_over_message,
     your_turn_message,
 )
-from music_service.error import MusicServiceError
-from server.connection_manager import ConnectionManager
-from server.game_sessions import GameSession
+from track_back.music_service.error import MusicServiceError
+from track_back.server.connection_manager import ConnectionManager
+from track_back.server.game_sessions import GameSession
 
 logger = logging.getLogger(__name__)
 
