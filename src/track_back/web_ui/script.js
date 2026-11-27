@@ -638,6 +638,11 @@ document.getElementById('joinGameBtn').onclick = async () => {
     return
   }
 
+  if (sessions.length === 1) {
+    await joinSession(sessions[0])
+    return
+  }
+
   document.getElementById('controls-new-or-join').hidden = true
   showSessionChoice(sessions)
 }
