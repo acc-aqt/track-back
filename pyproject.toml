@@ -1,21 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name =  "track-back"
 authors = [
     {name = "Alexander Carrels"},
 ]
 dependencies = [
-    "spotipy==2.25.1",
-    "python-dotenv==1.1.0",
-    "fastapi==0.115.12",
-    "uvicorn==0.34.0",
-    "websockets==15.0.1",
-    "httpx==0.28.1",
+    "spotipy>=2.25.1,<3",
+    "python-dotenv>=1.1.0,<2",
+    "fastapi>=0.115.12,<1",
+    "pydantic>=2.14.4,<3",
+    "uvicorn>=0.34.0,<1",
+    "websockets>=15.0.1,<16",
+    "httpx>=0.28.1,<1",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
 ]
 
 description = "A game where players sort songs played by release date"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 version = "0.1.0"
 requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/acc-aqt/track-back"
+Source = "https://github.com/acc-aqt/track-back"
+Issues = "https://github.com/acc-aqt/track-back/issues"
 
 [project.scripts]
 track-back-server = "track_back.server.main:main"
