@@ -405,9 +405,8 @@ class Server:
         connection_manager = game_session.connection_manager
 
         connection_manager.unregister_user(username)
-
-        if inactive_user := game_session.game_logic.get_user(username):
-            inactive_user.is_active = False
+        game = game_session.game_logic
+        round_advanced = game.running and game.round.player_left(username)
 
         await connection_manager.broadcast(
             {
@@ -416,6 +415,8 @@ class Server:
                 f"{username} can try to re-join the game.",
             },
         )
+        if round_advanced:
+            await WebSocketGameHandler(connection_manager).notify_next_round(game)
 
         game_id = game_session.game_id
         if not connection_manager.user_connections:
