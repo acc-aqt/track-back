@@ -1,7 +1,7 @@
 import re
 
 import httpx
-from playwright.sync_api import Dialog, Locator, Page, expect
+from playwright.sync_api import Dialog, Locator, Page, Route, expect
 
 
 def host_options_strip(page: Page) -> Locator:
@@ -136,4 +136,119 @@ def test_target_song_count_is_remembered_after_a_reload(
 
     expect(host_options_strip(page)).to_have_accessible_name(
         re.compile(r"^4 songs · Mock · Edit$", re.IGNORECASE)
+    )
+
+
+def test_default_name_follows_the_username_typed_after_opening(
+    page: Page, base_url: str
+) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("Al")
+    host_options_strip(page).click()
+    host_options_strip(page).click()
+    page.get_by_label("Username").fill("Alice")
+
+    page.get_by_role("button", name="Host a Game").click()
+
+    expect(page.get_by_text("Joined game: Game-by-Alice")).to_be_visible()
+
+
+def test_edited_name_stays_when_the_username_changes(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("Al")
+    host_options_strip(page).click()
+    page.get_by_label("Game Session Name").fill("Friday Party")
+    page.get_by_label("Username").fill("Alice")
+
+    expect(page.get_by_label("Game Session Name")).to_have_value("Friday Party")
+
+
+def test_error_clears_when_host_options_reopen(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("alice")
+    host_options_strip(page).click()
+    page.get_by_label("Target Song Count").fill("0")
+    page.get_by_role("button", name="Host a Game").click()
+    expect(page.get_by_role("alert")).to_contain_text("valid number greater than 0")
+
+    host_options_strip(page).click()
+    host_options_strip(page).click()
+
+    expect(page.get_by_role("alert")).to_be_hidden()
+
+
+def test_error_clears_when_the_host_edits_an_option(page: Page, base_url: str) -> None:
+    page.goto(base_url)
+    page.get_by_label("Username").fill("alice")
+    host_options_strip(page).click()
+    page.get_by_label("Target Song Count").fill("0")
+    page.get_by_role("button", name="Host a Game").click()
+    expect(page.get_by_role("alert")).to_contain_text("valid number greater than 0")
+
+    page.get_by_label("Target Song Count").fill("5")
+
+    expect(page.get_by_role("alert")).to_be_hidden()
+
+
+def test_opening_while_the_music_services_load_fetches_them_once(
+    page: Page, base_url: str
+) -> None:
+    services = {"available": ["mock", "spotify"], "default": "mock"}
+    requests: list[Route] = []
+
+    def hold_the_first(route: Route) -> None:
+        requests.append(route)
+        if len(requests) > 1:
+            route.fulfill(json=services)
+
+    page.route("**/music-services", hold_the_first)
+    with page.expect_request("**/music-services"):
+        page.goto(base_url)
+    page.get_by_label("Username").fill("alice")
+
+    host_options_strip(page).click()
+    requests[0].fulfill(json=services)
+
+    page.get_by_role("button", name="change").click()
+    page.get_by_label("Choose a Music Service").select_option("spotify")
+    expect(host_options_strip(page)).to_have_accessible_name(
+        re.compile(r"Spotify · Edit$", re.IGNORECASE)
+    )
+    assert len(requests) == 1
+
+
+def test_strip_shows_the_service_when_the_server_url_is_relative(
+    page: Page, base_url: str
+) -> None:
+    page.route("**/server_config.js", lambda route: route.abort())
+    page.route("http://localhost:4200/**", lambda route: route.abort())
+    page.goto(base_url)
+    page.get_by_label("Server").fill("")
+    page.get_by_label("Username").fill("alice")
+
+    host_options_strip(page).click()
+
+    expect(page.get_by_label("Target Song Count")).to_be_visible()
+    expect(host_options_strip(page)).to_have_accessible_name(
+        re.compile(r"^10 songs · Mock · Edit$", re.IGNORECASE)
+    )
+
+
+def test_a_target_song_count_the_browser_restores_is_kept(
+    page: Page, base_url: str
+) -> None:
+    """Firefox restores form fields on reload; Chromium doesn't, so fake it."""
+    config = httpx.get(f"{base_url}/server_config.js").text
+    restore = "document.getElementById('targetSongCountInput').value = '6';\n"
+    page.route(
+        "**/server_config.js",
+        lambda route: route.fulfill(
+            body=restore + config, content_type="text/javascript"
+        ),
+    )
+
+    page.goto(base_url)
+
+    expect(host_options_strip(page)).to_have_accessible_name(
+        re.compile(r"^6 songs · Mock · Edit$", re.IGNORECASE)
     )

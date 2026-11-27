@@ -125,7 +125,7 @@ function askUsernameThenJoin (session) {
   document.getElementById('username').focus()
 }
 
-// Music Service choice in Game Setup: "Music: <service> · change".
+// Music Service choice in Game Setup: "Music: <service>" and a change button.
 const MUSIC_SERVICE_LABELS = {
   spotify: 'Spotify 📻🎶',
   applemusic: 'Apple Music 🍎🎶',
@@ -666,6 +666,28 @@ const usernameSessionName = () => {
 }
 
 let musicServicesLoadedFrom = null
+let musicServicesLoading = null
+
+// Callers share one load per server, so a later load can't reset the Music
+// Service the Host picked after an earlier one. A failed load can be retried.
+function loadMusicServicesOnce () {
+  if (musicServicesLoading?.serverUrl !== serverUrl) {
+    const url = serverUrl
+    const promise = loadMusicServiceChoice(
+      loadStored(MUSIC_SERVICE_STORAGE_KEY)
+    ).then(services => {
+      if (services) {
+        musicServicesLoadedFrom = url
+        updateHostOptionsSummary()
+      } else if (musicServicesLoading?.promise === promise) {
+        musicServicesLoading = null
+      }
+      return Boolean(services)
+    })
+    musicServicesLoading = { serverUrl: url, promise }
+  }
+  return musicServicesLoading.promise
+}
 
 // Returns false if the Music Services could not be loaded. `quiet` skips
 // telling the Host, for the load in the background when the page opens.
@@ -673,30 +695,30 @@ async function ensureMusicServiceChoice ({ quiet = false } = {}) {
   if (musicServicesLoadedFrom === serverUrl) {
     return true
   }
-  const services = await loadMusicServiceChoice(
-    loadStored(MUSIC_SERVICE_STORAGE_KEY)
-  )
-  if (!services) {
-    if (!quiet) {
-      alert('⚠️ Failed to fetch the Music Services. Please try again.')
-    }
-    return false
+  const loaded = await loadMusicServicesOnce()
+  if (!loaded && !quiet) {
+    alert('⚠️ Failed to fetch the Music Services. Please try again.')
   }
-  musicServicesLoadedFrom = serverUrl
-  updateHostOptionsSummary()
-  return true
+  return loaded
 }
+
+// The default name follows the Username until the Host edits it.
+let filledDefaultSessionName = ''
 
 function fillDefaultSessionName () {
   const nameInput = document.getElementById('sessionNameInput')
-  if (!nameInput.value.trim()) {
+  const name = nameInput.value.trim()
+  if (!name || name === filledDefaultSessionName) {
     nameInput.value = usernameSessionName()
+    filledDefaultSessionName = nameInput.value
   }
 }
 
 function hostOptionsSummaryParts () {
   const count = parseInt(document.getElementById('targetSongCountInput').value)
-  const service = musicServicesLoadedFrom ? selectedMusicService() : ''
+  const loaded =
+    musicServicesLoadedFrom !== null && musicServicesLoadedFrom === serverUrl
+  const service = loaded ? selectedMusicService() : ''
   return [
     count > 0 ? `${count} ${count === 1 ? 'song' : 'songs'}` : '',
     service ? MUSIC_SERVICE_SHORT_LABELS[service] || service : ''
@@ -716,10 +738,12 @@ function updateHostOptionsSummary () {
   document.getElementById('hostOptionsSummary').replaceChildren(...children)
 }
 
+// A count the browser restored into the field wins over the stored one.
 async function prepareHostOptions () {
-  document.getElementById('targetSongCountInput').value = String(
-    loadStoredTargetSongCount()
-  )
+  const countInput = document.getElementById('targetSongCountInput')
+  if (countInput.value === countInput.defaultValue) {
+    countInput.value = String(loadStoredTargetSongCount())
+  }
   updateHostOptionsSummary()
   serverUrl = getServerUrl()
   await ensureMusicServiceChoice({ quiet: true })
@@ -758,7 +782,7 @@ async function toggleHostOptions () {
     setHostOptionsOpen(false)
     return
   }
-  await openHostOptions(document.getElementById('hostOptionsError').textContent)
+  await openHostOptions()
 }
 
 function hostOptionsProblem () {
@@ -839,6 +863,7 @@ async function hostGame () {
     // land on another origin, so remember the choice before leaving.
     store(USERNAME_STORAGE_KEY, username)
     rememberHostingChoice(options.targetSongCount, musicServiceType)
+    showHostOptionsError('')
     const stateParam = encodeURIComponent(
       JSON.stringify({
         game_id: sessionName,
@@ -875,6 +900,7 @@ async function hostGame () {
     return
   }
   rememberHostingChoice(options.targetSongCount, musicServiceType)
+  showHostOptionsError('')
   setHostOptionsOpen(false)
   isHost = true
 
@@ -884,10 +910,24 @@ async function hostGame () {
 document.getElementById('hostGameBtn').onclick = () => hostGame()
 document.getElementById('hostOptionsBtn').onclick = () => toggleHostOptions()
 
+document
+  .getElementById('username')
+  .addEventListener('input', () => fillDefaultSessionName())
+
 for (const id of ['targetSongCountInput', 'sessionNameInput', 'username']) {
   document
     .getElementById(id)
     .addEventListener('input', () => updateHostOptionsSummary())
+}
+
+for (const id of [
+  'targetSongCountInput',
+  'sessionNameInput',
+  'musicServiceDropdown'
+]) {
+  document
+    .getElementById(id)
+    .addEventListener('input', () => showHostOptionsError(''))
 }
 
 document.getElementById('joinGameBtn').onclick = async () => {
