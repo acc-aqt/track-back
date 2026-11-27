@@ -153,9 +153,7 @@ def test_default_name_follows_the_username_typed_after_opening(
     expect(page.get_by_text("Joined game: Game-by-Alice")).to_be_visible()
 
 
-def test_edited_name_stays_when_the_username_changes(
-    page: Page, base_url: str
-) -> None:
+def test_edited_name_stays_when_the_username_changes(page: Page, base_url: str) -> None:
     page.goto(base_url)
     page.get_by_label("Username").fill("Al")
     host_options_strip(page).click()
