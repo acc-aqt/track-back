@@ -202,29 +202,10 @@ def run_init(monkeypatch: pytest.MonkeyPatch, answers: list[str]) -> mock.MagicM
     return run_main(monkeypatch, ["init"])
 
 
-def test_init_writes_user_config_from_answers(
-    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
-) -> None:
-    server = run_init(
-        monkeypatch,
-        ["5000", "y", "my-id", "my-secret", "https://example.com/callback"],
-    )
-
-    assert (user_config_dir / ".env").read_text() == (
-        "PORT=5000\n"
-        "SSL_KEYFILE=\n"
-        "SSL_CERTFILE=\n"
-        "SPOTIPY_CLIENT_ID=my-id\n"
-        "SPOTIPY_CLIENT_SECRET=my-secret\n"
-        "SPOTIPY_REDIRECT_URI=https://example.com/callback\n"
-    )
-    server.run.assert_not_called()
-
-
 def test_init_enter_accepts_default_port(
     monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
 ) -> None:
-    run_init(monkeypatch, ["", "n"])
+    run_init(monkeypatch, ["applemusic", ""])
 
     assert "PORT=4200\n" in (user_config_dir / ".env").read_text()
 
@@ -232,25 +213,11 @@ def test_init_enter_accepts_default_port(
 def test_init_default_redirect_uri_uses_chosen_port(
     monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
 ) -> None:
-    run_init(monkeypatch, ["5000", "y", "my-id", "my-secret", ""])
+    run_init(monkeypatch, ["spotify", "5000", "my-id", "my-secret", ""])
 
     assert "SPOTIPY_REDIRECT_URI=http://127.0.0.1:5000/spotify-callback\n" in (
         (user_config_dir / ".env").read_text()
     )
-
-
-def test_init_skipping_spotify_writes_empty_keys_without_prompting(
-    monkeypatch: pytest.MonkeyPatch,
-    user_config_dir: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    run_init(monkeypatch, ["", "n"])
-
-    written = (user_config_dir / ".env").read_text()
-    assert "SPOTIPY_CLIENT_ID=\n" in written
-    assert "SPOTIPY_CLIENT_SECRET=\n" in written
-    assert "SPOTIPY_REDIRECT_URI=\n" in written
-    assert "client ID" not in capsys.readouterr().out
 
 
 def test_init_creates_missing_config_directory_and_prints_path(
@@ -260,7 +227,7 @@ def test_init_creates_missing_config_directory_and_prints_path(
 ) -> None:
     assert not user_config_dir.exists()
 
-    run_init(monkeypatch, ["", "n"])
+    run_init(monkeypatch, ["applemusic", ""])
 
     assert (user_config_dir / ".env").is_file()
     assert str(user_config_dir / ".env") in capsys.readouterr().out
@@ -275,7 +242,7 @@ def test_init_overwrites_existing_config_when_confirmed(
     user_config_dir.mkdir()
     (user_config_dir / ".env").write_bytes(EXISTING_CONFIG)
 
-    run_init(monkeypatch, ["y", "5000", "n"])
+    run_init(monkeypatch, ["y", "applemusic", "5000"])
 
     assert "PORT=5000\n" in (user_config_dir / ".env").read_text()
 
@@ -286,7 +253,7 @@ def test_init_leaves_existing_config_unchanged_when_declined(
     user_config_dir.mkdir()
     (user_config_dir / ".env").write_bytes(EXISTING_CONFIG)
 
-    run_init(monkeypatch, ["n", "5000", "n"])
+    run_init(monkeypatch, ["n"])
 
     assert (user_config_dir / ".env").read_bytes() == EXISTING_CONFIG
 
@@ -294,7 +261,7 @@ def test_init_leaves_existing_config_unchanged_when_declined(
 def test_server_started_from_unrelated_directory_uses_values_from_init(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    run_init(monkeypatch, ["5000", "y", "my-id", "my-secret", ""])
+    run_init(monkeypatch, ["spotify", "5000", "my-id", "my-secret", ""])
     unrelated = tmp_path / "unrelated"
     unrelated.mkdir()
     monkeypatch.chdir(unrelated)
@@ -317,7 +284,7 @@ def test_help_lists_init_command(
 def test_init_asks_again_when_port_is_not_a_number(
     monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
 ) -> None:
-    run_init(monkeypatch, ["abc", "5000", "n"])
+    run_init(monkeypatch, ["applemusic", "abc", "5000"])
 
     assert "PORT=5000\n" in (user_config_dir / ".env").read_text()
 
@@ -559,3 +526,73 @@ def test_help_lists_no_browser_flag(
         run_main(monkeypatch, ["-h"])
 
     assert "--no-browser" in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("on_linux")
+def test_init_choosing_apple_music_writes_it_without_spotify_questions(
+    monkeypatch: pytest.MonkeyPatch,
+    user_config_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run_init(monkeypatch, ["applemusic", "5000"])
+
+    written = (user_config_dir / ".env").read_text()
+    assert "MUSIC_SERVICE=applemusic\n" in written
+    assert "SPOTIPY_CLIENT_ID=\n" in written
+    assert "SPOTIPY_CLIENT_SECRET=\n" in written
+    assert "SPOTIPY_REDIRECT_URI=\n" in written
+    assert "Spotify" not in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_init_choosing_spotify_writes_it_with_spotify_credentials(
+    monkeypatch: pytest.MonkeyPatch, user_config_dir: Path
+) -> None:
+    server = run_init(
+        monkeypatch,
+        ["spotify", "5000", "my-id", "my-secret", "https://example.com/callback"],
+    )
+
+    assert (user_config_dir / ".env").read_text() == (
+        "PORT=5000\n"
+        "MUSIC_SERVICE=spotify\n"
+        "SSL_KEYFILE=\n"
+        "SSL_CERTFILE=\n"
+        "SPOTIPY_CLIENT_ID=my-id\n"
+        "SPOTIPY_CLIENT_SECRET=my-secret\n"
+        "SPOTIPY_REDIRECT_URI=https://example.com/callback\n"
+    )
+    server.run.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected"),
+    [("darwin", "applemusic"), ("linux", "spotify"), ("win32", "spotify")],
+)
+def test_init_empty_music_service_answer_takes_platform_default(
+    monkeypatch: pytest.MonkeyPatch,
+    user_config_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+    platform: str,
+    expected: str,
+) -> None:
+    monkeypatch.setattr(sys, "platform", platform)
+
+    run_init(monkeypatch, ["", "", "my-id", "my-secret", ""])
+
+    assert f"MUSIC_SERVICE={expected}\n" in (user_config_dir / ".env").read_text()
+    assert f"Music service [applemusic/spotify] [{expected}]" in (
+        capsys.readouterr().out
+    )
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_init_asks_again_when_music_service_is_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+    user_config_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run_init(monkeypatch, ["mock", "itunes", "applemusic", "5000"])
+
+    assert "MUSIC_SERVICE=applemusic\n" in (user_config_dir / ".env").read_text()
+    assert capsys.readouterr().out.count("Music service [applemusic/spotify]") == 3
