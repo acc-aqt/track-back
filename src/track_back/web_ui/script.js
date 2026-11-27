@@ -254,7 +254,31 @@ function handleGuessRequest (data) {
   setupDragDrop()
 }
 
+function showLobbyQr () {
+  const img = document.getElementById('lobbyQrImg')
+  img.onerror = hideLobbyQr
+  img.onload = () => {
+    document.getElementById('lobby-qr').hidden = false
+  }
+  img.src = `${serverUrl}/join-qr.svg?session=${encodeURIComponent(sessionName)}`
+}
+
+function hideLobbyQr () {
+  const img = document.getElementById('lobbyQrImg')
+  img.onload = null
+  document.getElementById('lobby-qr').hidden = true
+}
+
+function toggleLobbyQrSize () {
+  const img = document.getElementById('lobbyQrImg')
+  const bigger = img.classList.toggle('bigger')
+  const button = document.getElementById('lobbyQrToggleBtn')
+  button.textContent = bigger ? 'Show smaller' : 'Show bigger'
+  button.setAttribute('aria-pressed', String(bigger))
+}
+
 function showTimeline (list) {
+  hideLobbyQr()
   document.getElementById('timelineHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'
@@ -500,6 +524,7 @@ async function joinGame () {
     log(`✅ Joined game: ${sessionName}`)
     storeUsername(username)
     connectWebSocket()
+    showLobbyQr()
     if (isHostingSpotifySession) {
       document.getElementById('controls-start').hidden = false
     }
@@ -647,6 +672,8 @@ document.getElementById('joinGameBtn').onclick = async () => {
   showSessionChoice(sessions)
 }
 
+document.getElementById('lobbyQrToggleBtn').onclick = () => toggleLobbyQrSize()
+
 document.getElementById('startGameBtn').onclick = async () => {
   serverUrl = getServerUrl()
 
@@ -668,6 +695,7 @@ document.getElementById('startGameBtn').onclick = async () => {
   }
 
   document.getElementById('controls-start').hidden = true
+  hideLobbyQr()
   document.getElementById('timelineHeader').style.display = 'block'
   document.getElementById('songTimeline').style.display = 'block'
   document.getElementById('songCount').style.display = 'block'
