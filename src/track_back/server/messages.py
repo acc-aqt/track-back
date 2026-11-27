@@ -1,4 +1,4 @@
-"""Defines the server-to-client message vocabulary and shared message builders."""
+"""Builds every message the server sends over the WebSocket (see docs/websocket-protocol.md)."""
 
 from enum import StrEnum
 from typing import Any

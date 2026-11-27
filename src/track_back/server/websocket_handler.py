@@ -6,7 +6,10 @@ import logging
 from fastapi import WebSocket
 
 from track_back.game.game_logic import GameLogic, GuessRejected
-from track_back.game.messages import (
+from track_back.music_service.error import MusicServiceError
+from track_back.server.connection_manager import ConnectionManager
+from track_back.server.game_sessions import GameSession
+from track_back.server.messages import (
     NEW_ROUND_TEXT,
     MessageType,
     error_message,
@@ -16,9 +19,6 @@ from track_back.game.messages import (
     other_player_guess_message,
     welcome_message,
 )
-from track_back.music_service.error import MusicServiceError
-from track_back.server.connection_manager import ConnectionManager
-from track_back.server.game_sessions import GameSession
 
 logger = logging.getLogger(__name__)
 

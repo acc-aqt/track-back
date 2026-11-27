@@ -19,16 +19,6 @@ from pydantic import BaseModel
 from track_back import __version__
 from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
 from track_back.game.game_logic import GameLogic
-from track_back.game.messages import (
-    GUESS_REQUEST_TEXT,
-    NEW_ROUND_TEXT,
-    MessageType,
-    game_over_message,
-    guess_request_message,
-    player_disconnected_message,
-    player_joined_message,
-    player_rejoined_message,
-)
 from track_back.game.player import Player
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
@@ -48,6 +38,16 @@ from track_back.server.errors import (
     SessionAlreadyExistsError,
 )
 from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.messages import (
+    GUESS_REQUEST_TEXT,
+    NEW_ROUND_TEXT,
+    MessageType,
+    game_over_message,
+    guess_request_message,
+    player_disconnected_message,
+    player_joined_message,
+    player_rejoined_message,
+)
 from track_back.server.names import (
     USERNAME_MAX_LENGTH,
     SessionName,
