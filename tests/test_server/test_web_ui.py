@@ -20,6 +20,7 @@ def test_root_serves_the_web_ui(client: TestClient) -> None:
     ("path", "content_type"),
     [
         ("/script.js", "javascript"),
+        ("/server-client.js", "javascript"),
         ("/style.css", "text/css"),
         ("/dummy-cover/cover1.webp", "image/webp"),
         ("/assets/logo.svg", "image/svg+xml"),

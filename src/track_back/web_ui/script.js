@@ -1,57 +1,23 @@
-let socket
+import * as server from './server-client.js'
+
+let connection
 let sessionName
 let username
 let isHost = false
-
-let serverUrl = ''
-
-let pingInterval = null
-let reconnectAttempts = 0
-const MAX_RECONNECT_ATTEMPTS = 10
 
 const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
 const USERNAME_MAX_LENGTH = 20
 const SESSION_NAME_MAX_LENGTH = 40
 const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
-function loadScript (url, onSuccess, onError) {
-  const script = document.createElement('script')
-  script.src = url
-  script.onload = onSuccess
-  script.onerror = onError
-  document.head.appendChild(script)
-}
-
-// Get serverurl by user input if server_config.js does not exist.
-loadScript(
-  'server_config.js',
-  () => {
-    console.log('✅ Loaded server_config.js')
-    serverUrl = window.TRACK_BACK_CONFIG?.TRACK_BACK_SERVER_URL || ''
-    document.getElementById('controls-server').hidden = true
-    startApp()
-  },
-  () => {
-    console.info('No server_config.js found, asking for the server URL.')
-    document.getElementById('controls-server').hidden = false
-    const input = document.getElementById('server')
-    serverUrl = input?.value?.trim()?.replace(/\/+$/, '') || ''
-    startApp()
-  }
-)
-
-function getServerUrl () {
-  if (window.TRACK_BACK_CONFIG?.TRACK_BACK_SERVER_URL) {
-    return window.TRACK_BACK_CONFIG.TRACK_BACK_SERVER_URL
-  }
-
-  // fallback: dynamic value from input field
-  const input = document.getElementById('server')
-  return input?.value?.trim()?.replace(/\/+$/, '') || ''
-}
+// Without the server's configuration script, ask for the server URL.
+server.loadServerConfig().then(loaded => {
+  document.getElementById('controls-server').hidden = loaded
+  startApp()
+})
 
 function startApp () {
-  console.log('🌐 Using server URL:', serverUrl)
+  console.log('🌐 Using server URL:', server.serverUrl())
   prefillStoredUsername()
   prepareHostOptions()
   handleJoinLink()
@@ -146,19 +112,15 @@ const OLDER_SERVER_MUSIC_SERVICES = {
 
 // Returns null if the Music Services can't be fetched.
 async function fetchMusicServices () {
-  try {
-    const res = await fetch(`${serverUrl}/music-services`)
-    if (res.status === 404) {
-      return OLDER_SERVER_MUSIC_SERVICES
-    }
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
-    }
-    return await res.json()
-  } catch (err) {
-    console.error('❌ Failed to fetch music services:', err)
+  const { data, error, status } = await server.loadMusicServices()
+  if (status === 404) {
+    return OLDER_SERVER_MUSIC_SERVICES
+  }
+  if (error) {
+    console.error('❌ Failed to fetch music services:', error)
     return null
   }
+  return data
 }
 
 // Fill the Music line for the given services; `preferred` wins if still available.
@@ -259,23 +221,10 @@ const readUsername = () => {
   return name
 }
 
-const describeHttpError = data => {
-  const detail = data?.detail
-  if (Array.isArray(detail)) {
-    return detail.map(d => d.msg).join('; ')
-  }
-  return detail || 'Unknown error'
-}
-
-const handleHttpError = (data, prefix = '❌ Server error') => {
-  log(`${prefix}: ${describeHttpError(data)}`)
-}
-
-// The server sends either a full URL (Spotify) or a path on itself (Apple Music).
+// Spotify sends a full URL, Apple Music a path on the server.
 const coverSrc = song => {
   const url = song.album_cover_url
-  if (!url) return FALLBACK_COVER
-  return url.startsWith('/') ? `${serverUrl}${url}` : url
+  return url ? server.resolveServerUrl(url) : FALLBACK_COVER
 }
 
 const buildSongEntry = (song, extraClass = '') => {
@@ -349,7 +298,7 @@ function showLobbyQr () {
   img.onload = () => {
     document.getElementById('lobby-qr').hidden = false
   }
-  img.src = `${serverUrl}/join-qr.svg?session=${encodeURIComponent(sessionName)}`
+  img.src = server.joinQrUrl(sessionName)
 }
 
 function hideLobbyQr () {
@@ -488,86 +437,33 @@ const GAME_STARTED_MESSAGE_TYPES = new Set([
 ])
 
 function connectWebSocket () {
-  const urlObj = new URL(serverUrl)
-  const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${encodeURIComponent(
-    sessionName
-  )}/${encodeURIComponent(username)}`
+  connection = server.connect(sessionName, username, {
+    onOpen: () => {
+      document.getElementById('game').style.display = 'block'
+    },
+    onMessage: handleServerMessage,
+    onNotice: log
+  })
+}
 
-  socket = new WebSocket(wsUrl)
-
-  socket.onopen = () => {
-    document.getElementById('game').style.display = 'block'
-    log('🔌 Connected to game session.')
-
-    reconnectAttempts = 0
-
-    // Start keepalive ping
-    pingInterval = setInterval(() => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'ping' }))
-      }
-    }, 10000)
+function handleServerMessage (data) {
+  if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
+    hideLobbyQr()
   }
-  socket.onerror = e => {
-    console.error('🚨 WebSocket error:', e)
-    log('🚨 WebSocket encountered an error.')
-  }
-
-  socket.onmessage = event => {
-    try {
-      const data = JSON.parse(event.data)
-      if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
-        hideLobbyQr()
-      }
-      if (Object.hasOwn(serverMessageHandlers, data.type)) {
-        serverMessageHandlers[data.type](data)
-      } else {
-        log(`Unknown message type: ${data.type}.`)
-      }
-    } catch (e) {
-      console.error('❌ Error parsing WebSocket message:', e)
-      log('❌ Received invalid data from server.')
-    }
-  }
-
-  socket.onclose = () => {
-    log('❌ Connection closed. Attempting to reconnect...')
-
-    clearInterval(pingInterval)
-
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttempts++
-      setTimeout(() => {
-        log(`🔁 Reconnecting attempt ${reconnectAttempts}...`)
-        connectWebSocket()
-      }, 2000 * reconnectAttempts) // Linear backoff
-    } else {
-      log('❌ Max reconnect attempts reached. Please reload the page.')
-    }
+  if (Object.hasOwn(serverMessageHandlers, data.type)) {
+    serverMessageHandlers[data.type](data)
+  } else {
+    log(`Unknown message type: ${data.type}.`)
   }
 }
 
-window.addEventListener('online', () => {
-  if (!socket || socket.readyState === WebSocket.CLOSED) {
-    log('🌐 Network back online. Reconnecting WebSocket...')
-    connectWebSocket()
-  }
-})
 async function fetchJoinableSessions () {
-  try {
-    const res = await fetch(`${serverUrl}/list-sessions`)
-    const data = await res.json()
-    if (!res.ok) {
-      handleHttpError(data)
-      return null
-    }
-    return data.sessions || []
-  } catch (err) {
-    console.error('❌ Failed to fetch sessions:', err)
-    alert('⚠️ Failed to fetch game sessions.')
+  const { data, error } = await server.listSessions()
+  if (error) {
+    log(`❌ Failed to fetch game sessions: ${error}`)
     return null
   }
+  return data
 }
 
 function showSessionChoice (sessions) {
@@ -604,37 +500,25 @@ async function joinSession (name) {
 }
 
 async function joinGame () {
-  try {
-    username = readUsername()
-    if (!username) {
-      return false
-    }
-    const res = await fetch(`${serverUrl}/join`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: sessionName, user_name: username })
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      handleHttpError(data, '❌ Failed to join game')
-      return false
-    }
-
-    log(`✅ Joined game: ${sessionName}`)
-    store(USERNAME_STORAGE_KEY, username)
-    connectWebSocket()
-    showLobbyQr()
-    if (isHost) {
-      document.getElementById('controls-start').hidden = false
-    }
-    document.getElementById('joinGameConfigBox').hidden = true
-    return true
-  } catch (err) {
-    console.error('❌ Failed to join game:', err)
+  username = readUsername()
+  if (!username) {
     return false
   }
+  const { error } = await server.joinSession(sessionName, username)
+  if (error) {
+    log(`❌ Failed to join game: ${error}`)
+    return false
+  }
+
+  log(`✅ Joined game: ${sessionName}`)
+  store(USERNAME_STORAGE_KEY, username)
+  connectWebSocket()
+  showLobbyQr()
+  if (isHost) {
+    document.getElementById('controls-start').hidden = false
+  }
+  document.getElementById('joinGameConfigBox').hidden = true
+  return true
 }
 
 // Hosting: "Host a Game" creates the Game Session with the Host Options, which
@@ -669,8 +553,8 @@ let musicServicesLoading = null
 // Callers share one load per server, so a later load can't reset the Music
 // Service the Host picked after an earlier one. A failed load can be retried.
 function loadMusicServicesOnce () {
-  if (musicServicesLoading?.serverUrl !== serverUrl) {
-    const url = serverUrl
+  if (musicServicesLoading?.serverUrl !== server.serverUrl()) {
+    const url = server.serverUrl()
     const promise = loadMusicServiceChoice(
       loadStored(MUSIC_SERVICE_STORAGE_KEY)
     ).then(services => {
@@ -690,7 +574,7 @@ function loadMusicServicesOnce () {
 // Returns false if the Music Services could not be loaded. `quiet` skips
 // telling the Host, for the load in the background when the page opens.
 async function ensureMusicServiceChoice ({ quiet = false } = {}) {
-  if (musicServicesLoadedFrom === serverUrl) {
+  if (musicServicesLoadedFrom === server.serverUrl()) {
     return true
   }
   const loaded = await loadMusicServicesOnce()
@@ -715,7 +599,8 @@ function fillDefaultSessionName () {
 function hostOptionsSummaryParts () {
   const count = parseInt(document.getElementById('targetSongCountInput').value)
   const loaded =
-    musicServicesLoadedFrom !== null && musicServicesLoadedFrom === serverUrl
+    musicServicesLoadedFrom !== null &&
+    musicServicesLoadedFrom === server.serverUrl()
   const service = loaded ? selectedMusicService() : ''
   return [
     count > 0 ? `${count} ${count === 1 ? 'song' : 'songs'}` : '',
@@ -743,7 +628,6 @@ async function prepareHostOptions () {
     countInput.value = String(loadStoredTargetSongCount())
   }
   updateHostOptionsSummary()
-  serverUrl = getServerUrl()
   await ensureMusicServiceChoice({ quiet: true })
 }
 
@@ -766,7 +650,6 @@ async function openHostOptions (error = '') {
   if (hostOptionsAreOpen()) {
     return
   }
-  serverUrl = getServerUrl()
   if (!(await ensureMusicServiceChoice())) {
     return
   }
@@ -817,21 +700,11 @@ async function readHostOptions () {
 
 // A failed lookup counts as not listed; the server rejects taken names anyway.
 async function isListedSessionName (name) {
-  try {
-    const res = await fetch(`${serverUrl}/list-sessions`)
-    if (!res.ok) {
-      return false
-    }
-    const data = await res.json()
-    return (data.sessions || []).includes(name)
-  } catch (err) {
-    console.error('❌ Failed to fetch sessions:', err)
-    return false
-  }
+  const { data, error } = await server.listSessions()
+  return !error && data.includes(name)
 }
 
 async function hostGame () {
-  serverUrl = getServerUrl()
   username = readUsername()
   if (!username) {
     return
@@ -862,39 +735,26 @@ async function hostGame () {
     store(USERNAME_STORAGE_KEY, username)
     rememberHostingChoice(options.targetSongCount, musicServiceType)
     showHostOptionsError('')
-    const stateParam = encodeURIComponent(
-      JSON.stringify({
-        game_id: sessionName,
-        target_song_count: options.targetSongCount,
+    window.location.assign(
+      server.spotifyLoginUrl({
+        sessionName,
+        targetSongCount: options.targetSongCount,
         username
       })
     )
-    window.location.assign(`${serverUrl}/spotify-login?state=${stateParam}`)
     return
   }
 
-  try {
-    const res = await fetch(`${serverUrl}/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        game_id: sessionName,
-        target_song_count: options.targetSongCount,
-        music_service_type: musicServiceType
-      })
-    })
-    const data = await res.json()
-
-    if (!res.ok) {
-      handleHttpError(data, '❌ Failed to create Game Session')
-      if (res.status === 409 || hostOptionsAreOpen()) {
-        await openHostOptions(describeHttpError(data))
-      }
-      return
+  const { error, status } = await server.createSession({
+    sessionName,
+    targetSongCount: options.targetSongCount,
+    musicServiceType
+  })
+  if (error) {
+    log(`❌ Failed to create Game Session: ${error}`)
+    if (status === 409 || (status !== undefined && hostOptionsAreOpen())) {
+      await openHostOptions(error)
     }
-  } catch (err) {
-    console.error('❌ Failed to create Game Session:', err)
-    log('❌ Failed to create Game Session: the server could not be reached.')
     return
   }
   rememberHostingChoice(options.targetSongCount, musicServiceType)
@@ -929,7 +789,6 @@ for (const id of [
 }
 
 document.getElementById('joinGameBtn').onclick = async () => {
-  serverUrl = getServerUrl()
   username = readUsername()
   if (!username) {
     return
@@ -957,24 +816,12 @@ document.getElementById('joinGameBtn').onclick = async () => {
 document.getElementById('lobbyQrToggleBtn').onclick = () => toggleLobbyQrSize()
 
 document.getElementById('startGameBtn').onclick = async () => {
-  serverUrl = getServerUrl()
-
-  try {
-    const res = await fetch(`${serverUrl}/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: sessionName })
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      handleHttpError(data, '❌ Failed to start game')
-      return
-    }
-
-    log(`🎮 ${data.message || 'Game started!'}`)
-  } catch (err) {
-    console.error('❌ Failed to start game:', err)
+  const { data, error } = await server.startSession(sessionName)
+  if (error) {
+    log(`❌ Failed to start game: ${error}`)
+    return
   }
+  log(`🎮 ${data.message || 'Game started!'}`)
 
   document.getElementById('controls-start').hidden = true
   hideLobbyQr()
@@ -1006,7 +853,7 @@ const dragDrop = (() => {
 
           evt.item.remove()
 
-          socket.send(JSON.stringify({ type: 'guess', index: newIndex }))
+          connection.send({ type: 'guess', index: newIndex })
 
           setDragDropEnabled(false)
         }
