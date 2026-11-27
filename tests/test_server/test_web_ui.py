@@ -24,6 +24,7 @@ def test_root_serves_the_web_ui(client: TestClient) -> None:
         ("/dummy-cover/cover1.webp", "image/webp"),
         ("/assets/logo.svg", "image/svg+xml"),
         ("/assets/favicon.png", "image/png"),
+        ("/vendor/sortablejs/Sortable.min.js", "javascript"),
     ],
 )
 def test_web_ui_assets_load_from_the_server(
