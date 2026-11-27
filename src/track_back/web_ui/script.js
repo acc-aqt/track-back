@@ -666,6 +666,28 @@ const usernameSessionName = () => {
 }
 
 let musicServicesLoadedFrom = null
+let musicServicesLoading = null
+
+// Callers share one load per server, so a later load can't reset the Music
+// Service the Host picked after an earlier one. A failed load can be retried.
+function loadMusicServicesOnce () {
+  if (musicServicesLoading?.serverUrl !== serverUrl) {
+    const url = serverUrl
+    const promise = loadMusicServiceChoice(
+      loadStored(MUSIC_SERVICE_STORAGE_KEY)
+    ).then(services => {
+      if (services) {
+        musicServicesLoadedFrom = url
+        updateHostOptionsSummary()
+      } else if (musicServicesLoading?.promise === promise) {
+        musicServicesLoading = null
+      }
+      return Boolean(services)
+    })
+    musicServicesLoading = { serverUrl: url, promise }
+  }
+  return musicServicesLoading.promise
+}
 
 // Returns false if the Music Services could not be loaded. `quiet` skips
 // telling the Host, for the load in the background when the page opens.
@@ -673,18 +695,11 @@ async function ensureMusicServiceChoice ({ quiet = false } = {}) {
   if (musicServicesLoadedFrom === serverUrl) {
     return true
   }
-  const services = await loadMusicServiceChoice(
-    loadStored(MUSIC_SERVICE_STORAGE_KEY)
-  )
-  if (!services) {
-    if (!quiet) {
-      alert('⚠️ Failed to fetch the Music Services. Please try again.')
-    }
-    return false
+  const loaded = await loadMusicServicesOnce()
+  if (!loaded && !quiet) {
+    alert('⚠️ Failed to fetch the Music Services. Please try again.')
   }
-  musicServicesLoadedFrom = serverUrl
-  updateHostOptionsSummary()
-  return true
+  return loaded
 }
 
 // The default name follows the Username until the Host edits it.

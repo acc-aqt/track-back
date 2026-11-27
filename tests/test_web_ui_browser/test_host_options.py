@@ -1,7 +1,7 @@
 import re
 
 import httpx
-from playwright.sync_api import Dialog, Locator, Page, expect
+from playwright.sync_api import Dialog, Locator, Page, Route, expect
 
 
 def host_options_strip(page: Page) -> Locator:
@@ -190,3 +190,30 @@ def test_error_clears_when_the_host_edits_an_option(page: Page, base_url: str) -
     page.get_by_label("Target Song Count").fill("5")
 
     expect(page.get_by_role("alert")).to_be_hidden()
+
+
+def test_opening_while_the_music_services_load_fetches_them_once(
+    page: Page, base_url: str
+) -> None:
+    services = {"available": ["mock", "spotify"], "default": "mock"}
+    requests: list[Route] = []
+
+    def hold_the_first(route: Route) -> None:
+        requests.append(route)
+        if len(requests) > 1:
+            route.fulfill(json=services)
+
+    page.route("**/music-services", hold_the_first)
+    with page.expect_request("**/music-services"):
+        page.goto(base_url)
+    page.get_by_label("Username").fill("alice")
+
+    host_options_strip(page).click()
+    requests[0].fulfill(json=services)
+
+    page.get_by_role("button", name="change").click()
+    page.get_by_label("Choose a Music Service").select_option("spotify")
+    expect(host_options_strip(page)).to_have_accessible_name(
+        re.compile(r"Spotify · Edit$", re.IGNORECASE)
+    )
+    assert len(requests) == 1
