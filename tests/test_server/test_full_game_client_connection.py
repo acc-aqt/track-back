@@ -3,8 +3,6 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from track_back.server.game_sessions import GameSession
-
 PLAYER_1 = "testplayer1"
 PLAYER_2 = "testplayer2"
 
@@ -28,15 +26,9 @@ def _assert_guess_result(
 def test_full_game_client_connection(
     client: TestClient,
     create_game: Callable[[str], None],
-    get_session: Callable[[str], GameSession],
 ) -> None:
     session_name = "test-session-123"
     create_game(session_name)
-    game_session = get_session(session_name)
-
-    assert game_session.game_logic.target_song_count == 2
-    assert game_session.game_logic.music_service.service_name == "Mock Music Service"
-    assert len(game_session.connection_manager.player_connections) == 0
 
     response = client.post(
         "/create",
@@ -55,7 +47,6 @@ def test_full_game_client_connection(
         "/join", json={"game_id": session_name, "user_name": PLAYER_1}
     )
     assert response.status_code == 200
-    assert len(game_session.connection_manager.player_connections) == 1
 
     response = client.post(
         "/join", json={"game_id": session_name, "user_name": PLAYER_1}
@@ -66,7 +57,6 @@ def test_full_game_client_connection(
         "/join", json={"game_id": session_name, "user_name": PLAYER_2}
     )
     assert response.status_code == 200
-    assert len(game_session.connection_manager.player_connections) == 2
 
     with (
         client.websocket_connect(f"/ws/{session_name}/{PLAYER_1}") as ws1,

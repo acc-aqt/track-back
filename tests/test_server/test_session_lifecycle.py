@@ -262,9 +262,7 @@ def test_server_rejects_session_names_the_browser_rejects(
 
 
 def test_websocket_rejects_invalid_user_name(
-    client: TestClient,
-    create_game: Callable[[str], None],
-    get_session: Callable[[str], GameSession],
+    client: TestClient, create_game: Callable[[str], None]
 ) -> None:
     session_name = "ws-names"
     create_game(session_name)
@@ -273,7 +271,8 @@ def test_websocket_rejects_invalid_user_name(
         client.websocket_connect(f"/ws/{session_name}/%3Cimg%20src%3Dx%3E") as ws,
     ):
         ws.receive_text()
-    assert get_session(session_name).connection_manager.player_connections == {}
+    response = client.post("/start", json={"game_id": session_name})
+    assert response.status_code == 400
 
 
 def test_playback_failure_on_start_is_reported_as_server_error(
