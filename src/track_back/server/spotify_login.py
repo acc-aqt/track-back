@@ -2,7 +2,6 @@
 
 import html
 import os
-from urllib.parse import quote
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -12,6 +11,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 from track_back.game.game_logic import GameLogic
 from track_back.music_service.spotify import SpotifyAdapter
+from track_back.server import join_qr
 from track_back.server.errors import SessionAlreadyExistsError
 from track_back.server.game_sessions import game_session_manager
 from track_back.server.names import SessionName, TargetSongCount, Username
@@ -130,9 +130,6 @@ def spotify_callback(request: Request) -> Response:
     except SessionAlreadyExistsError as error:
         return HTMLResponse(f"❌ {html.escape(str(error))}", status_code=409)
 
-    join_query = (
-        f"join={quote(state.game_id, safe='')}"
-        f"&username={quote(state.username, safe='')}"
-        "&host=1"
+    return RedirectResponse(
+        join_qr.join_path(state.game_id, state.username, host=True), status_code=303
     )
-    return RedirectResponse(f"/?{join_query}", status_code=303)

@@ -8,7 +8,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
-from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -375,7 +374,7 @@ class Server:
         lan_addresses = network.lan_ipv4_addresses_or_empty()
         host = lan_addresses[0] if lan_addresses else "localhost"
         base_url = _base_url(host, self.port, use_ssl=uses_ssl())
-        url = f"{base_url}/?join={quote(session, safe='')}"
+        url = base_url + join_qr.join_path(session)
         return Response(content=join_qr.render_svg(url), media_type="image/svg+xml")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:
