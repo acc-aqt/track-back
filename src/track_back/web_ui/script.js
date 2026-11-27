@@ -1,3 +1,4 @@
+import * as screen from './screen.js'
 import * as server from './server-client.js'
 
 let connection
@@ -84,6 +85,7 @@ async function handleJoinLink () {
 
 function askUsernameThenJoin (session) {
   showSessionChoice([session])
+  screen.showScreen('setup', { sessionChoice: true })
   document.getElementById('joinGameTitle').textContent =
     'Enter your username to join'
   document.getElementById('username').focus()
@@ -287,42 +289,13 @@ function handleGuessRequest (data) {
     </div>
   `
 
-  document.getElementById('newSongContainer').style.display = 'block'
+  screen.showScreen('playing', { newSong: true })
 
   setDragDropEnabled(true)
 }
 
-function showLobbyQr () {
-  const img = document.getElementById('lobbyQrImg')
-  img.onerror = hideLobbyQr
-  img.onload = () => {
-    document.getElementById('lobby-qr').hidden = false
-  }
-  img.src = server.joinQrUrl(sessionName)
-}
-
-function hideLobbyQr () {
-  const img = document.getElementById('lobbyQrImg')
-  img.onload = null
-  document.getElementById('lobby-qr').hidden = true
-}
-
-function toggleLobbyQrSize () {
-  const img = document.getElementById('lobbyQrImg')
-  const bigger = img.classList.toggle('bigger')
-  const button = document.getElementById('lobbyQrToggleBtn')
-  button.textContent = bigger ? 'Show smaller' : 'Show bigger'
-  button.setAttribute('aria-pressed', String(bigger))
-}
-
 function showTimeline (list) {
-  hideLobbyQr()
-  document.getElementById('timelineHeader').style.display = 'block'
-  document.getElementById('songTimeline').style.display = 'block'
-  document.getElementById('songCount').style.display = 'block'
-  document.getElementById('controls-waiting-for-start').hidden = true
-  document.getElementById('controls-start').hidden = true
-
+  screen.showScreen('playing')
   document.getElementById('songCount').textContent = `Song count: ${list.length}`
   document
     .getElementById('songTimeline')
@@ -343,7 +316,7 @@ function handleGuessResult (data) {
 
   const timeline = document.getElementById('songTimeline')
 
-  document.getElementById('newSongContainer').style.display = 'none'
+  screen.showScreen('playing')
 
   // Update the timeline first (without the guess)
   timeline.replaceChildren(...list.map(s => buildSongEntry(s)))
@@ -387,7 +360,7 @@ function handleGuessResult (data) {
 
 const handleGameOver = data => {
   log(`🏁 Game Over! Winner: ${data.winner}`)
-  document.getElementById('newSongContainer').style.display = 'none'
+  screen.showScreen('gameOver')
   const winnerHeader = document.getElementById('winnerHeader')
   const winnerIsYou = data.winner === username
   winnerHeader.replaceChildren(
@@ -399,8 +372,6 @@ const handleGameOver = data => {
           `${data.winner} won the game.`
         ])
   )
-
-  winnerHeader.style.display = 'block'
 }
 
 const serverMessageHandlers = {
@@ -414,7 +385,6 @@ const serverMessageHandlers = {
   player_joined: data => log(`👋🏻 ${data.message}`),
   player_rejoined: data => {
     if (data.user_name === username) {
-      document.getElementById('newSongContainer').style.display = 'none'
       showTimeline(data.song_list || [])
       log('👋🏻 Welcome back! Waiting for the others to guess.')
     } else {
@@ -427,29 +397,14 @@ const serverMessageHandlers = {
   user_disconnected: data => log(`❌ ${data.message}`)
 }
 
-// Messages only sent once the Game Session has started.
-const GAME_STARTED_MESSAGE_TYPES = new Set([
-  'your_turn',
-  'guess_result',
-  'other_player_guess',
-  'player_rejoined',
-  'game_over'
-])
-
 function connectWebSocket () {
   connection = server.connect(sessionName, username, {
-    onOpen: () => {
-      document.getElementById('game').style.display = 'block'
-    },
     onMessage: handleServerMessage,
     onNotice: log
   })
 }
 
 function handleServerMessage (data) {
-  if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
-    hideLobbyQr()
-  }
   if (Object.hasOwn(serverMessageHandlers, data.type)) {
     serverMessageHandlers[data.type](data)
   } else {
@@ -467,7 +422,6 @@ async function fetchJoinableSessions () {
 }
 
 function showSessionChoice (sessions) {
-  document.getElementById('joinGameConfigBox').hidden = false
   document.getElementById('joinGameTitle').textContent = 'Select a Game Session to join'
 
   const dropdown = document.getElementById('sessionDropdown')
@@ -493,8 +447,7 @@ async function joinSession (name) {
   sessionName = name
   const success = await joinGame()
   if (success) {
-    document.getElementById('controls-new-or-join').hidden = true
-    document.getElementById('controls-waiting-for-start').hidden = false
+    screen.showScreen('lobby', { isHost })
   }
   return success
 }
@@ -513,11 +466,7 @@ async function joinGame () {
   log(`✅ Joined game: ${sessionName}`)
   store(USERNAME_STORAGE_KEY, username)
   connectWebSocket()
-  showLobbyQr()
-  if (isHost) {
-    document.getElementById('controls-start').hidden = false
-  }
-  document.getElementById('joinGameConfigBox').hidden = true
+  screen.loadLobbyQr(server.joinQrUrl(sessionName))
   return true
 }
 
@@ -809,11 +758,9 @@ document.getElementById('joinGameBtn').onclick = async () => {
     return
   }
 
-  document.getElementById('controls-new-or-join').hidden = true
   showSessionChoice(sessions)
+  screen.showScreen('setup', { hostAndJoin: false, sessionChoice: true })
 }
-
-document.getElementById('lobbyQrToggleBtn').onclick = () => toggleLobbyQrSize()
 
 document.getElementById('startGameBtn').onclick = async () => {
   const { data, error } = await server.startSession(sessionName)
@@ -822,12 +769,10 @@ document.getElementById('startGameBtn').onclick = async () => {
     return
   }
   log(`🎮 ${data.message || 'Game started!'}`)
-
-  document.getElementById('controls-start').hidden = true
-  hideLobbyQr()
-  document.getElementById('timelineHeader').style.display = 'block'
-  document.getElementById('songTimeline').style.display = 'block'
-  document.getElementById('songCount').style.display = 'block'
+  // The first Round's Song may already be on screen.
+  if (screen.currentScreen() === 'lobby') {
+    screen.showScreen('playing')
+  }
 }
 
 // Created once; enabled for each Round until its Guess is sent.

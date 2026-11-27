@@ -122,7 +122,7 @@ export function connect (sessionName, username, { onOpen, onMessage, onNotice })
     socket = new WebSocket(wsUrl)
 
     socket.onopen = () => {
-      onOpen()
+      onOpen?.()
       onNotice('🔌 Connected to game session.')
       reconnectAttempts = 0
       pingInterval = setInterval(() => {
