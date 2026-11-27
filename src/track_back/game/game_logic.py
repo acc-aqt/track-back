@@ -1,5 +1,6 @@
 """Contains the GameLogic class that implements the game logic."""
 
+import logging
 from dataclasses import dataclass
 from itertools import pairwise
 from typing import Any
@@ -11,6 +12,8 @@ from track_back.game.simultaneous_round import SimultaneousRound
 from track_back.game.song import Song
 from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from track_back.music_service.error import MusicServiceError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,7 @@ class GameLogic:
         self.players: list[Player] = []
 
         self.music_service = music_service
+        self.round_song: Song | None = None
 
         self.running = False
         self.winner: Player | None = None
@@ -46,6 +50,7 @@ class GameLogic:
             raise MusicPlaybackError(self.music_service.service_name) from e
         self.players = players
         self.running = True
+        self._read_round_song()
 
     def handle_guess(self, username: str, insert_index: int) -> GuessResult:
         """Handle a player's guess of the current song."""
@@ -60,7 +65,7 @@ class GameLogic:
 
         payload: dict[str, Any] = {}
 
-        current_song = self.music_service.current_song()
+        current_song = self._round_song()
 
         payload["type"] = MessageType.GUESS_RESULT
         payload["player"] = username
@@ -111,7 +116,22 @@ class GameLogic:
             return False
         self.music_service.next_track()
         self.round_tracker.start_next()
+        self._read_round_song()
         return True
+
+    def _read_round_song(self) -> None:
+        """Read the Song of the Round that just started, or leave it to the first Guess."""
+        try:
+            self.round_song = self.music_service.current_song()
+        except MusicServiceError:
+            logger.warning("Could not read the Round's Song; retrying on a Guess.")
+            self.round_song = None
+
+    def _round_song(self) -> Song:
+        """Return the Round's Song, reading it if the Round's start could not."""
+        if self.round_song is None:
+            self.round_song = self.music_service.current_song()
+        return self.round_song
 
     @staticmethod
     def verify_choice(timeline: list[Song], index: int, selected_song: Song) -> bool:

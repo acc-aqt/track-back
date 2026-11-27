@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import socket
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
@@ -29,6 +29,7 @@ from track_back.game.messages import (
     player_rejoined_message,
 )
 from track_back.game.player import Player
+from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import (
@@ -218,12 +219,20 @@ class Server:
         unless the Host picks another available one.
     port : int
         The port the server listens on; `run` replaces it with the port it binds.
+    music_services : Mapping[MusicServiceType, Callable[[], AbstractMusicServiceAdapter]]
+        How to build the adapter of each Music Service a Game Session is created with.
     """
 
     def __init__(
-        self, music_service: MusicServiceType, port: int = config.DEFAULT_PORT
+        self,
+        music_service: MusicServiceType,
+        port: int = config.DEFAULT_PORT,
+        music_services: Mapping[
+            MusicServiceType, Callable[[], AbstractMusicServiceAdapter]
+        ] = MUSIC_SERVICES,
     ) -> None:
         self.music_service = music_service
+        self.music_services = music_services
         self.available_music_services = available_music_services(music_service)
         self.port = port
         self.app = self.create_app()
@@ -338,7 +347,7 @@ class Server:
             )
 
         try:
-            music_service = MUSIC_SERVICES[music_service_type]()
+            music_service = self.music_services[music_service_type]()
         except MusicServiceError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
