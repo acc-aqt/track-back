@@ -154,7 +154,7 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 1. Click **Configure new Game Session**.
 2. In **Game Setup**, choose the music service, a **Game Session Name** (defaults to `Game-by-<username>`) and the **Target Song Count** (at least 1): the first player whose timeline reaches it wins.
 3. Click **Create new Game Session**.
-   - **Spotify:** a Spotify login opens in a new tab. Log in, close the tab, and click **Join the new game session** in the game.
+   - **Spotify:** the Spotify login opens in the same tab. After you log in, you're taken back to the game and join your new session automatically, with your Username kept (also when you opened the game on `localhost` and Spotify returns you to `127.0.0.1`).
    - **Apple Music:** the session is created and you join it directly.
 4. Wait until everyone has joined, then click **All players connected? Start!**
 
