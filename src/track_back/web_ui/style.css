@@ -1,5 +1,6 @@
 :root {
   --section-main: #8A92DB;
+  --panel-inset: #7A83D2;
   --primary-background: #B88ADB;
   --danger: #DB5F5A;
   --bg-light: #8AABDB;
@@ -141,7 +142,6 @@ body {
   display: none !important;
 }
 
-#hostOptionsLine,
 #musicServiceLine {
   margin: 0;
   font-family: sans-serif;
@@ -149,21 +149,91 @@ body {
   color: var(--text-dark);
 }
 
-.config-error {
-  margin: 0;
-  font-family: sans-serif;
-  font-size: 0.9rem;
-  color: #b00020;
-  text-align: center;
+#hostGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
 }
 
-.link-button {
-  padding: 0;
-  border: none;
-  background: none;
+#hostGroup .input-group #hostGameBtn {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-group .host-options-strip {
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 2px dashed var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background-color: var(--panel-inset);
+  font-family: 'Press Start 2P', sans-serif;
+  font-size: 0.6rem;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+.host-options-icon {
+  font-family: sans-serif;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.input-group .host-options-strip:hover {
+  transform: none;
+}
+
+.host-options-name {
+  text-transform: none;
+}
+
+.host-options-edit {
+  white-space: nowrap;
+}
+
+#gameConfigBox {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0.5rem 0 0;
+  background: var(--panel-inset);
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+}
+
+#joinGroup {
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 2px dashed var(--border);
+}
+
+.config-error {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background-color: var(--danger);
+  font-family: sans-serif;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  text-align: left;
+}
+
+.config-error::before {
+  content: "⚠ ";
+}
+
+.small-button {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background-color: var(--bg-light);
   font: inherit;
   color: inherit;
-  text-decoration: underline;
   cursor: pointer;
 }
 
