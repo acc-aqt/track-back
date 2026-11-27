@@ -108,7 +108,7 @@ export const startSession = sessionName =>
 // the device comes back online. `onNotice` gets readable connection news,
 // `onMessage` each server message. Returns { send }.
 export function connect (sessionName, username, { onOpen, onMessage, onNotice }) {
-  const url = new URL(serverUrl())
+  const url = new URL(serverUrl(), window.location.href)
   const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   const wsUrl = `${wsProtocol}//${url.host}/ws/${encodeURIComponent(
     sessionName
