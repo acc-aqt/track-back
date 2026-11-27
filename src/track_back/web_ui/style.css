@@ -74,9 +74,11 @@ body {
 }
 
 #lobbyQrImg {
+  box-sizing: border-box;
   width: 120px;
   max-width: 100%;
   height: auto;
+  border: 2px dashed var(--border);
   border-radius: 6px;
   image-rendering: pixelated;
 }
@@ -123,12 +125,14 @@ body {
 }
 
 .input-group button {
+  border: 2px dashed var(--border);
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 /* Hover + Active states for buttons */
 .input-group button:hover {
+  border-style: solid;
   background-color: var(--primary-background);
   transform: translateY(-2px);
 }

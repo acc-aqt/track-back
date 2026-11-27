@@ -145,3 +145,15 @@ def test_join_qr_uses_the_port_the_server_runs_on(
     client.get("/join-qr.svg", params={"session": "run-game"})
 
     assert encoded_urls == ["http://192.168.1.23:5100/?join=run-game"]
+
+
+def test_join_qr_uses_the_web_ui_colours(
+    client: TestClient, create_game: Callable[[str], None]
+) -> None:
+    create_game("qr-game")
+
+    svg = client.get("/join-qr.svg", params={"session": "qr-game"}).text.lower()
+
+    assert "#1a1a2e" in svg
+    assert "#8aabdb" in svg
+    assert "#fff" not in svg
