@@ -5,12 +5,16 @@ import logging
 
 from fastapi import WebSocket
 
-from track_back.game.game_logic import GameLogic
+from track_back.game.game_logic import GameLogic, GuessRejected
 from track_back.game.messages import (
     NEW_ROUND_TEXT,
     MessageType,
+    error_message,
     game_over_message,
     guess_request_message,
+    guess_result_message,
+    other_player_guess_message,
+    welcome_message,
 )
 from track_back.music_service.error import MusicServiceError
 from track_back.server.connection_manager import ConnectionManager
@@ -49,11 +53,7 @@ class WebSocketGameHandler:
 
     async def handle_connection(self, websocket: WebSocket, username: str) -> None:
         """Handle a new WebSocket connection for a player."""
-        await send_ws_message(
-            websocket,
-            MessageType.WELCOME,
-            f"Welcome {username}, you're connected.",
-        )
+        await websocket.send_text(json.dumps(welcome_message(username)))
         self.session.connect(username, websocket)
 
     async def handle_guess(
@@ -67,24 +67,18 @@ class WebSocketGameHandler:
             await send_ws_message(websocket, MessageType.ERROR, str(e))
             return
 
-        payload = result.message
-        await websocket.send_text(json.dumps(payload))
-        if payload["type"] == MessageType.ERROR:
+        if isinstance(result, GuessRejected):
+            await websocket.send_text(json.dumps(error_message(result.reason)))
             return
 
+        await websocket.send_text(json.dumps(guess_result_message(result)))
         await self.connection_manager.broadcast(
-            {
-                "type": MessageType.OTHER_PLAYER_GUESS,
-                "player": username,
-                "result": payload["result"],
-                "message": f"{username} made a guess. Guess was {payload['result']}.",
-            },
-            exclude=username,
+            other_player_guess_message(result), exclude=username
         )
 
-        if payload["game_over"]:
+        if result.winner is not None:
             await self.connection_manager.broadcast(
-                game_over_message(payload["winner"])
+                game_over_message(result.winner.name)
             )
         elif result.round_complete:
             await notify_players_owing_guess(

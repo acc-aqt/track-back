@@ -15,10 +15,3 @@ class Player:
     def add_to_timeline(self, index: int, song: Song) -> None:
         """Add a song to the player's timeline."""
         self.timeline.insert(index, song)
-
-    def serialize(self) -> dict[str, str | list[dict[str, str | int]]]:
-        """Serialize the player to a dictionary."""
-        return {
-            "name": self.name,
-            "song_list": [song.serialize() for song in self.timeline],
-        }

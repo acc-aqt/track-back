@@ -3,10 +3,8 @@
 import logging
 from dataclasses import dataclass
 from itertools import pairwise
-from typing import Any
 
 from track_back.game.errors import MusicPlaybackError
-from track_back.game.messages import MessageType
 from track_back.game.player import Player
 from track_back.game.simultaneous_round import SimultaneousRound
 from track_back.game.song import Song
@@ -18,10 +16,26 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class GuessResult:
-    """The message for the guessing player and whether the guess ended the round."""
+    """The outcome of an accepted Guess.
 
-    message: dict[str, Any]
+    ``player`` is the guessing Player, whose Timeline already includes the Song
+    if the Guess was correct. ``winner`` is set when this Guess won the game.
+    """
+
+    player: Player
+    correct: bool
+    song: Song
+    position: int
+    other_players: list[Player]
+    winner: Player | None = None
     round_complete: bool = False
+
+
+@dataclass(frozen=True)
+class GuessRejected:
+    """A Guess the game did not accept, and why."""
+
+    reason: str
 
 
 class GameLogic:
@@ -52,50 +66,41 @@ class GameLogic:
         self.running = True
         self._read_round_song()
 
-    def handle_guess(self, username: str, insert_index: int) -> GuessResult:
+    def handle_guess(
+        self, username: str, insert_index: int
+    ) -> GuessResult | GuessRejected:
         """Handle a player's guess of the current song."""
         if not self.running:
-            return _error("Game not running.")
+            return GuessRejected("Game not running.")
         if self.round_tracker.has_guessed(username):
-            return _error(f"{username} has already guessed this song.")
+            return GuessRejected(f"{username} has already guessed this song.")
 
         player = next(player for player in self.players if player.name == username)
         if not 0 <= insert_index <= len(player.timeline):
-            return _error(f"Invalid position {insert_index}.")
+            return GuessRejected(f"Invalid position {insert_index}.")
 
-        payload: dict[str, Any] = {}
-
-        current_song = self._round_song()
-
-        payload["type"] = MessageType.GUESS_RESULT
-        payload["player"] = username
-
-        if self.verify_choice(player.timeline, insert_index, current_song):
-            player.add_to_timeline(insert_index, current_song)
-            payload["result"] = "correct"
-        else:
-            payload["result"] = "wrong"
-        payload["message"] = f"Song was {current_song}."
-
-        payload["other_players"] = [
-            other.serialize() for other in self.players if other != player
-        ]
-        payload["last_index"] = str(insert_index)
-        payload["last_song"] = current_song.serialize()
-        payload["song_list"] = [song.serialize() for song in player.timeline]
+        song = self._round_song()
+        correct = self.verify_choice(player.timeline, insert_index, song)
+        if correct:
+            player.add_to_timeline(insert_index, song)
+        other_players = [other for other in self.players if other != player]
 
         if len(player.timeline) >= self.target_song_count:
             self.running = False
             self.winner = player
-            payload["game_over"] = True
-            payload["winner"] = player.name
-            return GuessResult(payload)
-
-        payload["game_over"] = False
-        payload["winner"] = ""
+            return GuessResult(
+                player, correct, song, insert_index, other_players, winner=player
+            )
 
         self.round_tracker.record_guess(username)
-        return GuessResult(payload, round_complete=self._advance_round_if_complete())
+        return GuessResult(
+            player,
+            correct,
+            song,
+            insert_index,
+            other_players,
+            round_complete=self._advance_round_if_complete(),
+        )
 
     def player_disconnected(self, username: str) -> bool:
         """Stop waiting for a departed player; return True if the round advanced."""
@@ -178,7 +183,3 @@ class GameLogic:
     def has_disconnected_players(self) -> bool:
         """Return True if any player is not connected."""
         return bool(self.disconnected_player_names())
-
-
-def _error(message: str) -> GuessResult:
-    return GuessResult({"type": MessageType.ERROR, "message": message})

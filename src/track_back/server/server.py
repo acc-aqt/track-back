@@ -25,6 +25,7 @@ from track_back.game.messages import (
     MessageType,
     game_over_message,
     guess_request_message,
+    player_disconnected_message,
     player_joined_message,
     player_rejoined_message,
 )
@@ -567,13 +568,7 @@ class Server:
         connection_manager = game_session.connection_manager
         round_advanced = game_session.disconnect(username)
 
-        await connection_manager.broadcast(
-            {
-                "type": MessageType.PLAYER_DISCONNECTED,
-                "message": f"{username} disconnected. "
-                f"{username} can try to re-join the game.",
-            },
-        )
+        await connection_manager.broadcast(player_disconnected_message(username))
         if round_advanced:
             await notify_players_owing_guess(
                 connection_manager, game_session.game_logic, NEW_ROUND_TEXT
