@@ -4,13 +4,13 @@ import json
 import logging
 import os
 from collections.abc import Awaitable, Callable
-from typing import Annotated, Any
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from game.errors import GameAlreadyRunningError, MusicPlaybackError
 from game.game_logic import GameLogic
@@ -26,18 +26,16 @@ from server.errors import (
 )
 from server.game_sessions import GameSession, game_session_manager
 from server.names import (
-    GAME_ID_MAX_LENGTH,
-    NAME_PATTERN,
     USER_NAME_MAX_LENGTH,
+    GameId,
+    TargetSongCount,
+    UserName,
     is_valid_name,
 )
 from server.spotify_login import router as spotify_auth_router
 from server.websocket_handler import WebSocketGameHandler, send_ws_message
 
 logger = logging.getLogger(__name__)
-
-UserName = Annotated[str, Field(max_length=USER_NAME_MAX_LENGTH, pattern=NAME_PATTERN)]
-GameId = Annotated[str, Field(max_length=GAME_ID_MAX_LENGTH, pattern=NAME_PATTERN)]
 
 DOMAIN_ERROR_STATUS_CODES: dict[type[Exception], int] = {
     GameAlreadyRunningError: 409,
@@ -53,7 +51,7 @@ class CreateGameRequest(BaseModel):
     """Request model for creating a game session."""
 
     game_id: GameId
-    target_song_count: int
+    target_song_count: TargetSongCount
     music_service_type: MusicServiceType
 
 
