@@ -62,6 +62,7 @@ track_back = [
   "web_ui/script.js",
   "web_ui/style.css",
   "web_ui/dummy-cover/*.webp",
+  "web_ui/assets/*",
 ]
 
 

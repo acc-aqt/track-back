@@ -21,6 +21,8 @@ def test_root_serves_the_web_ui(client: TestClient) -> None:
         ("/script.js", "javascript"),
         ("/style.css", "text/css"),
         ("/dummy-cover/cover1.webp", "image/webp"),
+        ("/assets/logo.svg", "image/svg+xml"),
+        ("/assets/favicon.png", "image/png"),
     ],
 )
 def test_web_ui_assets_load_from_the_server(
