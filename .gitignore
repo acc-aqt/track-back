@@ -168,12 +168,12 @@ config.toml
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-web_ui/server_config.js
-web_ui/server_config.js.temp
-web_ui/server_config.js.tmp
+src/track_back/web_ui/server_config.js
+src/track_back/web_ui/server_config.js.temp
+src/track_back/web_ui/server_config.js.tmp
 sync_repo.sh
 .DS_Store
-web_ui/.DS_Store
-web_ui/dummy-cover/.DS_Store
+src/track_back/web_ui/.DS_Store
+src/track_back/web_ui/dummy-cover/.DS_Store
 cert.pem
 key.pem
