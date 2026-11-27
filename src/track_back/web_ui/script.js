@@ -543,7 +543,7 @@ async function fetchJoinableSessions () {
 
 function showSessionChoice (sessions) {
   document.getElementById('joinGameConfigBox').hidden = false
-  document.getElementById('joinGameTitle').textContent = 'Select game to join'
+  document.getElementById('joinGameTitle').textContent = 'Select a Game Session to join'
 
   const dropdown = document.getElementById('sessionDropdown')
   dropdown.replaceChildren(
@@ -732,15 +732,15 @@ async function hostGame () {
     const data = await res.json()
 
     if (!res.ok) {
-      handleHttpError(data, '❌ Failed to create game')
+      handleHttpError(data, '❌ Failed to create Game Session')
       if (res.status === 409 || hostOptionsAreOpen()) {
         await openHostOptions(describeHttpError(data))
       }
       return
     }
   } catch (err) {
-    console.error('❌ Failed to create music game:', err)
-    log('❌ Failed to create game: the server could not be reached.')
+    console.error('❌ Failed to create Game Session:', err)
+    log('❌ Failed to create Game Session: the server could not be reached.')
     return
   }
   rememberHostingChoice(options.targetSongCount, musicServiceType)

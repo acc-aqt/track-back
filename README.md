@@ -169,8 +169,8 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
    - If the Game Session Name is already taken, **Options** opens with the error so you can pick another name.
    - The Target Song Count and Music Service are remembered in this browser for the next time you host.
 3. What happens next depends on the Music Service:
-   - **Spotify:** the Spotify login opens in the same tab. After you log in, you're taken back to the game and join your new session automatically, with your Username kept (also when you opened the game on `localhost` and Spotify returns you to `127.0.0.1`). A failed login shows an error page.
-   - **Apple Music** (or the Mock Music Service): you join your new session directly.
+   - **Spotify:** the Spotify login opens in the same tab. After you log in, you're taken back to the game and join your new Game Session automatically, with your Username kept (also when you opened the game on `localhost` and Spotify returns you to `127.0.0.1`). A failed login shows an error page.
+   - **Apple Music** (or the Mock Music Service): you join your new Game Session directly.
 4. In the **Lobby**, a QR code shows the link to your Game Session (**Show bigger** enlarges it). Friends scan it and only need to enter their Username. It disappears once the game starts.
 5. Wait until everyone has joined, then click **All players connected? Start!**
 
@@ -181,7 +181,7 @@ Every player enters a **Username** of up to 20 characters. Usernames and **Game 
 1. Scan the QR code in the Host's Lobby, or open the game and click **Join a Game**.
    - When exactly one Game Session is open, you join it directly.
    - Otherwise, pick the session from the list and click **Join Selected Session**.
-2. Wait for the host to start the game.
+2. Wait for the Host to start the Game Session.
 
 ### 4.3 Play
 
