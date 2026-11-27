@@ -39,65 +39,70 @@
     </div>
 
     <div id="controls-new-or-join">
-      <div class="input-group">
-        <button id="hostGameBtn">Host a game 🎮</button>
-      </div>
-      <p id="hostOptionsLine">
-        <button
-          type="button"
-          id="hostOptionsBtn"
-          class="link-button"
-          aria-expanded="false"
-          aria-controls="gameConfigBox"
-        >
-          Options
-        </button>
-      </p>
-      <div id="gameConfigBox" class="config-box" hidden>
-        <div class="config-title">Options ⚙️</div>
-
-        <p id="hostOptionsError" class="config-error" role="alert" hidden></p>
-
-        <div id="musicServiceChoice">
-          <p id="musicServiceLine" hidden>
-            Music: <span id="musicServiceName"></span
-            ><span id="musicServiceChange">
-              ·
-              <button type="button" id="musicServiceChangeBtn" class="link-button">
-                change
-              </button></span
+      <div id="hostGroup">
+        <div class="input-group">
+          <button id="hostGameBtn">Host a game 🎮</button>
+          <button
+            type="button"
+            id="hostOptionsBtn"
+            class="host-options-strip"
+            aria-expanded="false"
+            aria-controls="gameConfigBox"
+          >
+            <span class="host-options-icon" aria-hidden="true">⚙</span>
+            <span id="hostOptionsSummary"></span>
+            <span class="host-options-edit"
+              >Edit
+              <span id="hostOptionsArrow" class="host-options-icon" aria-hidden="true"
+                >▾</span
+              ></span
             >
-          </p>
-          <div id="musicServicePicker" class="input-group" hidden>
-            <label id="musicServiceDropdownLabel" for="musicServiceDropdown">
-              Choose a music service:
+          </button>
+        </div>
+        <div id="gameConfigBox" class="config-box" hidden>
+          <p id="hostOptionsError" class="config-error" role="alert" hidden></p>
+
+          <div id="musicServiceChoice">
+            <p id="musicServiceLine" hidden>
+              Music: <span id="musicServiceName"></span
+              ><span id="musicServiceChange">
+                ·
+                <button type="button" id="musicServiceChangeBtn" class="small-button">
+                  change
+                </button></span
+              >
+            </p>
+            <div id="musicServicePicker" class="input-group" hidden>
+              <label id="musicServiceDropdownLabel" for="musicServiceDropdown">
+                Choose a music service:
+              </label>
+              <select id="musicServiceDropdown"></select>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label id="sessionNameInputLabel" for="sessionNameInput">
+              Game Session Name:
             </label>
-            <select id="musicServiceDropdown"></select>
+            <input type="text" id="sessionNameInput" />
+          </div>
+
+          <div class="input-group">
+            <label id="targetSongCountInputLabel" for="targetSongCountInput">
+              Target Song Count:
+            </label>
+            <input
+              id="targetSongCountInput"
+              type="number"
+              value="10"
+              min="1"
+              step="1"
+              required
+            />
           </div>
         </div>
-
-        <div class="input-group">
-          <label id="sessionNameInputLabel" for="sessionNameInput">
-            Game Session Name:
-          </label>
-          <input type="text" id="sessionNameInput" />
-        </div>
-
-        <div class="input-group">
-          <label id="targetSongCountInputLabel" for="targetSongCountInput">
-            Target Song Count:
-          </label>
-          <input
-            id="targetSongCountInput"
-            type="number"
-            value="10"
-            min="1"
-            step="1"
-            required
-          />
-        </div>
       </div>
-      <div class="input-group">
+      <div id="joinGroup" class="input-group">
         <button id="joinGameBtn">Join a Game 👋🏻</button>
       </div>
     </div>
