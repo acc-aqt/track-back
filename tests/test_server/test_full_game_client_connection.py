@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 
 from track_back.server.game_sessions import GameSession
 
-USER_1 = "testuser1"
-USER_2 = "testuser2"
+PLAYER_1 = "testplayer1"
+PLAYER_2 = "testplayer2"
 
 
 def _assert_guess_result(
@@ -36,7 +36,7 @@ def test_full_game_client_connection(
 
     assert game_session.game_logic.target_song_count == 2
     assert game_session.game_logic.music_service.service_name == "Mock Music Service"
-    assert len(game_session.connection_manager.user_connections) == 0
+    assert len(game_session.connection_manager.player_connections) == 0
 
     response = client.post(
         "/create",
@@ -47,20 +47,20 @@ def test_full_game_client_connection(
     response = client.post("/start", json={"game_id": game_id})
     assert response.status_code == 400
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": USER_1})
+    response = client.post("/join", json={"game_id": game_id, "user_name": PLAYER_1})
     assert response.status_code == 200
-    assert len(game_session.connection_manager.user_connections) == 1
+    assert len(game_session.connection_manager.player_connections) == 1
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": USER_1})
+    response = client.post("/join", json={"game_id": game_id, "user_name": PLAYER_1})
     assert response.status_code == 409
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": USER_2})
+    response = client.post("/join", json={"game_id": game_id, "user_name": PLAYER_2})
     assert response.status_code == 200
-    assert len(game_session.connection_manager.user_connections) == 2
+    assert len(game_session.connection_manager.player_connections) == 2
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/{USER_1}") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/{USER_2}") as ws2,
+        client.websocket_connect(f"/ws/{game_id}/{PLAYER_1}") as ws1,
+        client.websocket_connect(f"/ws/{game_id}/{PLAYER_2}") as ws2,
     ):
         assert ws1.receive_json()["type"] == "welcome"
         assert ws2.receive_json()["type"] == "welcome"
@@ -94,4 +94,4 @@ def test_full_game_client_connection(
         assert ws2.receive_json()["type"] == "other_player_guess"
 
         ws2.send_json({"type": "guess", "index": 1})
-        _assert_guess_result(ws2.receive_json(), "correct", 2, "1", winner=USER_2)
+        _assert_guess_result(ws2.receive_json(), "correct", 2, "1", winner=PLAYER_2)

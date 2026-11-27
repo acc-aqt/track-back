@@ -22,8 +22,8 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
     return message
 
 
-def _join(client: TestClient, game_id: str, user: str) -> int:
-    response = client.post("/join", json={"game_id": game_id, "user_name": user})
+def _join(client: TestClient, game_id: str, username: str) -> int:
+    response = client.post("/join", json={"game_id": game_id, "user_name": username})
     status: int = response.status_code
     return status
 
@@ -115,52 +115,54 @@ def test_rejoin_after_guessing_sends_timeline_only(
 
 
 @pytest.mark.parametrize(
-    ("user", "detail"),
+    ("username", "detail"),
     [
-        ("carol", "User 'carol' is not member in game session"),
-        ("alice", "User 'alice' is already connected to game session"),
+        ("carol", "Player 'carol' is not a player in game session"),
+        ("alice", "Player 'alice' is already connected to game session"),
     ],
 )
-def test_join_running_game_rejects_non_members_and_connected_members(
-    client: TestClient, create_and_join: Callable[..., None], user: str, detail: str
+def test_join_running_game_rejects_non_players_and_connected_players(
+    client: TestClient, create_and_join: Callable[..., None], username: str, detail: str
 ) -> None:
     game_id = "join-rejected"
     with _started_game(client, create_and_join, game_id):
-        response = client.post("/join", json={"game_id": game_id, "user_name": user})
+        response = client.post(
+            "/join", json={"game_id": game_id, "user_name": username}
+        )
         assert response.status_code == 409
         assert response.json()["detail"].startswith(detail)
         assert response.json()["detail"].endswith(
-            "Only one of the following users can be connected: bob."
+            "Only one of the following players can rejoin: bob."
         )
 
 
 @pytest.mark.parametrize(
-    ("user", "reason"),
+    ("username", "reason"),
     [
         (
             "carol",
             (
-                "User 'carol' is not member in game session connect-rejected. "
-                "Only one of the following users can be connected: bob."
+                "Player 'carol' is not a player in game session connect-rejected. "
+                "Only one of the following players can rejoin: bob."
             ),
         ),
         (
             "alice",
             (
-                "User 'alice' is already connected to game session "
+                "Player 'alice' is already connected to game session "
                 "connect-rejected. "
-                "Only one of the following users can be connected: bob."
+                "Only one of the following players can rejoin: bob."
             ),
         ),
     ],
 )
-def test_connect_to_running_game_rejects_non_members_and_connected_members(
-    client: TestClient, create_and_join: Callable[..., None], user: str, reason: str
+def test_connect_to_running_game_rejects_non_players_and_connected_players(
+    client: TestClient, create_and_join: Callable[..., None], username: str, reason: str
 ) -> None:
     game_id = "connect-rejected"
     with (
         _started_game(client, create_and_join, game_id) as alice,
-        client.websocket_connect(f"/ws/{game_id}/{user}") as intruder,
+        client.websocket_connect(f"/ws/{game_id}/{username}") as intruder,
     ):
         assert _receive(intruder) == {"type": "error", "message": reason}
         with pytest.raises(WebSocketDisconnect):

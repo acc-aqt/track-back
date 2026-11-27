@@ -18,8 +18,8 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
     return message
 
 
-def _join(client: TestClient, game_id: str, user: str) -> int:
-    response = client.post("/join", json={"game_id": game_id, "user_name": user})
+def _join(client: TestClient, game_id: str, username: str) -> int:
+    response = client.post("/join", json={"game_id": game_id, "user_name": username})
     status: int = response.status_code
     return status
 

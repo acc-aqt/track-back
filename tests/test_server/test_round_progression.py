@@ -87,8 +87,10 @@ def test_winning_guess_sends_no_your_turn(client: TestClient) -> None:
         json={"game_id": game_id, "target_song_count": 1, "music_service_type": "mock"},
     )
     assert response.status_code == 201
-    for user in ("alice", "bob"):
-        response = client.post("/join", json={"game_id": game_id, "user_name": user})
+    for username in ("alice", "bob"):
+        response = client.post(
+            "/join", json={"game_id": game_id, "user_name": username}
+        )
         assert response.status_code == 200
 
     with (

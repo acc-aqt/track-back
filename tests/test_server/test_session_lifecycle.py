@@ -255,7 +255,7 @@ def test_websocket_rejects_invalid_user_name(
         client.websocket_connect(f"/ws/{game_id}/%3Cimg%20src%3Dx%3E") as ws,
     ):
         ws.receive_text()
-    assert get_session(game_id).connection_manager.user_connections == {}
+    assert get_session(game_id).connection_manager.player_connections == {}
 
 
 def test_playback_failure_on_start_is_reported_as_server_error(
@@ -298,7 +298,7 @@ def test_joining_twice_before_start_is_a_conflict(
     response = client.post("/join", json={"game_id": game_id, "user_name": "alex"})
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "User 'alex' already registered"}
+    assert response.json() == {"detail": "Player 'alex' already registered"}
 
 
 def test_creating_an_existing_session_is_a_conflict(

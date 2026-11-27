@@ -26,8 +26,8 @@ def _receive_until(ws: WebSocketTestSession, msg_type: str) -> dict[str, Any]:
     return message
 
 
-def _join(client: TestClient, game_id: str, user: str) -> None:
-    response = client.post("/join", json={"game_id": game_id, "user_name": user})
+def _join(client: TestClient, game_id: str, username: str) -> None:
+    response = client.post("/join", json={"game_id": game_id, "user_name": username})
     assert response.status_code == 200
 
 

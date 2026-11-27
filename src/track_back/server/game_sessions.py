@@ -3,11 +3,11 @@
 import time
 
 from track_back.game.game_logic import GameLogic
-from track_back.game.user import User
+from track_back.game.player import Player
 from track_back.server.connection_manager import ClientConnection, ConnectionManager
 from track_back.server.errors import (
     AlreadyConnectedError,
-    NotAMemberError,
+    NotAPlayerError,
     SessionAlreadyExistsError,
 )
 
@@ -24,26 +24,26 @@ class GameSession:
         self.empty_since: float | None = None
 
     def connect(self, username: str, websocket: ClientConnection) -> None:
-        """Attach the user's live socket and count a member as active again."""
-        if not self.connection_manager.user_is_registered(username):
-            self.connection_manager.register_user(username)
+        """Attach the player's live socket and count them as connected again."""
+        if not self.connection_manager.player_is_registered(username):
+            self.connection_manager.register_player(username)
         self.connection_manager.set_websocket(username, websocket)
-        self.game_logic.player_returned(username)
+        self.game_logic.player_rejoined(username)
 
     def disconnect(self, username: str) -> bool:
-        """Drop the user's socket and active flag; return True if the round advanced."""
-        self.connection_manager.unregister_user(username)
-        return self.game_logic.player_left(username)
+        """Drop the player's socket and mark them disconnected; return True if the round advanced."""
+        self.connection_manager.unregister_player(username)
+        return self.game_logic.player_disconnected(username)
 
-    def check_can_rejoin(self, username: str) -> User:
-        """Return the member of the running game, unless unknown or connected."""
-        member = self.game_logic.get_user(username)
-        joinable = self.game_logic.inactive_member_names()
-        if member is None:
-            raise NotAMemberError(username, self.game_id, joinable)
-        if member.is_active:
+    def check_can_rejoin(self, username: str) -> Player:
+        """Return the player of the running game, unless unknown or connected."""
+        player = self.game_logic.get_player(username)
+        joinable = self.game_logic.disconnected_player_names()
+        if player is None:
+            raise NotAPlayerError(username, self.game_id, joinable)
+        if player.is_connected:
             raise AlreadyConnectedError(username, self.game_id, joinable)
-        return member
+        return player
 
 
 class GameSessionManager:
@@ -79,7 +79,7 @@ class GameSessionManager:
                 del self.sessions[game_id]
 
     def _is_expired(self, session: GameSession) -> bool:
-        if session.empty_since is None or session.connection_manager.user_connections:
+        if session.empty_since is None or session.connection_manager.player_connections:
             return False
         empty_for = self.clock() - session.empty_since
         return empty_for > EMPTY_SESSION_GRACE_PERIOD_SECONDS

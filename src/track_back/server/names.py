@@ -10,7 +10,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, Field
 
-USER_NAME_MAX_LENGTH = 20
+USERNAME_MAX_LENGTH = 20
 GAME_ID_MAX_LENGTH = 40
 
 
@@ -39,6 +39,6 @@ def _name_validator(max_length: int) -> Callable[[str], str]:
     return validate
 
 
-UserName = Annotated[str, AfterValidator(_name_validator(USER_NAME_MAX_LENGTH))]
+Username = Annotated[str, AfterValidator(_name_validator(USERNAME_MAX_LENGTH))]
 GameId = Annotated[str, AfterValidator(_name_validator(GAME_ID_MAX_LENGTH))]
 TargetSongCount = Annotated[int, Field(ge=1)]

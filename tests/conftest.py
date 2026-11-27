@@ -39,9 +39,9 @@ def create_game(client: TestClient) -> CreateGame:
 
 @pytest.fixture
 def create_and_join(client: TestClient, create_game: CreateGame) -> CreateAndJoin:
-    def create_and_join(game_id: str, *user_names: str) -> None:
+    def create_and_join(game_id: str, *player_names: str) -> None:
         create_game(game_id)
-        for user_name in user_names:
+        for user_name in player_names:
             response = client.post(
                 "/join", json={"game_id": game_id, "user_name": user_name}
             )

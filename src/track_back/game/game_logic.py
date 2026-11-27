@@ -6,9 +6,9 @@ from typing import Any
 
 from track_back.game.errors import MusicPlaybackError
 from track_back.game.messages import MessageType
+from track_back.game.player import Player
 from track_back.game.simultaneous_round import SimultaneousRound
 from track_back.game.song import Song
-from track_back.game.user import User
 from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
 from track_back.music_service.error import MusicServiceError
 
@@ -31,20 +31,20 @@ class GameLogic:
     ) -> None:
         self.target_song_count = target_song_count
         self.round_tracker = SimultaneousRound()
-        self.users: list[User] = []
+        self.players: list[Player] = []
 
         self.music_service = music_service
 
         self.running = False
-        self.winner: User | None = None
+        self.winner: Player | None = None
 
-    def start_game(self, users: list[User]) -> None:
-        """Start the game with the given users."""
+    def start_game(self, players: list[Player]) -> None:
+        """Start the game with the given players."""
         try:
             self.music_service.start_playback()
         except MusicServiceError as e:
             raise MusicPlaybackError(self.music_service.service_name) from e
-        self.users = users
+        self.players = players
         self.running = True
 
     def handle_player_turn(self, username: str, insert_index: int) -> TurnResult:
@@ -54,7 +54,7 @@ class GameLogic:
         if self.round_tracker.has_guessed(username):
             return _error(f"{username} has already guessed this song.")
 
-        player = next(user for user in self.users if user.name == username)
+        player = next(player for player in self.players if player.name == username)
         if not 0 <= insert_index <= len(player.song_list):
             return _error(f"Invalid position {insert_index}.")
 
@@ -73,7 +73,7 @@ class GameLogic:
         payload["message"] = f"Song was {current_song}."
 
         payload["other_players"] = [
-            user.serialize() for user in self.users if user != player
+            other.serialize() for other in self.players if other != player
         ]
         payload["last_index"] = str(insert_index)
         payload["last_song"] = current_song.serialize()
@@ -92,20 +92,22 @@ class GameLogic:
         self.round_tracker.record_guess(username)
         return TurnResult(payload, round_complete=self._advance_round_if_complete())
 
-    def player_left(self, username: str) -> bool:
+    def player_disconnected(self, username: str) -> bool:
         """Stop waiting for a departed player; return True if the round advanced."""
-        if user := self.get_user(username):
-            user.is_active = False
+        if player := self.get_player(username):
+            player.is_connected = False
         return self._advance_round_if_complete()
 
-    def player_returned(self, username: str) -> None:
-        """Count a returning member as active again."""
-        if user := self.get_user(username):
-            user.is_active = True
+    def player_rejoined(self, username: str) -> None:
+        """Count a rejoining player as connected again."""
+        if player := self.get_player(username):
+            player.is_connected = True
 
     def _advance_round_if_complete(self) -> bool:
-        active_usernames = {user.name for user in self.users if user.is_active}
-        if not self.running or not self.round_tracker.is_complete(active_usernames):
+        connected_usernames = {
+            player.name for player in self.players if player.is_connected
+        }
+        if not self.running or not self.round_tracker.is_complete(connected_usernames):
             return False
         self.music_service.next_track()
         self.round_tracker.start_next()
@@ -130,32 +132,32 @@ class GameLogic:
         """Return True if the game is over."""
         return not self.running
 
-    def get_user(self, username: str) -> User | None:
-        """Return the user with the given username."""
-        for user in self.users:
-            if user.name == username:
-                return user
+    def get_player(self, username: str) -> Player | None:
+        """Return the player with the given username."""
+        for player in self.players:
+            if player.name == username:
+                return player
         return None
 
     def owes_guess(self, username: str) -> bool:
-        """Return True if the member still has to guess the current song."""
+        """Return True if the player still has to guess the current song."""
         return (
             self.running
-            and self.get_user(username) is not None
+            and self.get_player(username) is not None
             and not self.round_tracker.has_guessed(username)
         )
 
-    def players_owed_card(self) -> list[User]:
-        """Return the members who still have to guess the current song."""
-        return [user for user in self.users if self.owes_guess(user.name)]
+    def players_owed_card(self) -> list[Player]:
+        """Return the players who still have to guess the current song."""
+        return [player for player in self.players if self.owes_guess(player.name)]
 
-    def inactive_member_names(self) -> list[str]:
-        """Return the names of members who are not connected."""
-        return [user.name for user in self.users if not user.is_active]
+    def disconnected_player_names(self) -> list[str]:
+        """Return the names of players who are not connected."""
+        return [player.name for player in self.players if not player.is_connected]
 
-    def has_inactive_members(self) -> bool:
-        """Return True if any member is not connected."""
-        return bool(self.inactive_member_names())
+    def has_disconnected_players(self) -> bool:
+        """Return True if any player is not connected."""
+        return bool(self.disconnected_player_names())
 
 
 def _error(message: str) -> TurnResult:

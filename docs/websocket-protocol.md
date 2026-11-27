@@ -31,9 +31,9 @@ A player who disconnects in the lobby is removed from the session; everyone else
 
 ### Connecting to a running game (rejoin)
 
-Opening the WebSocket is how a player gets back into a running game. A `POST /join` first is optional: on a running game it only checks that the name is a member and is not currently connected, and changes nothing.
+Opening the WebSocket is how a player gets back into a running game. A `POST /join` first is optional: on a running game it only checks that the name belongs to a player of the game and is not currently connected, and changes nothing.
 
-When a member of the running game connects, they:
+When a player of the running game connects, they:
 
 1. receive `welcome`;
 2. are marked active again;
@@ -41,7 +41,7 @@ When a member of the running game connects, they:
    - if they still owe a guess for the current song: `your_turn` with their timeline, while everyone else receives `player_rejoined`;
    - if they already guessed the current song: no card, but `player_rejoined` (which contains their timeline) goes to everyone, including themselves.
 
-If the name is not a member of the game, or that member already has an open WebSocket, the server sends `error` and closes the socket with code 1008.
+If the name is not a player of the game, or that player already has an open WebSocket, the server sends `error` and closes the socket with code 1008.
 
 ### Disconnecting from a running game
 
@@ -63,7 +63,7 @@ Until then the finished game is deliberately not joinable: `GET /list-sessions` 
 | --- | --- |
 | `username` breaks the name rule | Socket closed with code 1008, reason `Invalid user name.`, no message. |
 | `game_id` doesn't exist | Socket closed, no message. |
-| Not a member of a running game, or already connected | `error`, then socket closed with code 1008. |
+| Not a player of a running game, or already connected | `error`, then socket closed with code 1008. |
 | Game is over | `game_over`, then socket closed. |
 
 ## Shared objects
@@ -137,7 +137,7 @@ Broadcast to every connected player when someone calls `POST /join` on a game th
 
 ### `player_rejoined`
 
-Sent when a member reconnects to a running game. See [Connecting to a running game](#connecting-to-a-running-game-rejoin) for who receives it.
+Sent when a player reconnects to a running game. See [Connecting to a running game](#connecting-to-a-running-game-rejoin) for who receives it.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -178,7 +178,7 @@ Messages the server sends:
 - `<username> has already guessed this song.`: a second `guess` in the same round.
 - `Invalid position <index>.`: `index` is outside the timeline.
 - A music-service error text, if the current song can't be read.
-- `User '<username>' is not member in game session <game_id>. Only one of the following users can be connected: <names>.` / `User '<username>' is already connected to game session <game_id>. Only one of the following users can be connected: <names>.`: rejected rejoin. `POST /join` on a running game returns the same text as a 409.
+- `Player '<username>' is not a player in game session <game_id>. Only one of the following players can rejoin: <names>.` / `Player '<username>' is already connected to game session <game_id>. Only one of the following players can rejoin: <names>.`: rejected rejoin. `POST /join` on a running game returns the same text as a 409.
 
 ## Client to server messages
 

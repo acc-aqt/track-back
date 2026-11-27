@@ -1,5 +1,5 @@
 from track_back.game.game_logic import GameLogic
-from track_back.game.user import User
+from track_back.game.player import Player
 from track_back.music_service.mock import MockMusicService
 
 
@@ -10,10 +10,10 @@ def test_two_players_simulteneous_game() -> None:
     )
     assert game.running is False
 
-    player1 = User("player1")
-    player2 = User("player2")
+    player1 = Player("player1")
+    player2 = Player("player2")
 
-    game.start_game(users=[player1, player2])
+    game.start_game(players=[player1, player2])
     assert game.is_game_over() is False
     assert len(player1.song_list) == 0
     assert len(player2.song_list) == 0

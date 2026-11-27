@@ -3,7 +3,7 @@
 let socket
 let gameId
 let username
-let userHostingSpotifySession = false
+let isHostingSpotifySession = false
 
 let serverUrl = ''
 
@@ -12,7 +12,7 @@ let reconnectAttempts = 0
 const MAX_RECONNECT_ATTEMPTS = 10
 
 const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
-const USER_NAME_MAX_LENGTH = 20
+const USERNAME_MAX_LENGTH = 20
 const GAME_ID_MAX_LENGTH = 40
 const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
@@ -85,7 +85,7 @@ targetSongCountInput.addEventListener('input', () => {
 })
 
 const isValidUsername = name =>
-  name.length <= USER_NAME_MAX_LENGTH && NAME_PATTERN.test(name)
+  name.length <= USERNAME_MAX_LENGTH && NAME_PATTERN.test(name)
 
 const isValidGameId = id =>
   id.length <= GAME_ID_MAX_LENGTH && NAME_PATTERN.test(id)
@@ -98,7 +98,7 @@ const readUsername = () => {
   }
   if (!isValidUsername(name)) {
     alert(
-      `Usernames can have up to ${USER_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+      `Usernames can have up to ${USERNAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
     )
     return null
   }
@@ -432,7 +432,7 @@ async function joinGame () {
 
     log(`✅ Joined game: ${gameId}`)
     connectWebSocket()
-    if (userHostingSpotifySession) {
+    if (isHostingSpotifySession) {
       document.getElementById('controls-start').hidden = false
     }
     document.getElementById('joinGameConfigBox').hidden = true
@@ -510,7 +510,7 @@ async function createGame () {
 
     document.getElementById('configureGameBtn').style.display = 'none'
 
-    userHostingSpotifySession = true
+    isHostingSpotifySession = true
     window.open(loginUrl, '_blank')
 
     log(`🎮 Created new spotify game session: ${gameId}`)
@@ -569,7 +569,7 @@ document.getElementById('joinGameBtn').onclick = async () => {
 
   document.getElementById('controls-new-or-join').hidden = true
 
-  if (userHostingSpotifySession) {
+  if (isHostingSpotifySession) {
     await joinGame()
     return
   }
