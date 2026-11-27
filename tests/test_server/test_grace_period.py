@@ -20,7 +20,8 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
 
 def _join(client: TestClient, game_id: str, user: str) -> int:
     response = client.post("/join", json={"game_id": game_id, "user_name": user})
-    return response.status_code
+    status: int = response.status_code
+    return status
 
 
 def _start_solo_game_and_guess_once(
