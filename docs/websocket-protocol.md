@@ -25,6 +25,8 @@ Use `wss://` when the server runs with SSL.
 2. The client opens the WebSocket. The server sends `welcome` and attaches the socket to the player.
 3. The host calls `POST /start`. It fails with 409 if the game is already running or if any registered player has no open WebSocket. On success, every player receives `your_turn`.
 
+A client may also open the WebSocket in the lobby without calling `POST /join` first. The server then registers the name silently: it sends `welcome` to that client, but nobody receives `player_joined`.
+
 A player who disconnects in the lobby is removed from the session; everyone else receives `user_disconnected`. When the last player leaves the lobby, the session is deleted.
 
 ### Connecting to a running game (rejoin)
@@ -52,6 +54,8 @@ When a player's socket closes during a running game:
 ### After the game is over
 
 The game ends when a player's timeline reaches the Target Song Count. Every player receives `game_over`. The sockets stay open. A client that connects to a finished game receives `game_over` and the socket is closed. A finished game is removed when its last player disconnects.
+
+Until then the finished game is deliberately not joinable: `GET /list-sessions` leaves it out, and `POST /join` on it returns 409 with `Game session <game_id> is already over.`
 
 ### Rejected connections
 
