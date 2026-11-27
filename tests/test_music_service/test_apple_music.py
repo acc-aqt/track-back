@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from track_back.game.game_logic import GameLogic
-from track_back.game.user import User
+from track_back.game.player import Player
 from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 
@@ -21,25 +21,25 @@ from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
 )
 def test_full_game_one_round() -> None:
     """Test a full game with one round."""
-    user_1 = User("Elton")
-    user_2 = User("John")
+    player_1 = Player("Elton")
+    player_2 = Player("John")
 
     music_service = AppleMusicAdapter()
     game = GameLogic(
         target_song_count=1,
         music_service=music_service,
     )
-    game.start_game(users=[user_1, user_2])
+    game.start_game(players=[player_1, player_2])
     # Simulate one user input: "0" to insert at start
 
-    game.handle_player_turn("Elton", 0)
+    game.handle_guess("Elton", 0)
 
     assert game.is_game_over() is True
 
     winner = game.winner
 
-    assert winner == user_1  # First user instantly wins after first input
-    assert len(winner.song_list) == 1
+    assert winner == player_1  # First player instantly wins after first input
+    assert len(winner.timeline) == 1
 
 
 ORIGINAL_ARTWORK = b"original artwork bytes"

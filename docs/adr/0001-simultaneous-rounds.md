@@ -4,6 +4,6 @@ TrackBack started with a sequential mode, where Players took turns placing Songs
 
 ## Consequences
 
-- Names such as `handle_player_turn`, the `your_turn` message and "It's your turn!" are left over from the turn-based design. They mean "place the current Song", not that a Player has a turn. See **Round** and **Guess** in `GLOSSARY.md`.
+- The `your_turn` wire message is left over from the turn-based design. It means "place the current Song", not that a Player has a turn. It keeps its name for client compatibility, while the code calls it a guess request. See **Round** and **Guess** in `GLOSSARY.md`, and the wire-name table in `docs/websocket-protocol.md`.
 - A Round never waits for Disconnected Players, so a Player who Rejoins has missed the Songs played while they were away.
 - Two Players can reach the Target Song Count in the same Round. The first correct Guess wins, so there are no ties.

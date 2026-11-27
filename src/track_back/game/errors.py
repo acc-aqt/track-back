@@ -14,5 +14,5 @@ class MusicPlaybackError(Exception):
 class GameAlreadyRunningError(Exception):
     """The game has already been started."""
 
-    def __init__(self, game_id: str) -> None:
-        super().__init__(f"Game {game_id} is already running.")
+    def __init__(self, session_name: str) -> None:
+        super().__init__(f"Game session {session_name} is already running.")

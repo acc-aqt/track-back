@@ -19,8 +19,10 @@ def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
     return message
 
 
-def _start(client: TestClient, game_id: str, *sockets: WebSocketTestSession) -> None:
-    response = client.post("/start", json={"game_id": game_id})
+def _start(
+    client: TestClient, session_name: str, *sockets: WebSocketTestSession
+) -> None:
+    response = client.post("/start", json={"game_id": session_name})
     assert response.status_code == 200
     for ws in sockets:
         assert _receive(ws)["type"] == "your_turn"
@@ -29,16 +31,16 @@ def _start(client: TestClient, game_id: str, *sockets: WebSocketTestSession) -> 
 def test_last_owed_guesser_disconnecting_starts_next_round(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "advance-on-disconnect"
-    create_and_join(game_id, "alice", "bob")
+    session_name = "advance-on-disconnect"
+    create_and_join(session_name, "alice", "bob")
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+        client.websocket_connect(f"/ws/{session_name}/alice") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/bob") as ws2,
     ):
         _receive(ws1)
         _receive(ws2)
-        _start(client, game_id, ws1, ws2)
+        _start(client, session_name, ws1, ws2)
         ws1.send_json({"type": "guess", "index": 0})
         assert _receive(ws1)["type"] == "guess_result"
 
@@ -56,16 +58,16 @@ def test_last_owed_guesser_disconnecting_starts_next_round(
 def test_disconnect_of_player_who_guessed_does_not_advance_round(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "no-early-advance"
-    create_and_join(game_id, "alice", "bob")
+    session_name = "no-early-advance"
+    create_and_join(session_name, "alice", "bob")
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+        client.websocket_connect(f"/ws/{session_name}/alice") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/bob") as ws2,
     ):
         _receive(ws1)
         _receive(ws2)
-        _start(client, game_id, ws1, ws2)
+        _start(client, session_name, ws1, ws2)
         ws1.send_json({"type": "guess", "index": 0})
         assert _receive(ws1)["type"] == "guess_result"
         assert _receive(ws2)["type"] == "other_player_guess"
@@ -81,23 +83,29 @@ def test_disconnect_of_player_who_guessed_does_not_advance_round(
 
 
 def test_winning_guess_sends_no_your_turn(client: TestClient) -> None:
-    game_id = "first-guess-wins"
+    session_name = "first-guess-wins"
     response = client.post(
         "/create",
-        json={"game_id": game_id, "target_song_count": 1, "music_service_type": "mock"},
+        json={
+            "game_id": session_name,
+            "target_song_count": 1,
+            "music_service_type": "mock",
+        },
     )
     assert response.status_code == 201
-    for user in ("alice", "bob"):
-        response = client.post("/join", json={"game_id": game_id, "user_name": user})
+    for username in ("alice", "bob"):
+        response = client.post(
+            "/join", json={"game_id": session_name, "user_name": username}
+        )
         assert response.status_code == 200
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+        client.websocket_connect(f"/ws/{session_name}/alice") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/bob") as ws2,
     ):
         _receive(ws1)
         _receive(ws2)
-        _start(client, game_id, ws1, ws2)
+        _start(client, session_name, ws1, ws2)
         ws1.send_json({"type": "guess", "index": 0})
 
         assert _receive(ws1)["type"] == "guess_result"

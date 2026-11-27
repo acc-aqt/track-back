@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.error import MusicServiceError
 from track_back.server.game_sessions import GameSession, game_session_manager
-from track_back.server.names import GAME_ID_MAX_LENGTH
+from track_back.server.names import SESSION_NAME_MAX_LENGTH
 
 WEB_UI = files("track_back") / "web_ui"
 
@@ -18,16 +18,16 @@ WEB_UI = files("track_back") / "web_ui"
 def test_ping_before_start_keeps_session_alive(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    game_id = "ping-before-start"
-    create_and_join(game_id, "host")
+    session_name = "ping-before-start"
+    create_and_join(session_name, "host")
 
-    with client.websocket_connect(f"/ws/{game_id}/host") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/host") as ws:
         assert ws.receive_json()["type"] == "welcome"
 
         ws.send_json({"type": "ping"})
         ws.send_json({"type": "ping"})
 
-        response = client.post("/start", json={"game_id": game_id})
+        response = client.post("/start", json={"game_id": session_name})
         assert response.status_code == 200
         assert ws.receive_json()["type"] == "your_turn"
 
@@ -89,12 +89,12 @@ def test_create_accepts_every_browser_music_service(
 def test_malformed_message_gets_error_and_socket_stays_usable(
     client: TestClient, create_and_join: Callable[..., None], bad_message: str
 ) -> None:
-    game_id = "malformed-message"
-    create_and_join(game_id, "solo")
+    session_name = "malformed-message"
+    create_and_join(session_name, "solo")
 
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert ws.receive_json()["type"] == "welcome"
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
         assert ws.receive_json()["type"] == "your_turn"
 
         ws.send_text(bad_message)
@@ -110,16 +110,16 @@ def test_music_service_failure_during_guess_is_reported(
     get_session: Callable[[str], GameSession],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    game_id = "music-service-failure"
-    create_and_join(game_id, "solo")
-    music_service = get_session(game_id).game_logic.music_service
+    session_name = "music-service-failure"
+    create_and_join(session_name, "solo")
+    music_service = get_session(session_name).game_logic.music_service
 
     def broken_current_song() -> None:
         raise MusicServiceError("No active Spotify playback.")
 
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert ws.receive_json()["type"] == "welcome"
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
         assert ws.receive_json()["type"] == "your_turn"
 
         monkeypatch.setattr(music_service, "current_song", broken_current_song)
@@ -175,15 +175,18 @@ NAMES_THE_BROWSER_REJECTS = [
 ]
 
 
-BROWSER_GAME_ID_RULE = (
-    "const isValidGameId = id =>\n"
-    "  id.length <= GAME_ID_MAX_LENGTH && NAME_PATTERN.test(id)"
+BROWSER_SESSION_NAME_RULE = (
+    "const isValidSessionName = id =>\n"
+    "  id.length <= SESSION_NAME_MAX_LENGTH && NAME_PATTERN.test(id)"
 )
 
-GAME_IDS_THE_BROWSER_ACCEPTS = [*NAMES_THE_BROWSER_ACCEPTS, "g" * GAME_ID_MAX_LENGTH]
-GAME_IDS_THE_BROWSER_REJECTS = [
+SESSION_NAMES_THE_BROWSER_ACCEPTS = [
+    *NAMES_THE_BROWSER_ACCEPTS,
+    "g" * SESSION_NAME_MAX_LENGTH,
+]
+SESSION_NAMES_THE_BROWSER_REJECTS = [
     *NAMES_THE_BROWSER_REJECTS,
-    "g" * (GAME_ID_MAX_LENGTH + 1),
+    "g" * (SESSION_NAME_MAX_LENGTH + 1),
     "<script>",
 ]
 
@@ -197,12 +200,12 @@ def test_browser_name_pattern_is_the_one_under_test() -> None:
     assert f"const NAME_PATTERN = {BROWSER_NAME_PATTERN}" in _browser_script()
 
 
-def test_browser_game_id_rule_is_the_one_under_test() -> None:
-    """The browser checks game ids with the name pattern and the server's cap."""
+def test_browser_session_name_rule_is_the_one_under_test() -> None:
+    """The browser checks Game Session Names with the name pattern and the server's cap."""
     script = _browser_script()
-    assert f"const GAME_ID_MAX_LENGTH = {GAME_ID_MAX_LENGTH}\n" in script
-    assert BROWSER_GAME_ID_RULE in script
-    assert "if (!isValidGameId(gameId)) {" in script
+    assert f"const SESSION_NAME_MAX_LENGTH = {SESSION_NAME_MAX_LENGTH}\n" in script
+    assert BROWSER_SESSION_NAME_RULE in script
+    assert "if (!isValidSessionName(sessionName)) {" in script
 
 
 @pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_ACCEPTS)
@@ -223,22 +226,26 @@ def test_server_rejects_user_names_the_browser_rejects(
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("game_id", GAME_IDS_THE_BROWSER_ACCEPTS)
-def test_server_accepts_game_ids_the_browser_accepts(
-    create_game: Callable[[str], None], game_id: str
+@pytest.mark.parametrize("session_name", SESSION_NAMES_THE_BROWSER_ACCEPTS)
+def test_server_accepts_session_names_the_browser_accepts(
+    create_game: Callable[[str], None], session_name: str
 ) -> None:
-    """Any game id the browser lets through can be created."""
-    create_game(game_id)
+    """Any Game Session Name the browser lets through can be created."""
+    create_game(session_name)
 
 
-@pytest.mark.parametrize("game_id", GAME_IDS_THE_BROWSER_REJECTS)
-def test_server_rejects_game_ids_the_browser_rejects(
-    client: TestClient, game_id: str
+@pytest.mark.parametrize("session_name", SESSION_NAMES_THE_BROWSER_REJECTS)
+def test_server_rejects_session_names_the_browser_rejects(
+    client: TestClient, session_name: str
 ) -> None:
-    """Any game id the browser blocks is a 422 on /create."""
+    """Any Game Session Name the browser blocks is a 422 on /create."""
     response = client.post(
         "/create",
-        json={"game_id": game_id, "target_song_count": 2, "music_service_type": "mock"},
+        json={
+            "game_id": session_name,
+            "target_song_count": 2,
+            "music_service_type": "mock",
+        },
     )
     assert response.status_code == 422
 
@@ -248,14 +255,14 @@ def test_websocket_rejects_invalid_user_name(
     create_game: Callable[[str], None],
     get_session: Callable[[str], GameSession],
 ) -> None:
-    game_id = "ws-names"
-    create_game(game_id)
+    session_name = "ws-names"
+    create_game(session_name)
     with (
         pytest.raises(WebSocketDisconnect),
-        client.websocket_connect(f"/ws/{game_id}/%3Cimg%20src%3Dx%3E") as ws,
+        client.websocket_connect(f"/ws/{session_name}/%3Cimg%20src%3Dx%3E") as ws,
     ):
         ws.receive_text()
-    assert get_session(game_id).connection_manager.user_connections == {}
+    assert get_session(session_name).connection_manager.player_connections == {}
 
 
 def test_playback_failure_on_start_is_reported_as_server_error(
@@ -265,18 +272,18 @@ def test_playback_failure_on_start_is_reported_as_server_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A failed playback start is a 500 and leaves the game startable."""
-    game_id = "playback-failure"
-    create_and_join(game_id, "solo")
-    music_service = get_session(game_id).game_logic.music_service
+    session_name = "playback-failure"
+    create_and_join(session_name, "solo")
+    music_service = get_session(session_name).game_logic.music_service
 
     def broken_start_playback() -> None:
         raise MusicServiceError("No active device.")
 
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert ws.receive_json()["type"] == "welcome"
 
         monkeypatch.setattr(music_service, "start_playback", broken_start_playback)
-        response = client.post("/start", json={"game_id": game_id})
+        response = client.post("/start", json={"game_id": session_name})
         assert response.status_code == 500
         assert response.json() == {
             "detail": "Failed to play music. Please check if music service "
@@ -284,7 +291,7 @@ def test_playback_failure_on_start_is_reported_as_server_error(
         }
 
         monkeypatch.undo()
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
         assert ws.receive_json()["type"] == "your_turn"
 
 
@@ -292,13 +299,13 @@ def test_joining_twice_before_start_is_a_conflict(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """Joining under a registered name before start is a 409."""
-    game_id = "double-join"
-    create_and_join(game_id, "alex")
+    session_name = "double-join"
+    create_and_join(session_name, "alex")
 
-    response = client.post("/join", json={"game_id": game_id, "user_name": "alex"})
+    response = client.post("/join", json={"game_id": session_name, "user_name": "alex"})
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "User 'alex' already registered"}
+    assert response.json() == {"detail": "Player 'alex' already registered"}
 
 
 def test_creating_an_existing_session_is_a_conflict(
@@ -314,7 +321,7 @@ def test_creating_an_existing_session_is_a_conflict(
 
     assert response.status_code == 409
     assert response.json() == {
-        "detail": "Session 'taken' already exists. Choose different ID."
+        "detail": "Game session 'taken' already exists. Choose a different name."
     }
 
 
@@ -322,20 +329,22 @@ def test_starting_a_running_game_is_a_conflict_and_keeps_timelines(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """A second Start is a 409 and does not wipe the timelines."""
-    game_id = "restart"
-    create_and_join(game_id, "solo")
+    session_name = "restart"
+    create_and_join(session_name, "solo")
 
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         assert ws.receive_json()["type"] == "welcome"
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
         assert ws.receive_json()["type"] == "your_turn"
         ws.send_json({"type": "guess", "index": 0})
         assert len(ws.receive_json()["song_list"]) == 1
         assert len(ws.receive_json()["song_list"]) == 1
 
-        response = client.post("/start", json={"game_id": game_id})
+        response = client.post("/start", json={"game_id": session_name})
         assert response.status_code == 409
-        assert response.json() == {"detail": f"Game {game_id} is already running."}
+        assert response.json() == {
+            "detail": f"Game session {session_name} is already running."
+        }
 
         ws.send_json({"type": "guess", "index": 1})
         result = ws.receive_json()
@@ -347,24 +356,26 @@ def test_starting_with_unconnected_players_is_a_conflict_and_retryable(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """Start names the unconnected players and leaves the game not running."""
-    game_id = "half-start"
-    create_and_join(game_id, "alex", "bo", "cy")
+    session_name = "half-start"
+    create_and_join(session_name, "alex", "bo", "cy")
 
-    with client.websocket_connect(f"/ws/{game_id}/alex") as ws_alex:
+    with client.websocket_connect(f"/ws/{session_name}/alex") as ws_alex:
         assert ws_alex.receive_json()["type"] == "welcome"
 
-        response = client.post("/start", json={"game_id": game_id})
+        response = client.post("/start", json={"game_id": session_name})
         assert response.status_code == 409
         assert response.json() == {"detail": "Players not connected: bo, cy."}
-        assert client.get("/list-sessions").json() == {"sessions": [game_id]}
+        assert client.get("/list-sessions").json() == {"sessions": [session_name]}
 
         with (
-            client.websocket_connect(f"/ws/{game_id}/bo") as ws_bo,
-            client.websocket_connect(f"/ws/{game_id}/cy") as ws_cy,
+            client.websocket_connect(f"/ws/{session_name}/bo") as ws_bo,
+            client.websocket_connect(f"/ws/{session_name}/cy") as ws_cy,
         ):
-            response = client.post("/start", json={"game_id": game_id})
+            response = client.post("/start", json={"game_id": session_name})
             assert response.status_code == 200
-            assert response.json() == {"message": f"Game {game_id} started."}
+            assert response.json() == {
+                "message": f"Game session {session_name} started."
+            }
             for ws in (ws_bo, ws_cy):
                 assert ws.receive_json()["type"] == "welcome"
                 assert ws.receive_json()["type"] == "your_turn"

@@ -26,8 +26,10 @@ def _receive_until(ws: WebSocketTestSession, msg_type: str) -> dict[str, Any]:
     return message
 
 
-def _join(client: TestClient, game_id: str, user: str) -> None:
-    response = client.post("/join", json={"game_id": game_id, "user_name": user})
+def _join(client: TestClient, session_name: str, username: str) -> None:
+    response = client.post(
+        "/join", json={"game_id": session_name, "user_name": username}
+    )
     assert response.status_code == 200
 
 
@@ -35,15 +37,15 @@ def test_join_is_broadcast_to_connected_players(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """A join is announced to players already connected."""
-    game_id = "join-broadcast"
-    create_and_join(game_id, "alice")
+    session_name = "join-broadcast"
+    create_and_join(session_name, "alice")
 
-    with client.websocket_connect(f"/ws/{game_id}/alice") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/alice") as ws:
         assert _receive(ws) == {
             "type": "welcome",
             "message": "Welcome alice, you're connected.",
         }
-        _join(client, game_id, "bob")
+        _join(client, session_name, "bob")
         assert _receive(ws) == {
             "type": "player_joined",
             "message": "bob joined the game! There are now 2 players: alice, bob.",
@@ -55,14 +57,16 @@ def test_lobby_connect_without_join_registers_silently(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """Connecting in the lobby without /join registers the player unannounced."""
-    game_id = "silent-lobby-connect"
-    create_and_join(game_id, "alice")
+    session_name = "silent-lobby-connect"
+    create_and_join(session_name, "alice")
 
-    with client.websocket_connect(f"/ws/{game_id}/alice") as alice:
+    with client.websocket_connect(f"/ws/{session_name}/alice") as alice:
         assert _receive(alice)["type"] == "welcome"
-        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
             assert _receive(bob)["type"] == "welcome"
-            assert client.post("/start", json={"game_id": game_id}).status_code == 200
+            assert (
+                client.post("/start", json={"game_id": session_name}).status_code == 200
+            )
             assert _receive(alice)["type"] == "your_turn"
             assert _receive(bob)["type"] == "your_turn"
 
@@ -71,20 +75,20 @@ def test_start_and_next_round_send_your_turn(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """Start and round completion send your_turn with the timeline."""
-    game_id = "your-turn"
-    create_and_join(game_id, "alice", "bob")
+    session_name = "your-turn"
+    create_and_join(session_name, "alice", "bob")
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+        client.websocket_connect(f"/ws/{session_name}/alice") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/bob") as ws2,
     ):
         _receive(ws1)
         _receive(ws2)
-        assert client.post("/start", json={"game_id": game_id}).status_code == 200
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
 
         assert _receive(ws1) == {
             "type": "your_turn",
-            "message": "It's your turn!",
+            "message": "Place the new Song in your Timeline!",
             "next_player": "alice",
             "song_list": [],
         }
@@ -116,16 +120,16 @@ def test_game_over_is_broadcast_to_every_player(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
     """The winning guess ends the game for every player."""
-    game_id = "game-over"
-    create_and_join(game_id, "alice", "bob")
+    session_name = "game-over"
+    create_and_join(session_name, "alice", "bob")
 
     with (
-        client.websocket_connect(f"/ws/{game_id}/alice") as ws1,
-        client.websocket_connect(f"/ws/{game_id}/bob") as ws2,
+        client.websocket_connect(f"/ws/{session_name}/alice") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/bob") as ws2,
     ):
         _receive(ws1)
         _receive(ws2)
-        client.post("/start", json={"game_id": game_id})
+        client.post("/start", json={"game_id": session_name})
         _receive(ws1)
         _receive(ws2)
 
@@ -154,15 +158,15 @@ def test_game_over_is_broadcast_to_every_player(
 def test_disconnect_and_rejoin_are_broadcast(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    """Disconnect and rejoin are announced; the rejoiner gets a card."""
-    game_id = "rejoin"
-    create_and_join(game_id, "alice", "bob")
+    """Disconnect and rejoin are announced; the rejoiner is asked for a guess."""
+    session_name = "rejoin"
+    create_and_join(session_name, "alice", "bob")
 
-    with client.websocket_connect(f"/ws/{game_id}/alice") as ws1:
+    with client.websocket_connect(f"/ws/{session_name}/alice") as ws1:
         _receive(ws1)
-        with client.websocket_connect(f"/ws/{game_id}/bob") as ws2:
+        with client.websocket_connect(f"/ws/{session_name}/bob") as ws2:
             _receive(ws2)
-            client.post("/start", json={"game_id": game_id})
+            client.post("/start", json={"game_id": session_name})
             _receive(ws1)
             _receive(ws2)
 
@@ -171,12 +175,12 @@ def test_disconnect_and_rejoin_are_broadcast(
             "message": "bob disconnected. bob can try to re-join the game.",
         }
 
-        _join(client, game_id, "bob")
-        with client.websocket_connect(f"/ws/{game_id}/bob") as ws2:
+        _join(client, session_name, "bob")
+        with client.websocket_connect(f"/ws/{session_name}/bob") as ws2:
             assert _receive(ws2)["type"] == "welcome"
             assert _receive(ws2) == {
                 "type": "your_turn",
-                "message": "It's your turn!",
+                "message": "Place the new Song in your Timeline!",
                 "next_player": "bob",
                 "song_list": [],
             }
@@ -196,10 +200,10 @@ def test_non_string_message_type_is_unknown(
     message_type: object,
 ) -> None:
     """A non-string message type is rejected as unknown."""
-    game_id = "odd-type"
-    create_and_join(game_id, "solo")
+    session_name = "odd-type"
+    create_and_join(session_name, "solo")
 
-    with client.websocket_connect(f"/ws/{game_id}/solo") as ws:
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
         _receive(ws)
         ws.send_json({"type": message_type})
         assert _receive(ws) == {"type": "error", "message": "Unknown message type."}

@@ -3,34 +3,36 @@
 from enum import StrEnum
 from typing import Any
 
-from track_back.game.user import User
+from track_back.game.player import Player
 
 
 class MessageType(StrEnum):
     """Type of a message the server sends over the WebSocket."""
 
     WELCOME = "welcome"
-    YOUR_TURN = "your_turn"
+    GUESS_REQUEST = "your_turn"
     GUESS_RESULT = "guess_result"
     OTHER_PLAYER_GUESS = "other_player_guess"
     PLAYER_JOINED = "player_joined"
     PLAYER_REJOINED = "player_rejoined"
-    USER_DISCONNECTED = "user_disconnected"
+    PLAYER_DISCONNECTED = "user_disconnected"
     GAME_OVER = "game_over"
     ERROR = "error"
 
 
-YOUR_TURN_TEXT = "It's your turn!"
+GUESS_REQUEST_TEXT = "Place the new Song in your Timeline!"
 NEW_ROUND_TEXT = "New round! Make your guess!"
 
 
-def your_turn_message(player: User, message: str = YOUR_TURN_TEXT) -> dict[str, Any]:
+def guess_request_message(
+    player: Player, message: str = GUESS_REQUEST_TEXT
+) -> dict[str, Any]:
     """Build the message asking a player to place the current song."""
     return {
-        "type": MessageType.YOUR_TURN,
+        "type": MessageType.GUESS_REQUEST,
         "message": message,
         "next_player": player.name,
-        "song_list": [song.serialize() for song in player.song_list],
+        "song_list": [song.serialize() for song in player.timeline],
     }
 
 
@@ -43,24 +45,24 @@ def game_over_message(winner: str) -> dict[str, Any]:
     }
 
 
-def player_joined_message(user_name: str, user_names: list[str]) -> dict[str, Any]:
+def player_joined_message(user_name: str, player_names: list[str]) -> dict[str, Any]:
     """Build the message announcing a new player in the lobby."""
     return {
         "type": MessageType.PLAYER_JOINED,
-        "message": f"{user_name} joined the game! {_players_summary(user_names)}",
+        "message": f"{user_name} joined the game! {_players_summary(player_names)}",
         "user_name": user_name,
     }
 
 
-def player_rejoined_message(member: User, user_names: list[str]) -> dict[str, Any]:
-    """Build the message announcing a member back in the running game."""
+def player_rejoined_message(player: Player, player_names: list[str]) -> dict[str, Any]:
+    """Build the message announcing a player back in the running game."""
     return {
         "type": MessageType.PLAYER_REJOINED,
-        "message": f"{member.name} re-joined the game! {_players_summary(user_names)}",
-        "song_list": [song.serialize() for song in member.song_list],
-        "user_name": member.name,
+        "message": f"{player.name} re-joined the game! {_players_summary(player_names)}",
+        "song_list": [song.serialize() for song in player.timeline],
+        "user_name": player.name,
     }
 
 
-def _players_summary(user_names: list[str]) -> str:
-    return f"There are now {len(user_names)} players: {', '.join(user_names)}."
+def _players_summary(player_names: list[str]) -> str:
+    return f"There are now {len(player_names)} players: {', '.join(player_names)}."
