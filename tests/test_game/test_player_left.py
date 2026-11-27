@@ -14,10 +14,10 @@ def _two_player_game() -> tuple[GameLogic, User, User]:
 def test_round_does_not_advance_when_no_active_players_remain() -> None:
     game, alice, _bob = _two_player_game()
 
-    assert game.round.player_left("alice") is False
-    assert game.round.player_left("bob") is False
+    assert game.player_left("alice") is False
+    assert game.player_left("bob") is False
 
-    alice.is_active = True
+    game.player_returned("alice")
     game.handle_player_turn("alice", 0)
     assert [song.title for song in alice.song_list] == ["Yesterday"]
 
@@ -26,7 +26,7 @@ def test_round_advances_when_last_owed_player_leaves() -> None:
     game, alice, _bob = _two_player_game()
 
     game.handle_player_turn("alice", 0)
-    assert game.round.player_left("bob") is True
+    assert game.player_left("bob") is True
 
     game.handle_player_turn("alice", 1)
     assert [song.title for song in alice.song_list] == [

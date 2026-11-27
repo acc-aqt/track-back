@@ -13,6 +13,7 @@ const MAX_RECONNECT_ATTEMPTS = 10
 
 const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
 const USER_NAME_MAX_LENGTH = 20
+const GAME_ID_MAX_LENGTH = 40
 const FALLBACK_COVER = 'dummy-cover/cover1.webp'
 
 function loadScript (url, onSuccess, onError) {
@@ -85,6 +86,9 @@ targetSongCountInput.addEventListener('input', () => {
 
 const isValidUsername = name =>
   name.length <= USER_NAME_MAX_LENGTH && NAME_PATTERN.test(name)
+
+const isValidGameId = id =>
+  id.length <= GAME_ID_MAX_LENGTH && NAME_PATTERN.test(id)
 
 const readUsername = () => {
   const name = document.getElementById('username').value.trim()
@@ -464,6 +468,12 @@ async function createGame () {
 
   if (!gameId) {
     alert('Please enter a game ID!')
+    return
+  }
+  if (!isValidGameId(gameId)) {
+    alert(
+      `Game IDs can have up to ${GAME_ID_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+    )
     return
   }
 

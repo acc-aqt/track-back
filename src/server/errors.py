@@ -27,3 +27,27 @@ class PlayersNotConnectedError(Exception):
 
     def __init__(self, usernames: list[str]) -> None:
         super().__init__(f"Players not connected: {', '.join(usernames)}.")
+
+
+class NotAMemberError(Exception):
+    """The name is not a member of the running game."""
+
+    def __init__(self, username: str, game_id: str, joinable: list[str]) -> None:
+        super().__init__(
+            f"User '{username}' is not member in game session {game_id}. "
+            f"{_joinable_hint(joinable)}"
+        )
+
+
+class AlreadyConnectedError(Exception):
+    """The member already holds a live connection to the running game."""
+
+    def __init__(self, username: str, game_id: str, joinable: list[str]) -> None:
+        super().__init__(
+            f"User '{username}' is already connected to game session {game_id}. "
+            f"{_joinable_hint(joinable)}"
+        )
+
+
+def _joinable_hint(joinable: list[str]) -> str:
+    return f"Only one of the following users can be connected: {', '.join(joinable)}."

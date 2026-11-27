@@ -51,6 +51,22 @@ def test_join_is_broadcast_to_connected_players(
         }
 
 
+def test_lobby_connect_without_join_registers_silently(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
+    """Connecting in the lobby without /join registers the player unannounced."""
+    game_id = "silent-lobby-connect"
+    create_and_join(game_id, "alice")
+
+    with client.websocket_connect(f"/ws/{game_id}/alice") as alice:
+        assert _receive(alice)["type"] == "welcome"
+        with client.websocket_connect(f"/ws/{game_id}/bob") as bob:
+            assert _receive(bob)["type"] == "welcome"
+            assert client.post("/start", json={"game_id": game_id}).status_code == 200
+            assert _receive(alice)["type"] == "your_turn"
+            assert _receive(bob)["type"] == "your_turn"
+
+
 def test_start_and_next_round_send_your_turn(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
@@ -81,7 +97,6 @@ def test_start_and_next_round_send_your_turn(
             "player": "alice",
             "result": "correct",
             "message": "alice made a guess. Guess was correct.",
-            "next_player": None,
         }
 
         ws2.send_json({"type": "guess", "index": 0})

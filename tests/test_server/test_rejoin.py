@@ -136,8 +136,16 @@ def test_join_running_game_rejects_non_members_and_connected_members(
 @pytest.mark.parametrize(
     ("user", "reason"),
     [
-        ("carol", "carol is not a member of this game."),
-        ("alice", "alice is already connected."),
+        (
+            "carol",
+            "User 'carol' is not member in game session connect-rejected. "
+            "Only one of the following users can be connected: bob.",
+        ),
+        (
+            "alice",
+            "User 'alice' is already connected to game session connect-rejected. "
+            "Only one of the following users can be connected: bob.",
+        ),
     ],
 )
 def test_connect_to_running_game_rejects_non_members_and_connected_members(

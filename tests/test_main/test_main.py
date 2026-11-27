@@ -1,6 +1,7 @@
 import importlib
 import logging
 import sys
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -40,17 +41,19 @@ def test_main_runs_server(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_server.run.assert_called_once_with(port=4321)
 
 
-def test_main_uses_port_from_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_uses_port_from_dotenv_in_working_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     sys.argv = ["server/main.py"]
-    monkeypatch.delenv("PORT", raising=False)
+    monkeypatch.setenv("PORT", "unset-after-test")
+    monkeypatch.delenv("PORT")
+    (tmp_path / ".env").write_text("PORT=5555\n")
+    monkeypatch.chdir(tmp_path)
 
     main_module = importlib.import_module("server.main")
 
     mock_server = mock.MagicMock()
     monkeypatch.setattr(main_module, "Server", lambda: mock_server)
-    monkeypatch.setattr(
-        main_module, "load_dotenv", lambda: monkeypatch.setenv("PORT", "5555")
-    )
 
     main_module.main()
 
