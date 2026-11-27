@@ -1,7 +1,7 @@
 """Spotify login routes that create a game session with an authenticated adapter."""
 
+import html
 import os
-from urllib.parse import quote
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -11,6 +11,8 @@ from spotipy.oauth2 import SpotifyOAuth
 
 from track_back.game.game_logic import GameLogic
 from track_back.music_service.spotify import SpotifyAdapter
+from track_back.server import join_qr
+from track_back.server.errors import SessionAlreadyExistsError
 from track_back.server.game_sessions import game_session_manager
 from track_back.server.names import SessionName, TargetSongCount, Username
 
@@ -23,6 +25,16 @@ class LoginState(BaseModel):
     game_id: SessionName
     target_song_count: TargetSongCount
     username: Username
+
+
+def _state_error_message(error: ValidationError) -> str:
+    """Name the first state field that failed validation."""
+    first_error = error.errors()[0]
+    field_path = first_error["loc"]
+    if not field_path:
+        return "Failed to parse state"
+    field_name = field_path[0]
+    return f"Missing or invalid {field_name} (state)"
 
 
 def get_spotify_oauth() -> SpotifyOAuth:
@@ -84,7 +96,8 @@ def spotify_callback(request: Request) -> Response:
     -------
     Response
         A 303 redirect to ``/?join=<session>&username=<username>&host=1`` if login and setup
-        succeeded, or an error message if any part of the process failed.
+        succeeded, or an error page if any part of the process failed or the Game
+        Session Name is taken.
 
     """
     code = request.query_params.get("code")
@@ -98,13 +111,7 @@ def spotify_callback(request: Request) -> Response:
     try:
         state = LoginState.model_validate_json(state_raw)
     except ValidationError as error:
-        location = error.errors()[0]["loc"]
-        message = (
-            f"Missing or invalid {location[0]} (state)"
-            if location
-            else "Failed to parse state"
-        )
-        return HTMLResponse(f"❌ {message}", status_code=400)
+        return HTMLResponse(f"❌ {_state_error_message(error)}", status_code=400)
 
     sp_oauth = get_spotify_oauth()
     token_info = sp_oauth.get_access_token(code)
@@ -118,11 +125,11 @@ def spotify_callback(request: Request) -> Response:
     adapter.authenticate(access_token)
     game = GameLogic(target_song_count=state.target_song_count, music_service=adapter)
 
-    game_session_manager.add_session(state.game_id, game)
+    try:
+        game_session_manager.add_session(state.game_id, game)
+    except SessionAlreadyExistsError as error:
+        return HTMLResponse(f"❌ {html.escape(str(error))}", status_code=409)
 
-    join_query = (
-        f"join={quote(state.game_id, safe='')}"
-        f"&username={quote(state.username, safe='')}"
-        "&host=1"
+    return RedirectResponse(
+        join_qr.join_path(state.game_id, state.username, host=True), status_code=303
     )
-    return RedirectResponse(f"/?{join_query}", status_code=303)

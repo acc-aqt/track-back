@@ -8,7 +8,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from importlib.resources import files
 from typing import Any
-from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
@@ -158,18 +157,27 @@ def startup_hint(port: int, *, use_ssl: bool, lan_addresses: list[str]) -> str:
     str
         One sentence naming the ``localhost`` URL and one URL per LAN address.
     """
-    hint = f"Open {_base_url('localhost', port, use_ssl=use_ssl)} on this machine"
+    hint = f"Open {base_url('localhost', port, use_ssl=use_ssl)} on this machine"
     if not lan_addresses:
         return f"{hint}."
     lan_urls = " or ".join(
-        _base_url(address, port, use_ssl=use_ssl) for address in lan_addresses
+        base_url(address, port, use_ssl=use_ssl) for address in lan_addresses
     )
     return f"{hint}, or {lan_urls} on other devices."
 
 
-def _base_url(host: str, port: int, *, use_ssl: bool) -> str:
+def base_url(host: str, port: int, *, use_ssl: bool) -> str:
+    """Build the server's URL on ``host``, without a trailing slash."""
     scheme = "https" if use_ssl else "http"
     return f"{scheme}://{host}:{port}"
+
+
+def _ssl_files() -> tuple[str, str] | None:
+    keyfile = os.getenv("SSL_KEYFILE")
+    certfile = os.getenv("SSL_CERTFILE")
+    if keyfile and certfile:
+        return keyfile, certfile
+    return None
 
 
 def uses_ssl() -> bool:
@@ -180,7 +188,7 @@ def uses_ssl() -> bool:
     bool
         True when both ``SSL_KEYFILE`` and ``SSL_CERTFILE`` are set.
     """
-    return bool(os.getenv("SSL_KEYFILE") and os.getenv("SSL_CERTFILE"))
+    return _ssl_files() is not None
 
 
 class _ReadyNotifyingServer(uvicorn.Server):
@@ -240,15 +248,17 @@ class Server:
     def run(self, port: int) -> None:
         """Start the Uvicorn server."""
         self.port = port
-        ssl_keyfile = os.getenv("SSL_KEYFILE")
-        ssl_certfile = os.getenv("SSL_CERTFILE")
-
-        use_ssl = uses_ssl()
+        ssl_files = _ssl_files()
         lan_addresses = network.lan_ipv4_addresses_or_empty()
-        print(startup_hint(port, use_ssl=use_ssl, lan_addresses=lan_addresses))
+        print(
+            startup_hint(
+                port, use_ssl=ssl_files is not None, lan_addresses=lan_addresses
+            )
+        )
 
-        if use_ssl:
+        if ssl_files is not None:
             logger.info("Running server with SSL.")
+            ssl_keyfile, ssl_certfile = ssl_files
             self._serve(port, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile)
         else:
             logger.info("Running server without SSL.")
@@ -374,8 +384,7 @@ class Server:
             )
         lan_addresses = network.lan_ipv4_addresses_or_empty()
         host = lan_addresses[0] if lan_addresses else "localhost"
-        base_url = _base_url(host, self.port, use_ssl=uses_ssl())
-        url = f"{base_url}/?join={quote(session, safe='')}"
+        url = base_url(host, self.port, use_ssl=uses_ssl()) + join_qr.join_path(session)
         return Response(content=join_qr.render_svg(url), media_type="image/svg+xml")
 
     async def _join_game_session(self, req: JoinGameRequest) -> JSONResponse:

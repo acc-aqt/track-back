@@ -69,6 +69,22 @@ def test_callback_rejects_invalid_game_id(callback_client: TestClient) -> None:
     assert game_session_manager.sessions == {}
 
 
+def test_callback_shows_an_error_page_when_the_name_is_taken(
+    callback_client: TestClient,
+) -> None:
+    """A Host who logs in with a taken Game Session Name sees an error page."""
+    callback_client.post("/create", json={"game_id": "taken", "target_song_count": 3})
+    state = json.dumps({"game_id": "taken", "target_song_count": 3, "username": "Anna"})
+    response = callback_client.get(
+        "/spotify-callback",
+        params={"code": "abc", "state": state},
+        follow_redirects=False,
+    )
+    assert response.status_code == 409
+    assert response.headers["content-type"].startswith("text/html")
+    assert "Game session &#x27;taken&#x27; already exists" in response.text
+
+
 @pytest.mark.parametrize("target_song_count", [0, -1, "zero"])
 def test_callback_rejects_target_song_count_below_one(
     callback_client: TestClient, target_song_count: object

@@ -76,14 +76,10 @@ const store = (key, value) => {
   }
 }
 
-const loadStoredUsername = () => loadStored(USERNAME_STORAGE_KEY)
-
-const storeUsername = name => store(USERNAME_STORAGE_KEY, name)
-
 function prefillStoredUsername () {
   const input = document.getElementById('username')
   if (!input.value) {
-    input.value = loadStoredUsername()
+    input.value = loadStored(USERNAME_STORAGE_KEY)
   }
 }
 
@@ -142,6 +138,7 @@ const OLDER_SERVER_MUSIC_SERVICES = {
   fromOlderServer: true
 }
 
+// Returns null, after telling the Host, if the Music Services can't be fetched.
 async function fetchMusicServices () {
   try {
     const res = await fetch(`${serverUrl}/music-services`)
@@ -154,7 +151,8 @@ async function fetchMusicServices () {
     return await res.json()
   } catch (err) {
     console.error('❌ Failed to fetch music services:', err)
-    return OLDER_SERVER_MUSIC_SERVICES
+    alert('⚠️ Failed to fetch the Music Services. Please try again.')
+    return null
   }
 }
 
@@ -184,7 +182,9 @@ function showMusicServiceChoice (services, preferred = null) {
 
 async function loadMusicServiceChoice (preferred = null) {
   const services = await fetchMusicServices()
-  showMusicServiceChoice(services, preferred)
+  if (services) {
+    showMusicServiceChoice(services, preferred)
+  }
   return services
 }
 
@@ -461,6 +461,15 @@ const serverMessageHandlers = {
   user_disconnected: data => log(`❌ ${data.message}`)
 }
 
+// Messages only sent once the Game Session has started.
+const GAME_STARTED_MESSAGE_TYPES = new Set([
+  'your_turn',
+  'guess_result',
+  'other_player_guess',
+  'player_rejoined',
+  'game_over'
+])
+
 function connectWebSocket () {
   const urlObj = new URL(serverUrl)
   const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -491,6 +500,9 @@ function connectWebSocket () {
   socket.onmessage = event => {
     try {
       const data = JSON.parse(event.data)
+      if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
+        hideLobbyQr()
+      }
       if (Object.hasOwn(serverMessageHandlers, data.type)) {
         serverMessageHandlers[data.type](data)
       } else {
@@ -543,7 +555,7 @@ async function fetchJoinableSessions () {
 
 function showSessionChoice (sessions) {
   document.getElementById('joinGameConfigBox').hidden = false
-  document.getElementById('joinGameTitle').textContent = 'Select game to join'
+  document.getElementById('joinGameTitle').textContent = 'Select a Game Session to join'
 
   const dropdown = document.getElementById('sessionDropdown')
   dropdown.replaceChildren(
@@ -594,7 +606,7 @@ async function joinGame () {
     }
 
     log(`✅ Joined game: ${sessionName}`)
-    storeUsername(username)
+    store(USERNAME_STORAGE_KEY, username)
     connectWebSocket()
     showLobbyQr()
     if (isHost) {
@@ -614,6 +626,7 @@ const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'
 const MUSIC_SERVICE_STORAGE_KEY = 'trackback.musicService'
 const DEFAULT_TARGET_SONG_COUNT = 10
 
+const defaultSessionName = name => `Game-by-${name}`
 
 const loadStoredTargetSongCount = () => {
   const count = parseInt(loadStored(TARGET_SONG_COUNT_STORAGE_KEY))
@@ -629,11 +642,19 @@ const hostOptionsAreOpen = () => !document.getElementById('gameConfigBox').hidde
 
 let musicServicesLoadedFrom = null
 
+// Returns false if the Music Services could not be loaded.
 async function ensureMusicServiceChoice () {
-  if (musicServicesLoadedFrom !== serverUrl) {
-    await loadMusicServiceChoice(loadStored(MUSIC_SERVICE_STORAGE_KEY))
-    musicServicesLoadedFrom = serverUrl
+  if (musicServicesLoadedFrom === serverUrl) {
+    return true
   }
+  const services = await loadMusicServiceChoice(
+    loadStored(MUSIC_SERVICE_STORAGE_KEY)
+  )
+  if (!services) {
+    return false
+  }
+  musicServicesLoadedFrom = serverUrl
+  return true
 }
 
 function fillHostOptions (name, targetSongCount) {
@@ -649,11 +670,16 @@ async function openHostOptions (error = '') {
     return
   }
   serverUrl = getServerUrl()
-  await ensureMusicServiceChoice()
+  if (!(await ensureMusicServiceChoice())) {
+    return
+  }
   const nameInput = document.getElementById('sessionNameInput')
   if (!nameInput.value) {
     const name = document.getElementById('username').value.trim()
-    fillHostOptions(name ? `Game-by-${name}` : '', loadStoredTargetSongCount())
+    fillHostOptions(
+      name ? defaultSessionName(name) : '',
+      loadStoredTargetSongCount()
+    )
   }
   document.getElementById('gameConfigBox').hidden = false
   document.getElementById('hostOptionsBtn').setAttribute('aria-expanded', 'true')
@@ -682,18 +708,35 @@ function readHostOptions () {
   return { name, targetSongCount }
 }
 
+// A failed lookup counts as not listed; the server rejects taken names anyway.
+async function isListedSessionName (name) {
+  try {
+    const res = await fetch(`${serverUrl}/list-sessions`)
+    if (!res.ok) {
+      return false
+    }
+    const data = await res.json()
+    return (data.sessions || []).includes(name)
+  } catch (err) {
+    console.error('❌ Failed to fetch sessions:', err)
+    return false
+  }
+}
+
 async function hostGame () {
   serverUrl = getServerUrl()
   username = readUsername()
   if (!username) {
     return
   }
-  await ensureMusicServiceChoice()
+  if (!(await ensureMusicServiceChoice())) {
+    return
+  }
   const nameInput = document.getElementById('sessionNameInput')
   if (!hostOptionsAreOpen()) {
-    fillHostOptions(`Game-by-${username}`, loadStoredTargetSongCount())
+    fillHostOptions(defaultSessionName(username), loadStoredTargetSongCount())
   } else if (!nameInput.value.trim()) {
-    nameInput.value = `Game-by-${username}`
+    nameInput.value = defaultSessionName(username)
   }
   const options = readHostOptions()
   if (!options) {
@@ -703,10 +746,18 @@ async function hostGame () {
   const musicServiceType = selectedMusicService()
 
   if (musicServiceType === 'spotify') {
+    // Catch a taken name before the Spotify login; the callback still rejects
+    // names that /list-sessions doesn't show (running Game Sessions).
+    if (await isListedSessionName(sessionName)) {
+      const error = `Game session '${sessionName}' already exists. Choose a different name.`
+      log(`❌ Failed to create Game Session: ${error}`)
+      await openHostOptions(error)
+      return
+    }
     // The Spotify callback creates the Game Session and redirects back with a
     // join link, so the Host lands in the Lobby in this tab. The callback may
     // land on another origin, so remember the choice before leaving.
-    storeUsername(username)
+    store(USERNAME_STORAGE_KEY, username)
     rememberHostingChoice(options.targetSongCount, musicServiceType)
     const stateParam = encodeURIComponent(
       JSON.stringify({
@@ -732,15 +783,15 @@ async function hostGame () {
     const data = await res.json()
 
     if (!res.ok) {
-      handleHttpError(data, '❌ Failed to create game')
+      handleHttpError(data, '❌ Failed to create Game Session')
       if (res.status === 409 || hostOptionsAreOpen()) {
         await openHostOptions(describeHttpError(data))
       }
       return
     }
   } catch (err) {
-    console.error('❌ Failed to create music game:', err)
-    log('❌ Failed to create game: the server could not be reached.')
+    console.error('❌ Failed to create Game Session:', err)
+    log('❌ Failed to create Game Session: the server could not be reached.')
     return
   }
   rememberHostingChoice(options.targetSongCount, musicServiceType)
