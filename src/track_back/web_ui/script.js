@@ -63,7 +63,7 @@ if (!LOCAL_HOSTNAMES.includes(window.location.hostname)) {
 
 let currentGuessSong = null
 let pauseAfterGuess = false
-let queuedTurn = null
+let queuedGuessRequest = null
 
 const WRONG_GUESS_DISPLAY_TIME = 2000
 const FADE_DURATION = 1000
@@ -152,13 +152,13 @@ const buildSongEntry = (song, extraClass = '') => {
   return entry
 }
 
-function handleYourTurn (data) {
+function handleGuessRequest (data) {
   if (pauseAfterGuess) {
-    queuedTurn = data
+    queuedGuessRequest = data
     return
   }
-  const isMyTurn = data.next_player === username
-  if (!isMyTurn) {
+  const isForMe = data.next_player === username
+  if (!isForMe) {
     return
   }
 
@@ -249,10 +249,10 @@ function handleGuessResult (data) {
     setTimeout(() => {
       pauseAfterGuess = false
 
-      // If a turn came in while we were paused, now we handle it
-      if (queuedTurn) {
-        handleYourTurn(queuedTurn)
-        queuedTurn = null
+      // If a guess request came in while we were paused, now we handle it
+      if (queuedGuessRequest) {
+        handleGuessRequest(queuedGuessRequest)
+        queuedGuessRequest = null
       }
     }, WRONG_GUESS_DISPLAY_TIME + FADE_DURATION)
   }
@@ -277,7 +277,7 @@ const handleGameOver = data => {
 }
 
 const serverMessageHandlers = {
-  your_turn: handleYourTurn,
+  your_turn: handleGuessRequest,
   guess_result: data => {
     if (data.player === username) {
       handleGuessResult(data)

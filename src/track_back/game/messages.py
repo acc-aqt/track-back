@@ -10,7 +10,7 @@ class MessageType(StrEnum):
     """Type of a message the server sends over the WebSocket."""
 
     WELCOME = "welcome"
-    YOUR_TURN = "your_turn"
+    GUESS_REQUEST = "your_turn"
     GUESS_RESULT = "guess_result"
     OTHER_PLAYER_GUESS = "other_player_guess"
     PLAYER_JOINED = "player_joined"
@@ -20,14 +20,16 @@ class MessageType(StrEnum):
     ERROR = "error"
 
 
-YOUR_TURN_TEXT = "It's your turn!"
+GUESS_REQUEST_TEXT = "Place the new Song in your Timeline!"
 NEW_ROUND_TEXT = "New round! Make your guess!"
 
 
-def your_turn_message(player: Player, message: str = YOUR_TURN_TEXT) -> dict[str, Any]:
+def guess_request_message(
+    player: Player, message: str = GUESS_REQUEST_TEXT
+) -> dict[str, Any]:
     """Build the message asking a player to place the current song."""
     return {
-        "type": MessageType.YOUR_TURN,
+        "type": MessageType.GUESS_REQUEST,
         "message": message,
         "next_player": player.name,
         "song_list": [song.serialize() for song in player.song_list],

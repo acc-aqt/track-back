@@ -14,7 +14,7 @@ from track_back.music_service.error import MusicServiceError
 
 
 @dataclass(frozen=True)
-class TurnResult:
+class GuessResult:
     """The message for the guessing player and whether the guess ended the round."""
 
     message: dict[str, Any]
@@ -47,8 +47,8 @@ class GameLogic:
         self.players = players
         self.running = True
 
-    def handle_player_turn(self, username: str, insert_index: int) -> TurnResult:
-        """Handle a player's turn."""
+    def handle_guess(self, username: str, insert_index: int) -> GuessResult:
+        """Handle a player's guess of the current song."""
         if not self.running:
             return _error("Game not running.")
         if self.round_tracker.has_guessed(username):
@@ -84,13 +84,13 @@ class GameLogic:
             self.winner = player
             payload["game_over"] = True
             payload["winner"] = player.name
-            return TurnResult(payload)
+            return GuessResult(payload)
 
         payload["game_over"] = False
         payload["winner"] = ""
 
         self.round_tracker.record_guess(username)
-        return TurnResult(payload, round_complete=self._advance_round_if_complete())
+        return GuessResult(payload, round_complete=self._advance_round_if_complete())
 
     def player_disconnected(self, username: str) -> bool:
         """Stop waiting for a departed player; return True if the round advanced."""
@@ -147,7 +147,7 @@ class GameLogic:
             and not self.round_tracker.has_guessed(username)
         )
 
-    def players_owed_card(self) -> list[Player]:
+    def players_owing_guess(self) -> list[Player]:
         """Return the players who still have to guess the current song."""
         return [player for player in self.players if self.owes_guess(player.name)]
 
@@ -160,5 +160,5 @@ class GameLogic:
         return bool(self.disconnected_player_names())
 
 
-def _error(message: str) -> TurnResult:
-    return TurnResult({"type": MessageType.ERROR, "message": message})
+def _error(message: str) -> GuessResult:
+    return GuessResult({"type": MessageType.ERROR, "message": message})

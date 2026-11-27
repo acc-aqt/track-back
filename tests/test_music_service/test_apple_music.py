@@ -32,7 +32,7 @@ def test_full_game_one_round() -> None:
     game.start_game(players=[player_1, player_2])
     # Simulate one user input: "0" to insert at start
 
-    game.handle_player_turn("Elton", 0)
+    game.handle_guess("Elton", 0)
 
     assert game.is_game_over() is True
 

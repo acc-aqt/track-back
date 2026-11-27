@@ -39,7 +39,7 @@ When a player of the running game connects, they:
 2. are marked active again;
 3. receive their own state:
    - if they still owe a guess for the current song: `your_turn` with their timeline, while everyone else receives `player_rejoined`;
-   - if they already guessed the current song: no card, but `player_rejoined` (which contains their timeline) goes to everyone, including themselves.
+   - if they already guessed the current song: no `your_turn`, but `player_rejoined` (which contains their timeline) goes to everyone, including themselves.
 
 If the name is not a player of the game, or that player already has an open WebSocket, the server sends `error` and closes the socket with code 1008.
 
@@ -96,7 +96,7 @@ Asks a player to place the song that is now playing. Sent to every active player
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `message` | string | `It's your turn!` on start and rejoin, `New round! Make your guess!` on a new round. |
+| `message` | string | `Place the new Song in your Timeline!` on start and rejoin, `New round! Make your guess!` on a new round. |
 | `next_player` | string | The name of the receiving player. |
 | `song_list` | Timeline | The receiving player's timeline. |
 

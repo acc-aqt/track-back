@@ -19,19 +19,19 @@ def test_two_players_simulteneous_game() -> None:
     assert len(player2.song_list) == 0
 
     # Player1: Send the first guess
-    game.handle_player_turn(player1.name, 0)
+    game.handle_guess(player1.name, 0)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 0
     assert game.is_game_over() is False
 
-    # Player1: Make another guess --> not his turn
-    game.handle_player_turn(player1.name, 1)
+    # Player1: Make another guess --> already guessed this song
+    game.handle_guess(player1.name, 1)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 0
     assert game.is_game_over() is False
 
     # Player2: Send his first guess
-    game.handle_player_turn(player2.name, 0)
+    game.handle_guess(player2.name, 0)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 1
     assert game.is_game_over() is False
@@ -39,13 +39,13 @@ def test_two_players_simulteneous_game() -> None:
     # new round
 
     # Player2: Make another, correct guess
-    game.handle_player_turn(player2.name, 1)
+    game.handle_guess(player2.name, 1)
     assert len(player1.song_list) == 1
     assert len(player2.song_list) == 2
     assert game.is_game_over() is False
 
     # Player1: Make correct guess
-    game.handle_player_turn(player1.name, 1)
+    game.handle_guess(player1.name, 1)
     assert len(player1.song_list) == 2
     assert len(player2.song_list) == 2
     assert game.is_game_over() is False
@@ -54,14 +54,14 @@ def test_two_players_simulteneous_game() -> None:
     # new round
 
     # Player1: Make wrong guess
-    game.handle_player_turn(player1.name, 0)
+    game.handle_guess(player1.name, 0)
     assert len(player1.song_list) == 2
     assert len(player2.song_list) == 2
     assert game.is_game_over() is False
     assert game.winner is None
 
     # Player2: Make correct guess
-    game.handle_player_turn(player2.name, 2)
+    game.handle_guess(player2.name, 2)
     assert len(player1.song_list) == 2
     assert len(player2.song_list) == 3
     assert game.is_game_over() is True

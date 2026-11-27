@@ -84,7 +84,7 @@ def test_start_and_next_round_send_your_turn(
 
         assert _receive(ws1) == {
             "type": "your_turn",
-            "message": "It's your turn!",
+            "message": "Place the new Song in your Timeline!",
             "next_player": "alice",
             "song_list": [],
         }
@@ -154,7 +154,7 @@ def test_game_over_is_broadcast_to_every_player(
 def test_disconnect_and_rejoin_are_broadcast(
     client: TestClient, create_and_join: Callable[..., None]
 ) -> None:
-    """Disconnect and rejoin are announced; the rejoiner gets a card."""
+    """Disconnect and rejoin are announced; the rejoiner is asked for a guess."""
     game_id = "rejoin"
     create_and_join(game_id, "alice", "bob")
 
@@ -176,7 +176,7 @@ def test_disconnect_and_rejoin_are_broadcast(
             assert _receive(ws2)["type"] == "welcome"
             assert _receive(ws2) == {
                 "type": "your_turn",
-                "message": "It's your turn!",
+                "message": "Place the new Song in your Timeline!",
                 "next_player": "bob",
                 "song_list": [],
             }

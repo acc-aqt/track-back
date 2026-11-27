@@ -18,17 +18,17 @@ def test_round_does_not_advance_when_no_active_players_remain() -> None:
     assert game.player_disconnected("bob") is False
 
     game.player_rejoined("alice")
-    game.handle_player_turn("alice", 0)
+    game.handle_guess("alice", 0)
     assert [song.title for song in alice.song_list] == ["Yesterday"]
 
 
 def test_round_advances_when_last_owed_player_leaves() -> None:
     game, alice, _bob = _two_player_game()
 
-    game.handle_player_turn("alice", 0)
+    game.handle_guess("alice", 0)
     assert game.player_disconnected("bob") is True
 
-    game.handle_player_turn("alice", 1)
+    game.handle_guess("alice", 1)
     assert [song.title for song in alice.song_list] == [
         "Yesterday",
         "Bohemian Rhapsody",

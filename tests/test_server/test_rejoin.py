@@ -56,7 +56,7 @@ def test_websocket_reconnect_without_join_restores_player(
         assert _receive(bob)["type"] == "welcome"
         assert _receive(bob) == {
             "type": "your_turn",
-            "message": "It's your turn!",
+            "message": "Place the new Song in your Timeline!",
             "next_player": "bob",
             "song_list": [],
         }

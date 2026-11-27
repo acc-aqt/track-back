@@ -19,13 +19,13 @@ from track_back import __version__
 from track_back.game.errors import GameAlreadyRunningError, MusicPlaybackError
 from track_back.game.game_logic import GameLogic
 from track_back.game.messages import (
+    GUESS_REQUEST_TEXT,
     NEW_ROUND_TEXT,
-    YOUR_TURN_TEXT,
     MessageType,
     game_over_message,
+    guess_request_message,
     player_joined_message,
     player_rejoined_message,
-    your_turn_message,
 )
 from track_back.game.player import Player
 from track_back.music_service.covers import COVER_URL_PREFIX, cover_store
@@ -51,7 +51,7 @@ from track_back.server.names import (
 from track_back.server.spotify_login import router as spotify_auth_router
 from track_back.server.websocket_handler import (
     WebSocketGameHandler,
-    notify_players_owed_card,
+    notify_players_owing_guess,
     send_ws_message,
 )
 
@@ -328,7 +328,7 @@ class Server:
         players = [Player(name=user_name) for user_name in player_names]
 
         game.start_game(players)
-        await notify_players_owed_card(connection_manager, game, YOUR_TURN_TEXT)
+        await notify_players_owing_guess(connection_manager, game, GUESS_REQUEST_TEXT)
 
         return JSONResponse(content={"message": f"Game {game_id} started."})
 
@@ -389,7 +389,7 @@ class Server:
             player, connection_manager.get_registered_player_names()
         )
         if game_session.game_logic.owes_guess(username):
-            await websocket.send_text(json.dumps(your_turn_message(player)))
+            await websocket.send_text(json.dumps(guess_request_message(player)))
             await connection_manager.broadcast(rejoined, exclude=username)
         else:
             await connection_manager.broadcast(rejoined)
@@ -434,7 +434,7 @@ class Server:
             },
         )
         if round_advanced:
-            await notify_players_owed_card(
+            await notify_players_owing_guess(
                 connection_manager, game_session.game_logic, NEW_ROUND_TEXT
             )
 
