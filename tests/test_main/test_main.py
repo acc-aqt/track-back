@@ -10,26 +10,30 @@ from unittest import mock
 
 import pytest
 
-from track_back.server.main import parse_args
-
 
 @pytest.mark.parametrize(
     ("argv", "expected_port", "expected_log_level"),
     [
-        (["main.py", "--port", "5000", "--log-level", "DEBUG"], 5000, logging.DEBUG),
-        (["main.py", "--log-level", "WARNING"], 4200, logging.WARNING),
-        (["main.py"], 4200, logging.INFO),
+        (["--port", "5000", "--log-level", "DEBUG"], 5000, logging.DEBUG),
+        (["--log-level", "WARNING"], 4200, logging.WARNING),
+        ([], 4200, logging.INFO),
     ],
 )
-def test_parse_args(
-    argv: list[str], expected_port: int, expected_log_level: int
+def test_main_starts_server_with_port_and_log_level_from_arguments(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    argv: list[str],
+    expected_port: int,
+    expected_log_level: int,
 ) -> None:
-    sys.argv = argv
+    monkeypatch.chdir(tmp_path)
+    basic_config = mock.MagicMock()
+    monkeypatch.setattr(logging, "basicConfig", basic_config)
 
-    port, log_level = parse_args()
+    server = run_main(monkeypatch, argv)
 
-    assert port == expected_port
-    assert log_level == expected_log_level
+    server.run.assert_called_once_with(port=expected_port)
+    basic_config.assert_called_once_with(level=expected_log_level)
 
 
 def test_main_runs_server(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -110,7 +114,7 @@ def test_main_exits_when_env_file_is_missing(
     with pytest.raises(SystemExit) as excinfo:
         run_main(monkeypatch, ["--env-file", str(missing)])
 
-    assert excinfo.value.code != 0
+    assert excinfo.value.code == 2
     assert f"env file not found: {missing}" in capsys.readouterr().err
 
 
@@ -290,11 +294,11 @@ def test_server_started_from_unrelated_directory_uses_values_from_init(
     assert os.environ["SPOTIPY_CLIENT_ID"] == "my-id"
 
 
-def test_help_lists_init_command(capsys: pytest.CaptureFixture[str]) -> None:
-    sys.argv = ["track-back-server", "-h"]
-
+def test_help_lists_init_command(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     with pytest.raises(SystemExit):
-        parse_args()
+        run_main(monkeypatch, ["-h"])
 
     assert "init" in capsys.readouterr().out
 

@@ -34,18 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def parse_args() -> tuple[int, int]:
-    """Parse command line arguments for starting the server."""
-    parser = build_parser()
-    return server_settings(parser, parser.parse_args())
-
-
-def server_settings(
-    parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> tuple[int, int]:
+def server_settings(args: argparse.Namespace) -> tuple[int, int]:
     """Load config and return the port and log level to start the server with."""
-    if args.env_file is not None and not args.env_file.is_file():
-        parser.error(f"env file not found: {args.env_file}")
     config.load_config(args.env_file)
 
     port = args.port or int(os.environ.get("PORT", config.DEFAULT_PORT))
@@ -62,7 +52,9 @@ def main() -> None:
         init_config.run()
         return
 
-    port, log_level = server_settings(parser, args)
+    if args.env_file is not None and not args.env_file.is_file():
+        parser.error(f"env file not found: {args.env_file}")
+    port, log_level = server_settings(args)
     logging.basicConfig(level=log_level)
 
     server = Server()
