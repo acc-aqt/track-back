@@ -125,7 +125,7 @@ function askUsernameThenJoin (session) {
   document.getElementById('username').focus()
 }
 
-// Music Service choice in Game Setup: "Music: <service> · change".
+// Music Service choice in Game Setup: "Music: <service>" and a change button.
 const MUSIC_SERVICE_LABELS = {
   spotify: 'Spotify 📻🎶',
   applemusic: 'Apple Music 🍎🎶',

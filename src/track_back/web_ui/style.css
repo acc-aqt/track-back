@@ -146,6 +146,11 @@ body {
 }
 
 #musicServiceLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
   margin: 0;
   font-family: sans-serif;
   font-size: 0.9rem;
@@ -184,6 +189,9 @@ body {
 }
 
 .input-group .host-options-strip:hover {
+  border-style: solid;
+  border-top: none;
+  background-color: var(--panel-inset);
   transform: none;
 }
 
