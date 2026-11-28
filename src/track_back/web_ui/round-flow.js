@@ -63,8 +63,9 @@ function showTimeline (list) {
     .replaceChildren(...list.map(s => buildSongEntry(s)))
 }
 
-// Created once; enabled for each Round until its Guess is sent.
-function createDragDrop (sendGuess) {
+// Created once; enabled for each Round until its Guess is sent. A Guess that
+// could not be sent puts the new Song back so the Player can guess again.
+function createDragDrop (sendGuess, log) {
   const timeline = document.getElementById('songTimeline')
   const newSongContainer = document.getElementById('newSongContainer')
 
@@ -82,10 +83,14 @@ function createDragDrop (sendGuess) {
       scrollSpeed: 5,
       onAdd: evt => {
         if (evt.item.id === 'new-song') {
-          const newIndex = evt.newIndex
-          evt.item.remove()
-          sendGuess(newIndex)
           setEnabled(false)
+          if (sendGuess(evt.newIndex)) {
+            evt.item.remove()
+          } else {
+            newSongContainer.appendChild(evt.item)
+            log('❌ Not connected to the server. Place the Song again once reconnected.')
+            setEnabled(true)
+          }
         }
       },
       onStart: () => {
@@ -135,9 +140,10 @@ function showWrongGuess (data) {
   }, WRONG_GUESS_DISPLAY_TIME)
 }
 
-// `sendGuess(index)` sends the Player's Guess to the server.
+// `sendGuess(index)` sends the Player's Guess to the server and returns
+// whether it could be sent.
 export function createRoundFlow ({ log, sendGuess }) {
-  const dragDrop = createDragDrop(sendGuess)
+  const dragDrop = createDragDrop(sendGuess, log)
   let paused = false
   let queuedGuessRequest = null
   let pauseTimer = null

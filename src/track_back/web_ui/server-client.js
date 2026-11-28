@@ -180,7 +180,14 @@ export function connect (sessionName, username, { onOpen, onMessage, onNotice })
 
   open()
 
-  return {
-    send: message => socket.send(JSON.stringify(message))
+  // Returns false, without sending, while the WebSocket is not open.
+  const send = message => {
+    if (socket.readyState !== WebSocket.OPEN) {
+      return false
+    }
+    socket.send(JSON.stringify(message))
+    return true
   }
+
+  return { send }
 }
