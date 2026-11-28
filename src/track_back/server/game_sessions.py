@@ -215,13 +215,17 @@ class GameSessionManager:
         return [name for name, session in self.sessions.items() if session.is_joinable]
 
     def release_if_empty(self, session: GameSession) -> None:
-        """Keep an empty running game for Rejoin; remove an empty Lobby or finished game."""
+        """Remove an empty finished game or Lobby; keep any other for the grace period.
+
+        A running game waits for its Players to Rejoin, and a Lobby for the
+        Players who joined but have not connected yet.
+        """
         if session.has_connected_players:
             return
-        if session.is_running:
-            session.empty_since = self.clock()
-        elif session.is_over or not session.players:
+        if session.is_over or not session.players:
             self.remove_game_session(session.session_name)
+        else:
+            session.empty_since = self.clock()
 
     def remove_expired_sessions(self) -> None:
         """Remove sessions that have been empty for longer than the grace period."""

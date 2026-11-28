@@ -40,7 +40,7 @@ Use `wss://` when the server runs with SSL.
 
 A client may also open the WebSocket in the lobby without calling `POST /join` first. The server then registers the name silently: it sends `welcome` to that client, but nobody receives `player_joined`.
 
-A player who disconnects in the lobby is removed from the session; everyone else receives `user_disconnected`. When the last player leaves the lobby, the session is deleted.
+A player who disconnects in the lobby is removed from the session; everyone else receives `user_disconnected`. When the last player leaves the lobby, the session is deleted. If players who called `POST /join` but never opened a WebSocket remain, the lobby is kept for the same grace period as an empty running game (see below), and removed if nobody has connected by then.
 
 ### Connecting to a running game (rejoin)
 

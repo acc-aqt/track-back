@@ -154,3 +154,18 @@ def test_finished_game_is_removed_when_its_last_player_leaves(
 
         ws.close()
         assert _join(client, session_name, "solo") == 404
+
+
+def test_lobby_left_with_only_unconnected_players_expires(
+    client: TestClient, create_and_join: Callable[..., None], clock: FakeClock
+) -> None:
+    session_name = "joined-but-never-connected"
+    create_and_join(session_name, "alice", "bob")
+    with client.websocket_connect(f"/ws/{session_name}/alice") as alice:
+        assert _receive(alice)["type"] == "welcome"
+
+    clock.now += EMPTY_SESSION_GRACE_PERIOD_SECONDS
+    assert client.get("/list-sessions").json() == {"sessions": [session_name]}
+
+    clock.now += 1
+    assert client.get("/list-sessions").json() == {"sessions": []}
