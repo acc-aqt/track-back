@@ -1,86 +1,32 @@
-'use strict'
+import * as hostOptions from './host-options.js'
+import { isValidUsername, usernameMaxLength } from './names.js'
+import { createRoundFlow } from './round-flow.js'
+import * as screen from './screen.js'
+import * as server from './server-client.js'
+import { USERNAME_KEY, loadStored, store } from './storage.js'
 
-let socket
+let connection
 let sessionName
 let username
 let isHost = false
 
-let serverUrl = ''
-
-let pingInterval = null
-let reconnectAttempts = 0
-const MAX_RECONNECT_ATTEMPTS = 10
-
-const NAME_PATTERN = /^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u
-const USERNAME_MAX_LENGTH = 20
-const SESSION_NAME_MAX_LENGTH = 40
-const FALLBACK_COVER = 'dummy-cover/cover1.webp'
-
-function loadScript (url, onSuccess, onError) {
-  const script = document.createElement('script')
-  script.src = url
-  script.onload = onSuccess
-  script.onerror = onError
-  document.head.appendChild(script)
-}
-
-// Get serverurl by user input if server_config.js does not exist.
-loadScript(
-  'server_config.js',
-  () => {
-    console.log('✅ Loaded server_config.js')
-    serverUrl = window.TRACK_BACK_CONFIG?.TRACK_BACK_SERVER_URL || ''
-    document.getElementById('controls-server').hidden = true
-    startApp()
-  },
-  () => {
-    console.info('No server_config.js found, asking for the server URL.')
-    document.getElementById('controls-server').hidden = false
-    const input = document.getElementById('server')
-    serverUrl = input?.value?.trim()?.replace(/\/+$/, '') || ''
-    startApp()
-  }
-)
-
-function getServerUrl () {
-  if (window.TRACK_BACK_CONFIG?.TRACK_BACK_SERVER_URL) {
-    return window.TRACK_BACK_CONFIG.TRACK_BACK_SERVER_URL
-  }
-
-  // fallback: dynamic value from input field
-  const input = document.getElementById('server')
-  return input?.value?.trim()?.replace(/\/+$/, '') || ''
-}
+// Without the server's configuration script, ask for the server URL.
+server.loadServerConfig().then(loaded => {
+  document.getElementById('controls-server').hidden = loaded
+  startApp()
+})
 
 function startApp () {
-  console.log('🌐 Using server URL:', serverUrl)
+  console.log('🌐 Using server URL:', server.serverUrl())
   prefillStoredUsername()
-  prepareHostOptions()
+  hostOptions.prepareHostOptions()
   handleJoinLink()
-}
-
-const USERNAME_STORAGE_KEY = 'trackback.username'
-
-const loadStored = key => {
-  try {
-    return localStorage.getItem(key) || ''
-  } catch {
-    return ''
-  }
-}
-
-const store = (key, value) => {
-  try {
-    localStorage.setItem(key, value)
-  } catch {
-    // Storage can be unavailable (private mode); the value is then just not remembered.
-  }
 }
 
 function prefillStoredUsername () {
   const input = document.getElementById('username')
   if (!input.value) {
-    input.value = loadStored(USERNAME_STORAGE_KEY)
+    input.value = loadStored(USERNAME_KEY)
   }
 }
 
@@ -120,105 +66,11 @@ async function handleJoinLink () {
 
 function askUsernameThenJoin (session) {
   showSessionChoice([session])
+  screen.showScreen('setup', { sessionChoice: true })
   document.getElementById('joinGameTitle').textContent =
     'Enter your username to join'
   document.getElementById('username').focus()
 }
-
-// Music Service choice in Game Setup: "Music: <service>" and a change button.
-const MUSIC_SERVICE_LABELS = {
-  spotify: 'Spotify 📻🎶',
-  applemusic: 'Apple Music 🍎🎶',
-  mock: 'Mock Music Service'
-}
-
-// Shorter names for the Host Options strip, which has little room.
-const MUSIC_SERVICE_SHORT_LABELS = {
-  spotify: 'Spotify',
-  applemusic: 'Apple Music',
-  mock: 'Mock'
-}
-
-// Older servers have no /music-services; offer the real services as before.
-const OLDER_SERVER_MUSIC_SERVICES = {
-  default: 'spotify',
-  available: ['spotify', 'applemusic'],
-  fromOlderServer: true
-}
-
-// Returns null if the Music Services can't be fetched.
-async function fetchMusicServices () {
-  try {
-    const res = await fetch(`${serverUrl}/music-services`)
-    if (res.status === 404) {
-      return OLDER_SERVER_MUSIC_SERVICES
-    }
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
-    }
-    return await res.json()
-  } catch (err) {
-    console.error('❌ Failed to fetch music services:', err)
-    return null
-  }
-}
-
-// Fill the Music line for the given services; `preferred` wins if still available.
-function showMusicServiceChoice (services, preferred = null) {
-  const dropdown = document.getElementById('musicServiceDropdown')
-  dropdown.replaceChildren(
-    ...services.available.map(service => {
-      const option = document.createElement('option')
-      option.value = service
-      option.textContent = MUSIC_SERVICE_LABELS[service] || service
-      return option
-    })
-  )
-  dropdown.value = services.available.includes(preferred)
-    ? preferred
-    : services.default
-
-  const showDropdown = Boolean(services.fromOlderServer)
-  document.getElementById('musicServiceName').textContent =
-    MUSIC_SERVICE_LABELS[dropdown.value] || dropdown.value
-  document.getElementById('musicServiceChange').hidden =
-    services.available.length < 2
-  document.getElementById('musicServiceLine').hidden = showDropdown
-  document.getElementById('musicServicePicker').hidden = !showDropdown
-  updateHostOptionsSummary()
-}
-
-async function loadMusicServiceChoice (preferred = null) {
-  const services = await fetchMusicServices()
-  if (services) {
-    showMusicServiceChoice(services, preferred)
-  }
-  return services
-}
-
-function selectedMusicService () {
-  return document.getElementById('musicServiceDropdown').value
-}
-
-document.getElementById('musicServiceChangeBtn').onclick = () => {
-  document.getElementById('musicServiceLine').hidden = true
-  document.getElementById('musicServicePicker').hidden = false
-  document.getElementById('musicServiceDropdown').focus()
-}
-
-document.getElementById('musicServiceDropdown').onchange = () => {
-  const dropdown = document.getElementById('musicServiceDropdown')
-  document.getElementById('musicServiceName').textContent =
-    MUSIC_SERVICE_LABELS[dropdown.value] || dropdown.value
-  updateHostOptionsSummary()
-}
-
-let currentGuessSong = null
-let pauseAfterGuess = false
-let queuedGuessRequest = null
-
-const WRONG_GUESS_DISPLAY_TIME = 2000
-const FADE_DURATION = 1000
 
 const log = msg => {
   const logBox = document.getElementById('log')
@@ -230,22 +82,6 @@ const log = msg => {
   logBox.scrollTop = logBox.scrollHeight
 }
 
-const targetSongCountInput = document.getElementById('targetSongCountInput')
-
-targetSongCountInput.addEventListener('input', () => {
-  let value = targetSongCountInput.value.trim()
-
-  if (!/^\d+$/.test(value) || parseInt(value) <= 0) {
-    targetSongCountInput.value = ''
-  }
-})
-
-const isValidUsername = name =>
-  name.length <= USERNAME_MAX_LENGTH && NAME_PATTERN.test(name)
-
-const isValidSessionName = id =>
-  id.length <= SESSION_NAME_MAX_LENGTH && NAME_PATTERN.test(id)
-
 const readUsername = () => {
   const name = document.getElementById('username').value.trim()
   if (!name) {
@@ -254,326 +90,62 @@ const readUsername = () => {
   }
   if (!isValidUsername(name)) {
     alert(
-      `Usernames can have up to ${USERNAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
+      `Usernames can have up to ${usernameMaxLength()} letters, digits, "_", "-" and single spaces.`
     )
     return null
   }
   return name
 }
 
-const describeHttpError = data => {
-  const detail = data?.detail
-  if (Array.isArray(detail)) {
-    return detail.map(d => d.msg).join('; ')
-  }
-  return detail || 'Unknown error'
-}
-
-const handleHttpError = (data, prefix = '❌ Server error') => {
-  log(`${prefix}: ${describeHttpError(data)}`)
-}
-
-// The server sends either a full URL (Spotify) or a path on itself (Apple Music).
-const coverSrc = song => {
-  const url = song.album_cover_url
-  if (!url) return FALLBACK_COVER
-  return url.startsWith('/') ? `${serverUrl}${url}` : url
-}
-
-const buildSongEntry = (song, extraClass = '') => {
-  const entry = document.createElement('div')
-  entry.className = extraClass ? `song-entry ${extraClass}` : 'song-entry'
-
-  const cover = document.createElement('img')
-  cover.className = 'song-cover'
-  cover.alt = 'cover'
-  cover.onerror = () => {
-    cover.onerror = null
-    cover.src = FALLBACK_COVER
-  }
-  cover.src = coverSrc(song)
-
-  const details = document.createElement('div')
-  details.className = 'song-details'
-  const title = document.createElement('strong')
-  title.textContent = song.title
-  details.append(
-    title,
-    ` (${song.release_year})`,
-    document.createElement('br'),
-    `by ${song.artist}`
-  )
-
-  entry.append(cover, details)
-  return entry
-}
-
-function handleGuessRequest (data) {
-  if (pauseAfterGuess) {
-    queuedGuessRequest = data
-    return
-  }
-  const isForMe = data.next_player === username
-  if (!isForMe) {
-    return
-  }
-
-  showTimeline(data.song_list || [])
-
-  const dummyCovers = [
-    'dummy-cover/cover1.webp',
-    'dummy-cover/cover2.webp',
-    'dummy-cover/cover3.webp',
-    'dummy-cover/cover4.webp',
-    'dummy-cover/cover5.webp',
-    'dummy-cover/cover6.webp'
-  ]
-  const randomCover =
-    dummyCovers[Math.floor(Math.random() * dummyCovers.length)]
-
-  document.getElementById('newSongContainer').innerHTML = `
-    <div class="song-entry highlight" id="new-song">
-      <img src="${randomCover}" alt="cover" class="song-cover" />
-      <div class="song-details">
-        <strong>Drag the song to the right place in the timeline.</strong>
-      </div>
-    </div>
-  `
-
-  document.getElementById('newSongContainer').style.display = 'block'
-
-  setupDragDrop()
-}
-
-function showLobbyQr () {
-  const img = document.getElementById('lobbyQrImg')
-  img.onerror = hideLobbyQr
-  img.onload = () => {
-    document.getElementById('lobby-qr').hidden = false
-  }
-  img.src = `${serverUrl}/join-qr.svg?session=${encodeURIComponent(sessionName)}`
-}
-
-function hideLobbyQr () {
-  const img = document.getElementById('lobbyQrImg')
-  img.onload = null
-  document.getElementById('lobby-qr').hidden = true
-}
-
-function toggleLobbyQrSize () {
-  const img = document.getElementById('lobbyQrImg')
-  const bigger = img.classList.toggle('bigger')
-  const button = document.getElementById('lobbyQrToggleBtn')
-  button.textContent = bigger ? 'Show smaller' : 'Show bigger'
-  button.setAttribute('aria-pressed', String(bigger))
-}
-
-function showTimeline (list) {
-  hideLobbyQr()
-  document.getElementById('timelineHeader').style.display = 'block'
-  document.getElementById('songTimeline').style.display = 'block'
-  document.getElementById('songCount').style.display = 'block'
-  document.getElementById('controls-waiting-for-start').hidden = true
-  document.getElementById('controls-start').hidden = true
-
-  document.getElementById('songCount').textContent = `Song count: ${list.length}`
-  document
-    .getElementById('songTimeline')
-    .replaceChildren(...list.map(s => buildSongEntry(s)))
-}
-
-function handleGuessResult (data) {
-  if (data.result === 'correct') {
-    log(`✅ Guess was correct: ${data.message}`)
-    document.getElementById(
-      'songCount'
-    ).textContent = `Song count: ${data.song_list.length}`
-  } else {
-    log(`❌ Guess was wrong: ${data.message}`)
-  }
-
-  const list = data.song_list || []
-
-  const timeline = document.getElementById('songTimeline')
-
-  document.getElementById('newSongContainer').style.display = 'none'
-
-  // Update the timeline first (without the guess)
-  timeline.replaceChildren(...list.map(s => buildSongEntry(s)))
-
-  if (data.result === 'wrong') {
-    const wrongSong = data.last_song || {}
-    const guessedIndex = Number(data.last_index ?? 0)
-
-    const wrongSongEl = buildSongEntry(wrongSong, 'wrong-guess')
-    const wrongLabel = document.createElement('span')
-    wrongLabel.className = 'wrong-label'
-    wrongSongEl.prepend(wrongLabel)
-
-    const children = timeline.children
-
-    if (guessedIndex >= 0 && guessedIndex < children.length) {
-      timeline.insertBefore(wrongSongEl, children[guessedIndex])
-    } else {
-      timeline.appendChild(wrongSongEl)
-    }
-
-    setTimeout(() => {
-      wrongSongEl.classList.add('fade-out')
-      setTimeout(() => {
-        wrongSongEl.remove()
-      }, FADE_DURATION)
-    }, WRONG_GUESS_DISPLAY_TIME)
-
-    pauseAfterGuess = true
-    setTimeout(() => {
-      pauseAfterGuess = false
-
-      // If a guess request came in while we were paused, now we handle it
-      if (queuedGuessRequest) {
-        handleGuessRequest(queuedGuessRequest)
-        queuedGuessRequest = null
-      }
-    }, WRONG_GUESS_DISPLAY_TIME + FADE_DURATION)
-  }
-}
-
-const handleGameOver = data => {
-  log(`🏁 Game Over! Winner: ${data.winner}`)
-  document.getElementById('newSongContainer').style.display = 'none'
-  const winnerHeader = document.getElementById('winnerHeader')
-  const winnerIsYou = data.winner === username
-  winnerHeader.replaceChildren(
-    ...(winnerIsYou
-      ? ['🎉 You win! 🎉', document.createElement('br'), '👩🏻‍🎤 🏆']
-      : [
-          'Game over.',
-          document.createElement('br'),
-          `${data.winner} won the game.`
-        ])
-  )
-
-  winnerHeader.style.display = 'block'
-}
+const roundFlow = createRoundFlow({
+  log,
+  sendGuess: index => connection.send({ type: 'guess', index })
+})
 
 const serverMessageHandlers = {
-  your_turn: handleGuessRequest,
-  guess_result: data => {
-    if (data.player === username) {
-      handleGuessResult(data)
-    }
-  },
+  your_turn: data => roundFlow.guessRequest(data),
+  guess_result: data => roundFlow.guessResult(data),
   welcome: data => log(`👋🏻 ${data.message}`),
   player_joined: data => log(`👋🏻 ${data.message}`),
   player_rejoined: data => {
     if (data.user_name === username) {
-      document.getElementById('newSongContainer').style.display = 'none'
-      showTimeline(data.song_list || [])
-      log('👋🏻 Welcome back! Waiting for the others to guess.')
+      roundFlow.rejoin(data.song_list)
     } else {
       log(`👋🏻 ${data.message}`)
     }
   },
   error: data => log(`🚨 Error: ${data.message}`),
   other_player_guess: data => log(`🧑🏽‍🎤 ${data.message}`),
-  game_over: handleGameOver,
+  game_over: data =>
+    roundFlow.gameOver({ winner: data.winner, winnerIsYou: data.winner === username }),
   user_disconnected: data => log(`❌ ${data.message}`)
 }
 
-// Messages only sent once the Game Session has started.
-const GAME_STARTED_MESSAGE_TYPES = new Set([
-  'your_turn',
-  'guess_result',
-  'other_player_guess',
-  'player_rejoined',
-  'game_over'
-])
-
 function connectWebSocket () {
-  const urlObj = new URL(serverUrl)
-  const wsProtocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl = `${wsProtocol}//${urlObj.host}/ws/${encodeURIComponent(
-    sessionName
-  )}/${encodeURIComponent(username)}`
+  connection = server.connect(sessionName, username, {
+    onMessage: handleServerMessage,
+    onNotice: log
+  })
+}
 
-  socket = new WebSocket(wsUrl)
-
-  socket.onopen = () => {
-    document.getElementById('game').style.display = 'block'
-    log('🔌 Connected to game session.')
-
-    reconnectAttempts = 0
-
-    // Start keepalive ping
-    pingInterval = setInterval(() => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'ping' }))
-      }
-    }, 10000)
-  }
-  socket.onerror = e => {
-    console.error('🚨 WebSocket error:', e)
-    log('🚨 WebSocket encountered an error.')
-  }
-
-  socket.onmessage = event => {
-    try {
-      const data = JSON.parse(event.data)
-      if (GAME_STARTED_MESSAGE_TYPES.has(data.type)) {
-        hideLobbyQr()
-      }
-      if (Object.hasOwn(serverMessageHandlers, data.type)) {
-        serverMessageHandlers[data.type](data)
-      } else {
-        log(`Unknown message type: ${data.type}.`)
-      }
-    } catch (e) {
-      console.error('❌ Error parsing WebSocket message:', e)
-      log('❌ Received invalid data from server.')
-    }
-  }
-
-  socket.onclose = () => {
-    log('❌ Connection closed. Attempting to reconnect...')
-
-    clearInterval(pingInterval)
-
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttempts++
-      setTimeout(() => {
-        log(`🔁 Reconnecting attempt ${reconnectAttempts}...`)
-        connectWebSocket()
-      }, 2000 * reconnectAttempts) // Linear backoff
-    } else {
-      log('❌ Max reconnect attempts reached. Please reload the page.')
-    }
+function handleServerMessage (data) {
+  if (Object.hasOwn(serverMessageHandlers, data.type)) {
+    serverMessageHandlers[data.type](data)
+  } else {
+    log(`Unknown message type: ${data.type}.`)
   }
 }
 
-window.addEventListener('online', () => {
-  if (!socket || socket.readyState === WebSocket.CLOSED) {
-    log('🌐 Network back online. Reconnecting WebSocket...')
-    connectWebSocket()
-  }
-})
 async function fetchJoinableSessions () {
-  try {
-    const res = await fetch(`${serverUrl}/list-sessions`)
-    const data = await res.json()
-    if (!res.ok) {
-      handleHttpError(data)
-      return null
-    }
-    return data.sessions || []
-  } catch (err) {
-    console.error('❌ Failed to fetch sessions:', err)
-    alert('⚠️ Failed to fetch game sessions.')
+  const { data, error } = await server.listSessions()
+  if (error) {
+    log(`❌ Failed to fetch game sessions: ${error}`)
     return null
   }
+  return data
 }
 
 function showSessionChoice (sessions) {
-  document.getElementById('joinGameConfigBox').hidden = false
   document.getElementById('joinGameTitle').textContent = 'Select a Game Session to join'
 
   const dropdown = document.getElementById('sessionDropdown')
@@ -599,339 +171,88 @@ async function joinSession (name) {
   sessionName = name
   const success = await joinGame()
   if (success) {
-    document.getElementById('controls-new-or-join').hidden = true
-    document.getElementById('controls-waiting-for-start').hidden = false
+    screen.showScreen('lobby', { isHost })
   }
   return success
 }
 
 async function joinGame () {
-  try {
-    username = readUsername()
-    if (!username) {
-      return false
-    }
-    const res = await fetch(`${serverUrl}/join`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: sessionName, user_name: username })
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      handleHttpError(data, '❌ Failed to join game')
-      return false
-    }
-
-    log(`✅ Joined game: ${sessionName}`)
-    store(USERNAME_STORAGE_KEY, username)
-    connectWebSocket()
-    showLobbyQr()
-    if (isHost) {
-      document.getElementById('controls-start').hidden = false
-    }
-    document.getElementById('joinGameConfigBox').hidden = true
-    return true
-  } catch (err) {
-    console.error('❌ Failed to join game:', err)
+  username = readUsername()
+  if (!username) {
     return false
   }
-}
-
-// Hosting: "Host a Game" creates the Game Session with the Host Options, which
-// start as these defaults. The Host Options strip under the button summarises
-// them and opens and closes the panel for editing them.
-const TARGET_SONG_COUNT_STORAGE_KEY = 'trackback.targetSongCount'
-const MUSIC_SERVICE_STORAGE_KEY = 'trackback.musicService'
-const DEFAULT_TARGET_SONG_COUNT = 10
-
-const defaultSessionName = name => `Game-by-${name}`
-
-const loadStoredTargetSongCount = () => {
-  const count = parseInt(loadStored(TARGET_SONG_COUNT_STORAGE_KEY))
-  return count > 0 ? count : DEFAULT_TARGET_SONG_COUNT
-}
-
-const rememberHostingChoice = (targetSongCount, musicServiceType) => {
-  store(TARGET_SONG_COUNT_STORAGE_KEY, String(targetSongCount))
-  store(MUSIC_SERVICE_STORAGE_KEY, musicServiceType)
-}
-
-const hostOptionsAreOpen = () => !document.getElementById('gameConfigBox').hidden
-
-const usernameSessionName = () => {
-  const name = document.getElementById('username').value.trim()
-  return name ? defaultSessionName(name) : ''
-}
-
-let musicServicesLoadedFrom = null
-let musicServicesLoading = null
-
-// Callers share one load per server, so a later load can't reset the Music
-// Service the Host picked after an earlier one. A failed load can be retried.
-function loadMusicServicesOnce () {
-  if (musicServicesLoading?.serverUrl !== serverUrl) {
-    const url = serverUrl
-    const promise = loadMusicServiceChoice(
-      loadStored(MUSIC_SERVICE_STORAGE_KEY)
-    ).then(services => {
-      if (services) {
-        musicServicesLoadedFrom = url
-        updateHostOptionsSummary()
-      } else if (musicServicesLoading?.promise === promise) {
-        musicServicesLoading = null
-      }
-      return Boolean(services)
-    })
-    musicServicesLoading = { serverUrl: url, promise }
+  const { error } = await server.joinSession(sessionName, username)
+  if (error) {
+    log(`❌ Failed to join game: ${error}`)
+    return false
   }
-  return musicServicesLoading.promise
-}
 
-// Returns false if the Music Services could not be loaded. `quiet` skips
-// telling the Host, for the load in the background when the page opens.
-async function ensureMusicServiceChoice ({ quiet = false } = {}) {
-  if (musicServicesLoadedFrom === serverUrl) {
-    return true
-  }
-  const loaded = await loadMusicServicesOnce()
-  if (!loaded && !quiet) {
-    alert('⚠️ Failed to fetch the Music Services. Please try again.')
-  }
-  return loaded
-}
-
-// The default name follows the Username until the Host edits it.
-let filledDefaultSessionName = ''
-
-function fillDefaultSessionName () {
-  const nameInput = document.getElementById('sessionNameInput')
-  const name = nameInput.value.trim()
-  if (!name || name === filledDefaultSessionName) {
-    nameInput.value = usernameSessionName()
-    filledDefaultSessionName = nameInput.value
-  }
-}
-
-function hostOptionsSummaryParts () {
-  const count = parseInt(document.getElementById('targetSongCountInput').value)
-  const loaded =
-    musicServicesLoadedFrom !== null && musicServicesLoadedFrom === serverUrl
-  const service = loaded ? selectedMusicService() : ''
-  return [
-    count > 0 ? `${count} ${count === 1 ? 'song' : 'songs'}` : '',
-    service ? MUSIC_SERVICE_SHORT_LABELS[service] || service : ''
-  ].filter(Boolean)
-}
-
-// The name keeps its own case, so it gets a span the strip doesn't uppercase.
-function updateHostOptionsSummary () {
-  const children = hostOptionsSummaryParts().map(part => `${part} · `)
-  const name = document.getElementById('sessionNameInput').value.trim()
-  if (name && name !== usernameSessionName()) {
-    const nameSpan = document.createElement('span')
-    nameSpan.className = 'host-options-name'
-    nameSpan.textContent = name
-    children.push(nameSpan, ' · ')
-  }
-  document.getElementById('hostOptionsSummary').replaceChildren(...children)
-}
-
-// A count the browser restored into the field wins over the stored one.
-async function prepareHostOptions () {
-  const countInput = document.getElementById('targetSongCountInput')
-  if (countInput.value === countInput.defaultValue) {
-    countInput.value = String(loadStoredTargetSongCount())
-  }
-  updateHostOptionsSummary()
-  serverUrl = getServerUrl()
-  await ensureMusicServiceChoice({ quiet: true })
-}
-
-function showHostOptionsError (error) {
-  const errorBox = document.getElementById('hostOptionsError')
-  errorBox.textContent = error
-  errorBox.hidden = !error
-}
-
-function setHostOptionsOpen (open) {
-  document.getElementById('gameConfigBox').hidden = !open
-  document
-    .getElementById('hostOptionsBtn')
-    .setAttribute('aria-expanded', String(open))
-  document.getElementById('hostOptionsArrow').textContent = open ? '▴' : '▾'
-}
-
-async function openHostOptions (error = '') {
-  showHostOptionsError(error)
-  if (hostOptionsAreOpen()) {
-    return
-  }
-  serverUrl = getServerUrl()
-  if (!(await ensureMusicServiceChoice())) {
-    return
-  }
-  fillDefaultSessionName()
-  updateHostOptionsSummary()
-  setHostOptionsOpen(true)
-}
-
-async function toggleHostOptions () {
-  if (hostOptionsAreOpen()) {
-    setHostOptionsOpen(false)
-    return
-  }
-  await openHostOptions()
-}
-
-function hostOptionsProblem () {
-  const targetSongCount = parseInt(
-    document.getElementById('targetSongCountInput').value.trim()
-  )
-  if (isNaN(targetSongCount) || targetSongCount <= 0) {
-    return 'Please enter a valid number greater than 0 for songs!'
-  }
-  const name = document.getElementById('sessionNameInput').value.trim()
-  if (!name) {
-    return 'Please enter a Game Session Name!'
-  }
-  if (!isValidSessionName(name)) {
-    return `Game Session Names can have up to ${SESSION_NAME_MAX_LENGTH} letters, digits, "_", "-" and single spaces.`
-  }
-  return ''
-}
-
-// Returns null after showing the problem inside Host Options.
-async function readHostOptions () {
-  const problem = hostOptionsProblem()
-  if (problem) {
-    await openHostOptions(problem)
-    return null
-  }
-  return {
-    name: document.getElementById('sessionNameInput').value.trim(),
-    targetSongCount: parseInt(
-      document.getElementById('targetSongCountInput').value.trim()
-    )
-  }
+  log(`✅ Joined game: ${sessionName}`)
+  store(USERNAME_KEY, username)
+  connectWebSocket()
+  screen.loadLobbyQr(server.joinQrUrl(sessionName))
+  return true
 }
 
 // A failed lookup counts as not listed; the server rejects taken names anyway.
 async function isListedSessionName (name) {
-  try {
-    const res = await fetch(`${serverUrl}/list-sessions`)
-    if (!res.ok) {
-      return false
-    }
-    const data = await res.json()
-    return (data.sessions || []).includes(name)
-  } catch (err) {
-    console.error('❌ Failed to fetch sessions:', err)
-    return false
-  }
+  const { data, error } = await server.listSessions()
+  return !error && data.includes(name)
 }
 
 async function hostGame () {
-  serverUrl = getServerUrl()
   username = readUsername()
   if (!username) {
     return
   }
-  if (!(await ensureMusicServiceChoice())) {
+  const choice = await hostOptions.readHostingChoice()
+  if (!choice) {
     return
   }
-  fillDefaultSessionName()
-  const options = await readHostOptions()
-  if (!options) {
-    return
-  }
-  sessionName = options.name
-  const musicServiceType = selectedMusicService()
+  sessionName = choice.sessionName
 
-  if (musicServiceType === 'spotify') {
+  if (choice.musicServiceType === 'spotify') {
     // Catch a taken name before the Spotify login; the callback still rejects
     // names that /list-sessions doesn't show (running Game Sessions).
     if (await isListedSessionName(sessionName)) {
       const error = `Game session '${sessionName}' already exists. Choose a different name.`
       log(`❌ Failed to create Game Session: ${error}`)
-      await openHostOptions(error)
+      await hostOptions.showHostingProblem(error)
       return
     }
     // The Spotify callback creates the Game Session and redirects back with a
     // join link, so the Host lands in the Lobby in this tab. The callback may
     // land on another origin, so remember the choice before leaving.
-    store(USERNAME_STORAGE_KEY, username)
-    rememberHostingChoice(options.targetSongCount, musicServiceType)
-    showHostOptionsError('')
-    const stateParam = encodeURIComponent(
-      JSON.stringify({
-        game_id: sessionName,
-        target_song_count: options.targetSongCount,
+    store(USERNAME_KEY, username)
+    hostOptions.rememberHostingChoice(choice)
+    window.location.assign(
+      server.spotifyLoginUrl({
+        sessionName,
+        targetSongCount: choice.targetSongCount,
         username
       })
     )
-    window.location.assign(`${serverUrl}/spotify-login?state=${stateParam}`)
     return
   }
 
-  try {
-    const res = await fetch(`${serverUrl}/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        game_id: sessionName,
-        target_song_count: options.targetSongCount,
-        music_service_type: musicServiceType
-      })
-    })
-    const data = await res.json()
-
-    if (!res.ok) {
-      handleHttpError(data, '❌ Failed to create Game Session')
-      if (res.status === 409 || hostOptionsAreOpen()) {
-        await openHostOptions(describeHttpError(data))
-      }
-      return
+  const { error, status } = await server.createSession(choice)
+  if (error) {
+    log(`❌ Failed to create Game Session: ${error}`)
+    if (status === 409 || (status !== undefined && hostOptions.hostOptionsAreOpen())) {
+      await hostOptions.showHostingProblem(error)
     }
-  } catch (err) {
-    console.error('❌ Failed to create Game Session:', err)
-    log('❌ Failed to create Game Session: the server could not be reached.')
     return
   }
-  rememberHostingChoice(options.targetSongCount, musicServiceType)
-  showHostOptionsError('')
-  setHostOptionsOpen(false)
+  hostOptions.rememberHostingChoice(choice)
+  hostOptions.closeHostOptions()
   isHost = true
 
   await joinSession(sessionName)
 }
 
 document.getElementById('hostGameBtn').onclick = () => hostGame()
-document.getElementById('hostOptionsBtn').onclick = () => toggleHostOptions()
-
-document
-  .getElementById('username')
-  .addEventListener('input', () => fillDefaultSessionName())
-
-for (const id of ['targetSongCountInput', 'sessionNameInput', 'username']) {
-  document
-    .getElementById(id)
-    .addEventListener('input', () => updateHostOptionsSummary())
-}
-
-for (const id of [
-  'targetSongCountInput',
-  'sessionNameInput',
-  'musicServiceDropdown'
-]) {
-  document
-    .getElementById(id)
-    .addEventListener('input', () => showHostOptionsError(''))
-}
 
 document.getElementById('joinGameBtn').onclick = async () => {
-  serverUrl = getServerUrl()
   username = readUsername()
   if (!username) {
     return
@@ -952,75 +273,19 @@ document.getElementById('joinGameBtn').onclick = async () => {
     return
   }
 
-  document.getElementById('controls-new-or-join').hidden = true
   showSessionChoice(sessions)
+  screen.showScreen('setup', { hostAndJoin: false, sessionChoice: true })
 }
-
-document.getElementById('lobbyQrToggleBtn').onclick = () => toggleLobbyQrSize()
 
 document.getElementById('startGameBtn').onclick = async () => {
-  serverUrl = getServerUrl()
-
-  try {
-    const res = await fetch(`${serverUrl}/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ game_id: sessionName })
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      handleHttpError(data, '❌ Failed to start game')
-      return
-    }
-
-    log(`🎮 ${data.message || 'Game started!'}`)
-  } catch (err) {
-    console.error('❌ Failed to start game:', err)
+  const { data, error } = await server.startSession(sessionName)
+  if (error) {
+    log(`❌ Failed to start game: ${error}`)
+    return
   }
-
-  document.getElementById('controls-start').hidden = true
-  hideLobbyQr()
-  document.getElementById('timelineHeader').style.display = 'block'
-  document.getElementById('songTimeline').style.display = 'block'
-  document.getElementById('songCount').style.display = 'block'
-}
-
-const setupDragDrop = () => {
-  const timeline = document.getElementById('songTimeline')
-  const newSongContainer = document.getElementById('newSongContainer')
-
-  new Sortable(timeline, {
-    group: 'songs',
-    animation: 150,
-    sort: true,
-    draggable: '.song-entry',
-    filter: ':not(#new-song)',
-    preventOnFilter: true,
-    scroll: true,
-    scrollSensitivity: 300,
-    scrollSpeed: 5,
-    onAdd: evt => {
-      if (evt.item.id === 'new-song') {
-        const newIndex = evt.newIndex
-
-        evt.item.remove()
-
-        socket.send(JSON.stringify({ type: 'guess', index: newIndex }))
-
-        Sortable.get(timeline).option('disabled', true)
-        Sortable.get(newSongContainer).option('disabled', true)
-      }
-    },
-    onStart: () => {
-      timeline.classList.add('drag-active')
-    },
-    onEnd: () => {
-      timeline.classList.remove('drag-active')
-    }
-  })
-
-  new Sortable(newSongContainer, {
-    group: 'songs',
-    sort: false
-  })
+  log(`🎮 ${data.message || 'Game started!'}`)
+  // The first Round's Song may already be on screen.
+  if (screen.currentScreen() === 'lobby') {
+    screen.showScreen('playing')
+  }
 }

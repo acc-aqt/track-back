@@ -2,6 +2,7 @@
 
 import json
 import logging
+import mimetypes
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from importlib.resources import files
@@ -38,6 +39,8 @@ from track_back.server.errors import (
 from track_back.server.game_sessions import GameSession, GameSessionManager
 from track_back.server.messages import error_message, game_over_message
 from track_back.server.names import (
+    NAME_PATTERN,
+    SESSION_NAME_MAX_LENGTH,
     USERNAME_MAX_LENGTH,
     SessionName,
     TargetSongCount,
@@ -226,14 +229,22 @@ class Server:
         for error_type in DOMAIN_ERROR_STATUS_CODES:
             app.add_exception_handler(error_type, self._domain_error_response)
 
+        # Browsers refuse module scripts without a JavaScript type, and the
+        # Windows registry can map .js to text/plain.
+        mimetypes.add_type("text/javascript", ".js")
         app.mount("/", StaticFiles(directory=str(WEB_UI_DIR), html=True), name="web_ui")
 
         return app
 
     @staticmethod
     async def _server_config(request: Request) -> Response:
-        """Point the bundled Web UI at the origin it was loaded from."""
-        config = {"TRACK_BACK_SERVER_URL": str(request.base_url).rstrip("/")}
+        """Point the bundled Web UI at its origin and hand it the name rules."""
+        config = {
+            "TRACK_BACK_SERVER_URL": str(request.base_url).rstrip("/"),
+            "NAME_PATTERN": NAME_PATTERN,
+            "USERNAME_MAX_LENGTH": USERNAME_MAX_LENGTH,
+            "SESSION_NAME_MAX_LENGTH": SESSION_NAME_MAX_LENGTH,
+        }
         return Response(
             content=f"window.TRACK_BACK_CONFIG = {json.dumps(config)};\n",
             media_type="text/javascript",

@@ -12,7 +12,11 @@ from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import MusicServiceType
 from track_back.server.game_sessions import GameSession
-from track_back.server.names import SESSION_NAME_MAX_LENGTH
+from track_back.server.names import (
+    NAME_PATTERN,
+    SESSION_NAME_MAX_LENGTH,
+    USERNAME_MAX_LENGTH,
+)
 from track_back.server.server import Server
 
 WEB_UI = files("track_back") / "web_ui"
@@ -192,7 +196,7 @@ def test_join_accepts_valid_user_names(
     assert response.status_code == 200
 
 
-BROWSER_NAME_PATTERN = r"/^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$/u"
+BROWSER_NAME_PATTERN = r"^[\p{L}\p{N}_-]+( [\p{L}\p{N}_-]+)*$"
 
 NAMES_THE_BROWSER_ACCEPTS = [
     "Дмитрий",
@@ -217,11 +221,6 @@ NAMES_THE_BROWSER_REJECTS = [
 ]
 
 
-BROWSER_SESSION_NAME_RULE = (
-    "const isValidSessionName = id =>\n"
-    "  id.length <= SESSION_NAME_MAX_LENGTH && NAME_PATTERN.test(id)"
-)
-
 SESSION_NAMES_THE_BROWSER_ACCEPTS = [
     *NAMES_THE_BROWSER_ACCEPTS,
     "g" * SESSION_NAME_MAX_LENGTH,
@@ -233,21 +232,18 @@ SESSION_NAMES_THE_BROWSER_REJECTS = [
 ]
 
 
-def _browser_script() -> str:
-    return (WEB_UI / "script.js").read_text()
+def test_served_name_pattern_is_the_one_under_test() -> None:
+    """The browser checks names with the pattern the server serves; the cases below use it."""
+    assert NAME_PATTERN == BROWSER_NAME_PATTERN
 
 
-def test_browser_name_pattern_is_the_one_under_test() -> None:
-    """The name cases below are checked against this exact browser pattern."""
-    assert f"const NAME_PATTERN = {BROWSER_NAME_PATTERN}" in _browser_script()
-
-
-def test_browser_session_name_rule_is_the_one_under_test() -> None:
-    """The browser checks Game Session Names with the name pattern and the server's cap."""
-    script = _browser_script()
-    assert f"const SESSION_NAME_MAX_LENGTH = {SESSION_NAME_MAX_LENGTH}\n" in script
-    assert BROWSER_SESSION_NAME_RULE in script
-    assert "if (!isValidSessionName(name)) {" in script
+def test_browser_fallback_name_rules_match_the_server() -> None:
+    """Against a server that serves no name rules, the browser falls back to the same ones."""
+    names_module = (WEB_UI / "names.js").read_text()
+    js_pattern = NAME_PATTERN.replace("\\", "\\\\")
+    assert f"NAME_PATTERN: '{js_pattern}'," in names_module
+    assert f"USERNAME_MAX_LENGTH: {USERNAME_MAX_LENGTH}," in names_module
+    assert f"SESSION_NAME_MAX_LENGTH: {SESSION_NAME_MAX_LENGTH}\n" in names_module
 
 
 @pytest.mark.parametrize("user_name", NAMES_THE_BROWSER_ACCEPTS)
