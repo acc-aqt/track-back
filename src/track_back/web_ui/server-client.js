@@ -116,15 +116,25 @@ export function connect (sessionName, username, { onOpen, onMessage, onNotice })
 
   let socket
   let pingInterval = null
+  let reconnectTimer = null
   let reconnectAttempts = 0
 
+  const stopTimers = () => {
+    clearInterval(pingInterval)
+    pingInterval = null
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+
   const open = () => {
+    stopTimers()
     socket = new WebSocket(wsUrl)
 
     socket.onopen = () => {
       onOpen?.()
       onNotice('🔌 Connected to game session.')
       reconnectAttempts = 0
+      clearInterval(pingInterval)
       pingInterval = setInterval(() => {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: 'ping' }))
@@ -148,10 +158,10 @@ export function connect (sessionName, username, { onOpen, onMessage, onNotice })
 
     socket.onclose = () => {
       onNotice('❌ Connection closed. Attempting to reconnect...')
-      clearInterval(pingInterval)
+      stopTimers()
       if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         reconnectAttempts++
-        setTimeout(() => {
+        reconnectTimer = setTimeout(() => {
           onNotice(`🔁 Reconnecting attempt ${reconnectAttempts}...`)
           open()
         }, RECONNECT_BACKOFF * reconnectAttempts)
