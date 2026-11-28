@@ -356,15 +356,16 @@ class Server:
 
         connection_manager = game_session.connection_manager
         connection_manager.attach(username, websocket)
-        await connection_manager.deliver(outgoing)
-
         try:
+            await connection_manager.deliver(outgoing)
             while True:
                 raw_data = await websocket.receive_text()
                 await self._handle_message(
                     ClientMessageContext(websocket, username, game_session), raw_data
                 )
         except WebSocketDisconnect:
+            pass
+        finally:
             connection_manager.detach(username)
             await connection_manager.deliver(game_session.disconnect(username))
             self.game_sessions.release_if_empty(game_session)

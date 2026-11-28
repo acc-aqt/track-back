@@ -9,6 +9,9 @@ from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
 from starlette.websockets import WebSocketDisconnect
 
+from track_back.server.game_sessions import GameSession
+from track_back.server.messages import OutgoingMessage
+
 YESTERDAY = {
     "title": "Yesterday",
     "artist": "The Beatles",
@@ -200,3 +203,29 @@ def test_connect_to_finished_game_gets_game_over(
             }
             with pytest.raises(WebSocketDisconnect):
                 bob.receive_json()
+
+
+def test_rejoin_whose_welcome_cannot_be_sent_leaves_the_player_disconnected(
+    client: TestClient,
+    create_and_join: Callable[..., None],
+    get_session: Callable[[str], GameSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_name = "welcome-send-fails"
+    with _started_game(client, create_and_join, session_name):
+        connection_manager = get_session(session_name).connection_manager
+        deliver = connection_manager.deliver
+
+        async def deliver_failing_once(_outgoing: list[OutgoingMessage]) -> None:
+            monkeypatch.setattr(connection_manager, "deliver", deliver)
+            raise RuntimeError("Sending the welcome failed.")
+
+        monkeypatch.setattr(connection_manager, "deliver", deliver_failing_once)
+        with (
+            pytest.raises(RuntimeError, match="welcome failed"),
+            client.websocket_connect(f"/ws/{session_name}/bob") as bob,
+        ):
+            _receive(bob)
+
+        with client.websocket_connect(f"/ws/{session_name}/bob") as bob:
+            assert _receive(bob)["type"] == "welcome"
