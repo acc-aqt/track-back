@@ -8,3 +8,4 @@ We considered a server-wide setting that a Player could change from the Web UI, 
 
 - `POST /create` treats `music_service_type` as optional and falls back to the server's Music Service. A service that isn't available gets 400.
 - The Mock Music Service is only available when the server was started with it, so it can't be picked on a production server. Scripts that created Mock Game Sessions on a server started without `--music-service mock` now get 400.
+- `POST /create` refuses Spotify with 400: a Spotify Game Session needs the Host's Spotify login, so it is created through `/spotify-login` instead.

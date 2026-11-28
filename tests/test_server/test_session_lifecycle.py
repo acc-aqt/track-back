@@ -2,6 +2,7 @@ import json
 import sys
 from collections.abc import Callable
 from importlib.resources import files
+from typing import Any
 
 import pytest
 from fastapi import WebSocketDisconnect
@@ -10,7 +11,7 @@ from fastapi.testclient import TestClient
 from track_back.music_service.apple_music import AppleMusicAdapter
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import MusicServiceType
-from track_back.server.game_sessions import GameSession, game_session_manager
+from track_back.server.game_sessions import GameSession
 from track_back.server.names import SESSION_NAME_MAX_LENGTH
 from track_back.server.server import Server
 
@@ -44,13 +45,13 @@ def test_create_with_unknown_music_service_is_rejected(client: TestClient) -> No
         },
     )
     assert response.status_code == 422
-    assert game_session_manager.get_game_session("bad-service") is None
+    assert client.get("/list-sessions").json() == {"sessions": []}
 
 
 def test_create_accepts_every_music_service_the_server_reports(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Every service /music-services offers the Web UI creates a game."""
+    """Every service /music-services offers creates a game; Spotify via its login."""
     monkeypatch.setattr(sys, "platform", "darwin")
     for key in ("SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"):
         monkeypatch.setenv(key, "value")
@@ -71,7 +72,8 @@ def test_create_accepts_every_music_service_the_server_reports(
                 "music_service_type": music_service_type,
             },
         )
-        assert response.status_code == 201
+        expected = 400 if music_service_type == "spotify" else 201
+        assert response.status_code == expected
 
 
 @pytest.mark.parametrize(
@@ -105,12 +107,13 @@ def test_malformed_message_gets_error_and_socket_stays_usable(
         assert ws.receive_json()["type"] == "guess_result"
 
 
-def test_music_service_failure_during_guess_is_reported(
+def test_music_service_failure_on_the_rounds_first_guess_is_retryable(
     client: TestClient,
     create_and_join: Callable[..., None],
     get_session: Callable[[str], GameSession],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """A Round whose Song can't be read reports it on a Guess, which can be retried."""
     session_name = "music-service-failure"
     create_and_join(session_name, "solo")
     music_service = get_session(session_name).game_logic.music_service
@@ -128,6 +131,44 @@ def test_music_service_failure_during_guess_is_reported(
         response = ws.receive_json()
         assert response["type"] == "error"
         assert "No active Spotify playback" in response["message"]
+
+        monkeypatch.undo()
+        ws.send_json({"type": "guess", "index": 0})
+        assert ws.receive_json()["type"] == "guess_result"
+
+
+def test_failed_skip_on_the_rounds_last_guess_leaves_the_guess_retryable(
+    client: TestClient,
+    create_and_join: Callable[..., None],
+    get_session: Callable[[str], GameSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Guess whose Round can't advance isn't counted, so it can be sent again."""
+    session_name = "skip-failure"
+    create_and_join(session_name, "solo")
+    music_service = get_session(session_name).game_logic.music_service
+
+    def broken_next_track() -> None:
+        raise MusicServiceError("Cannot skip to the next track.")
+
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
+        assert ws.receive_json()["type"] == "welcome"
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
+        assert ws.receive_json()["type"] == "your_turn"
+
+        monkeypatch.setattr(music_service, "next_track", broken_next_track)
+        ws.send_json({"type": "guess", "index": 0})
+        assert ws.receive_json() == {
+            "type": "error",
+            "message": "Cannot skip to the next track.",
+        }
+
+        monkeypatch.undo()
+        ws.send_json({"type": "guess", "index": 0})
+        result = ws.receive_json()
+        assert result["type"] == "guess_result"
+        assert len(result["song_list"]) == 1
+        assert ws.receive_json()["type"] == "your_turn"
 
 
 @pytest.mark.parametrize(
@@ -252,9 +293,7 @@ def test_server_rejects_session_names_the_browser_rejects(
 
 
 def test_websocket_rejects_invalid_user_name(
-    client: TestClient,
-    create_game: Callable[[str], None],
-    get_session: Callable[[str], GameSession],
+    client: TestClient, create_game: Callable[[str], None]
 ) -> None:
     session_name = "ws-names"
     create_game(session_name)
@@ -263,7 +302,8 @@ def test_websocket_rejects_invalid_user_name(
         client.websocket_connect(f"/ws/{session_name}/%3Cimg%20src%3Dx%3E") as ws,
     ):
         ws.receive_text()
-    assert get_session(session_name).connection_manager.player_connections == {}
+    response = client.post("/start", json={"game_id": session_name})
+    assert response.status_code == 400
 
 
 def test_playback_failure_on_start_is_reported_as_server_error(
@@ -396,4 +436,21 @@ def test_create_rejects_target_song_count_below_one(
         },
     )
     assert response.status_code == 422
-    assert game_session_manager.get_game_session("too-few-songs") is None
+    assert client.get("/list-sessions").json() == {"sessions": []}
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "request_args"),
+    [
+        ("post", "/join", {"json": {"game_id": "nowhere", "user_name": "alice"}}),
+        ("post", "/start", {"json": {"game_id": "nowhere"}}),
+        ("get", "/join-qr.svg", {"params": {"session": "nowhere"}}),
+    ],
+)
+def test_unknown_game_session_is_not_found(
+    client: TestClient, method: str, path: str, request_args: dict[str, Any]
+) -> None:
+    response = client.request(method, path, **request_args)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Game session nowhere not found."}

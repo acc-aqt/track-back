@@ -9,12 +9,14 @@ from pathlib import Path
 
 from track_back import __version__
 from track_back.music_service.selection import (
+    MUSIC_SERVICES,
     MusicServiceType,
     available_music_services,
     default_music_service,
 )
 from track_back.server import config, init_config
-from track_back.server.server import Server, base_url, uses_ssl
+from track_back.server.runner import base_url, uses_ssl
+from track_back.server.server import Server
 
 logger = logging.getLogger(__name__)
 
@@ -65,14 +67,6 @@ def server_settings(args: argparse.Namespace) -> tuple[int, int]:
     return port, log_level
 
 
-UNAVAILABLE_MUSIC_SERVICE_FIXES = {
-    MusicServiceType.SPOTIFY: "Spotify needs credentials: "
-    "run `track-back-server init` to add them.",
-    MusicServiceType.APPLE_MUSIC: "Apple Music needs macOS and the Music app: "
-    "try --music-service spotify.",
-}
-
-
 class MusicServiceConfigError(Exception):
     """The chosen Music Service is invalid or can't work on this machine."""
 
@@ -96,7 +90,7 @@ def usable_music_service(args: argparse.Namespace) -> MusicServiceType:
     """Return the chosen Music Service, or raise if it can't work here."""
     music_service = chosen_music_service(args)
     if music_service not in available_music_services(music_service):
-        raise MusicServiceConfigError(UNAVAILABLE_MUSIC_SERVICE_FIXES[music_service])
+        raise MusicServiceConfigError(MUSIC_SERVICES[music_service].unavailable_hint)
     return music_service
 
 
