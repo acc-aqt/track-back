@@ -140,8 +140,13 @@ export function createRoundFlow ({ log, sendGuess }) {
   const dragDrop = createDragDrop(sendGuess)
   let paused = false
   let queuedGuessRequest = null
+  let pauseTimer = null
+  let over = false
 
   function guessRequest (data) {
+    if (over) {
+      return
+    }
     if (paused) {
       queuedGuessRequest = data
       return
@@ -165,7 +170,7 @@ export function createRoundFlow ({ log, sendGuess }) {
 
   function pauseAfterWrongGuess () {
     paused = true
-    setTimeout(() => {
+    pauseTimer = setTimeout(() => {
       paused = false
       if (queuedGuessRequest) {
         const data = queuedGuessRequest
@@ -201,6 +206,10 @@ export function createRoundFlow ({ log, sendGuess }) {
   }
 
   function gameOver ({ winner, winnerIsYou }) {
+    over = true
+    clearTimeout(pauseTimer)
+    queuedGuessRequest = null
+    dragDrop.setEnabled(false)
     log(`🏁 Game Over! Winner: ${winner}`)
     screen.showScreen('gameOver')
     document.getElementById('winnerHeader').replaceChildren(
