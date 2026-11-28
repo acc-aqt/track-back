@@ -10,8 +10,10 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from fastapi.testclient import TestClient
 
 from track_back.music_service.selection import MusicServiceType
+from track_back.server.server import Server
 
 
 @pytest.fixture(autouse=True)
@@ -412,6 +414,30 @@ def test_apple_music_on_non_mac_refuses_to_start_and_suggests_spotify(
     assert "macOS" in message
     assert "Music app" in message
     assert "--music-service spotify" in message
+
+
+@pytest.mark.parametrize("chosen", list(MusicServiceType))
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
+@pytest.mark.parametrize("spotify_credentials", [True, False])
+def test_server_starts_exactly_when_music_services_offers_the_chosen_one(
+    monkeypatch: pytest.MonkeyPatch,
+    chosen: MusicServiceType,
+    platform: str,
+    spotify_credentials: bool,
+) -> None:
+    monkeypatch.setattr(sys, "platform", platform)
+    for key in SPOTIFY_KEYS:
+        monkeypatch.setenv(key, "value" if spotify_credentials else "")
+    client = TestClient(Server(music_service=chosen).app)
+    offered = client.get("/music-services").json()["available"]
+
+    try:
+        run_main(monkeypatch, ["--music-service", chosen])
+        started = True
+    except SystemExit:
+        started = False
+
+    assert started == (chosen in offered)
 
 
 def test_invalid_music_service_variable_refuses_to_start_and_lists_valid_values(

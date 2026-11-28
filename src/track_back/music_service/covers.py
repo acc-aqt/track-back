@@ -25,6 +25,3 @@ class CoverStore:
 def cover_url(cover_id: str) -> str:
     """Return the server-relative URL a browser loads the cover from."""
     return f"{COVER_URL_PREFIX}{cover_id}"
-
-
-cover_store = CoverStore()

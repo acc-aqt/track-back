@@ -36,11 +36,11 @@ Use `wss://` when the server runs with SSL.
 
 1. The client calls `POST /join`. The server registers the name and broadcasts `player_joined` to everyone already connected.
 2. The client opens the WebSocket. The server sends `welcome` and attaches the socket to the player.
-3. The host calls `POST /start`. It fails with 409 if the game is already running or if any registered player has no open WebSocket. On success, every player receives `your_turn`.
+3. The host calls `POST /start`. It fails with 409 if the game is already running or over, or if any registered player has no open WebSocket. On success, every player receives `your_turn`.
 
 A client may also open the WebSocket in the lobby without calling `POST /join` first. The server then registers the name silently: it sends `welcome` to that client, but nobody receives `player_joined`.
 
-A player who disconnects in the lobby is removed from the session; everyone else receives `user_disconnected`. When the last player leaves the lobby, the session is deleted.
+A player who disconnects in the lobby is removed from the session; everyone else receives `user_disconnected`. When the last player leaves the lobby, the session is deleted. If players who called `POST /join` but never opened a WebSocket remain, the lobby is kept for the same grace period as an empty running game (see below), and removed if nobody has connected by then.
 
 ### Connecting to a running game (rejoin)
 
@@ -190,7 +190,7 @@ Messages the server sends:
 - `Game not running.`: `guess` before the game started or after it ended.
 - `<username> has already guessed this song.`: a second `guess` in the same round.
 - `Invalid position <index>.`: `index` is outside the timeline.
-- A music-service error text, if the current song can't be read.
+- A music-service error text, if the Round's Song couldn't be read on the Round's first `guess`, not even after the server started playback again, or the music service couldn't skip to the next track on the Round's last `guess`. The server reads the Song on the first `guess`, not when the Round starts, so that a skip to the next track has time to take effect. The `guess` isn't counted and can be sent again.
 - `Player '<username>' is not a player in game session <game_id>. Only one of the following players can rejoin: <names>.` / `Player '<username>' is already connected to game session <game_id>. Only one of the following players can rejoin: <names>.`: rejected rejoin. `POST /join` on a running game returns the same text as a 409.
 
 ## Client to server messages

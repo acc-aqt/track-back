@@ -105,3 +105,30 @@ def test_music_services_reports_default_and_available(
 
     assert response.status_code == 200
     assert response.json() == {"default": chosen, "available": available}
+
+
+def test_create_with_spotify_points_to_the_spotify_login(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Only the Spotify login creates Spotify Game Sessions; the name stays free."""
+    client = client_for(
+        monkeypatch,
+        MusicServiceType.SPOTIFY,
+        platform="linux",
+        spotify_credentials=True,
+    )
+
+    response = client.post(
+        "/create",
+        json={
+            "game_id": "party",
+            "target_song_count": 2,
+            "music_service_type": "spotify",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "/spotify-login" in response.json()["detail"]
+    assert client.get("/list-sessions").json() == {"sessions": []}
+    join = client.post("/join", json={"game_id": "party", "user_name": "anna"})
+    assert join.status_code == 404

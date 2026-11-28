@@ -3,8 +3,12 @@
 from collections.abc import Callable
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketTestSession
+
+from track_back.music_service.error import MusicServiceError
+from track_back.server.game_sessions import GameSession
 
 YESTERDAY = {
     "title": "Yesterday",
@@ -112,3 +116,33 @@ def test_winning_guess_sends_no_your_turn(client: TestClient) -> None:
         assert _receive(ws1)["type"] == "game_over"
         assert _receive(ws2)["type"] == "other_player_guess"
         assert _receive(ws2)["type"] == "game_over"
+
+
+def test_failed_skip_after_a_disconnect_still_starts_the_next_round(
+    client: TestClient,
+    create_and_join: Callable[..., None],
+    get_session: Callable[[str], GameSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_name = "skip-failure-on-disconnect"
+    create_and_join(session_name, "alice", "bob")
+    music_service = get_session(session_name).game_logic.music_service
+
+    def broken_next_track() -> None:
+        raise MusicServiceError("Cannot skip to the next track.")
+
+    with (
+        client.websocket_connect(f"/ws/{session_name}/alice") as ws1,
+        client.websocket_connect(f"/ws/{session_name}/bob") as ws2,
+    ):
+        _receive(ws1)
+        _receive(ws2)
+        _start(client, session_name, ws1, ws2)
+        ws1.send_json({"type": "guess", "index": 0})
+        assert _receive(ws1)["type"] == "guess_result"
+
+        monkeypatch.setattr(music_service, "next_track", broken_next_track)
+        ws2.close()
+
+        assert _receive(ws1)["type"] == "user_disconnected"
+        assert _receive(ws1)["type"] == "your_turn"
