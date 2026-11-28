@@ -159,3 +159,21 @@ def test_reconnect_after_disconnect(
             # already guessed this round
             ws2.send_json({"type": "guess", "index": 0})
             assert ws2.receive_json()["type"] == "error"
+
+
+def test_closing_a_lobby_tab_keeps_the_other_tab_with_the_same_name(
+    client: TestClient, create_and_join: Callable[..., None]
+) -> None:
+    session_name = "two-tabs"
+    create_and_join(session_name, "alice")
+    with (
+        client.websocket_connect(f"/ws/{session_name}/alice") as first_tab,
+        client.websocket_connect(f"/ws/{session_name}/alice") as second_tab,
+    ):
+        assert first_tab.receive_json()["type"] == "welcome"
+        assert second_tab.receive_json()["type"] == "welcome"
+
+        first_tab.close()
+
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
+        assert second_tab.receive_json()["type"] == "your_turn"

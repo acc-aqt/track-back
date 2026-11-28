@@ -366,9 +366,9 @@ class Server:
         except WebSocketDisconnect:
             pass
         finally:
-            connection_manager.detach(username)
-            await connection_manager.deliver(game_session.disconnect(username))
-            self.game_sessions.release_if_empty(game_session)
+            if connection_manager.detach(username, websocket):
+                await connection_manager.deliver(game_session.disconnect(username))
+                self.game_sessions.release_if_empty(game_session)
 
     @staticmethod
     async def _handle_message(context: ClientMessageContext, raw_data: str) -> None:

@@ -33,9 +33,12 @@ class ConnectionManager:
         """Remember the Player's live connection."""
         self.connections[username] = connection
 
-    def detach(self, username: str) -> None:
-        """Forget the Player's connection."""
-        self.connections.pop(username, None)
+    def detach(self, username: str, connection: ClientConnection) -> bool:
+        """Forget this connection of the Player; return False if a newer one replaced it."""
+        if self.connections.get(username) is not connection:
+            return False
+        del self.connections[username]
+        return True
 
     async def deliver(self, outgoing: list[OutgoingMessage]) -> None:
         """Send each message to the live connections it is addressed to."""
