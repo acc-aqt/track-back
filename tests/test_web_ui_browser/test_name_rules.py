@@ -23,11 +23,20 @@ NAMES = [
     "semi;colon",
     "<script>",
 ]
-USERNAMES = [*NAMES, "u" * USERNAME_MAX_LENGTH, "u" * (USERNAME_MAX_LENGTH + 1)]
+# A letter outside the Basic Multilingual Plane is two UTF-16 code units in the
+# browser but one character on the server.
+WIDE_LETTER = "\U0001d400"
+USERNAMES = [
+    *NAMES,
+    "u" * USERNAME_MAX_LENGTH,
+    "u" * (USERNAME_MAX_LENGTH + 1),
+    WIDE_LETTER * (USERNAME_MAX_LENGTH // 2 + 1),
+]
 SESSION_NAMES = [
     *NAMES,
     "g" * SESSION_NAME_MAX_LENGTH,
     "g" * (SESSION_NAME_MAX_LENGTH + 1),
+    WIDE_LETTER * (SESSION_NAME_MAX_LENGTH // 2 + 1),
 ]
 
 USERNAME_RULE = re.compile(r"Usernames can have up to (\d+)")
