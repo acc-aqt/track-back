@@ -2,6 +2,7 @@
 
 import json
 import logging
+import mimetypes
 import os
 import socket
 from collections.abc import Awaitable, Callable
@@ -305,6 +306,9 @@ class Server:
         for error_type in DOMAIN_ERROR_STATUS_CODES:
             app.add_exception_handler(error_type, self._domain_error_response)
 
+        # Browsers refuse module scripts without a JavaScript type, and the
+        # Windows registry can map .js to text/plain.
+        mimetypes.add_type("text/javascript", ".js")
         app.mount("/", StaticFiles(directory=str(WEB_UI_DIR), html=True), name="web_ui")
 
         return app

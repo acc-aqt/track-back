@@ -1,4 +1,5 @@
 import json
+import mimetypes
 import re
 from collections.abc import Callable
 
@@ -39,6 +40,20 @@ def test_web_ui_assets_load_from_the_server(
     response = client.get(path)
     assert response.status_code == 200
     assert content_type in response.headers["content-type"]
+
+
+def test_scripts_are_javascript_where_the_system_maps_js_to_plain_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    system_types = mimetypes.MimeTypes()
+    system_types.add_type("text/plain", ".js")
+    monkeypatch.setattr(mimetypes, "_db", system_types)
+    monkeypatch.setattr(mimetypes, "inited", True)
+    client = TestClient(Server(music_service=MusicServiceType.MOCK).app)
+
+    response = client.get("/script.js")
+
+    assert response.headers["content-type"].startswith("text/javascript")
 
 
 def test_api_routes_take_precedence_over_the_web_ui(client: TestClient) -> None:
