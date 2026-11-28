@@ -21,7 +21,7 @@ The game consists of a **Python-based server** and a [Web UI](https://acc-aqt.gi
 - **A computer to run the game server** that the players can reach on your network.
 - **One music service:**
   - **Spotify:** a Spotify **Premium** account and a free app registered in the Spotify Developer Dashboard (see 4.1).
-  - **Apple Music:** a **Mac** (Intel or Apple Silicon) with macOS 10.15 Catalina or later and the Music app. The game server runs on this Mac (see 4.2).
+  - **Apple Music:** a **Mac** (Intel or Apple Silicon) with macOS 10.15 Catalina or later and the Music app. The game server runs on this Mac. Songs stored on the Mac work without a subscription; streaming Apple Music catalog songs needs one (see 4.2).
 - **For every player:** a phone or laptop with a web browser, on the same network as the server.
 
 ---
@@ -98,7 +98,7 @@ Leave the values empty for features you don't use.
 | Variable | Purpose |
 | --- | --- |
 | `PORT` | Port the server listens on (default `4200`). |
-| `MUSIC_SERVICE` | Music Service the server uses: `applemusic` or `spotify` (default `applemusic` on macOS, `spotify` elsewhere; see 4). |
+| `MUSIC_SERVICE` | Music Service the server uses: `applemusic` or `spotify` (default `applemusic` on macOS, `spotify` elsewhere; see 4), or `mock` for development (see 7). |
 | `SPOTIPY_CLIENT_ID`, `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` | Spotify app credentials (see 4.1). |
 | `SSL_KEYFILE`, `SSL_CERTFILE` | Paths to the key and certificate for HTTPS (see 6). |
 
@@ -131,7 +131,7 @@ If the chosen Music Service can't work on this machine, the server refuses to st
 
 1. Run `track-back-server init`, answer `spotify` to **Music service** and enter the Client ID, Client Secret and redirect URI from 4.1.1. The suggested default redirect URI is the loopback one for your port.
 2. Open the Spotify app on any device (phone, desktop, speaker) and log in with a registered account (see 4.1.1).
-3. Start playing the playlist you want to use in the game. The music plays from that Spotify device, not from the server. Without active playback, the game can't start a Round.
+3. Start playing the playlist you want to use in the game, so that this device is active in Spotify. Pausing it until the game starts is fine, but keep the app open. The music plays from that Spotify device, not from the server.
 
 > With the loopback redirect URI, the host must create Spotify games in a browser **on the server machine**, because Spotify sends the browser back to `127.0.0.1` after login. To log into Spotify from another device, the redirect URI has to point at the server's LAN address, and Spotify only accepts that over HTTPS: set up HTTPS (see 6) and use e.g. `https://192.168.1.20:4200/spotify-callback` in both the dashboard and your config.
 
@@ -163,7 +163,7 @@ How it works: the server talks to the Music app via AppleScript. It starts playb
 
 The server serves the game itself: open the URL it prints at start-up (e.g. `http://localhost:4200/` on the server machine, `http://<your-lan-ip>:4200/` on other devices) and the page already talks to that server.
 
-Alternatively, open the public [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html). It first shows a **Server** field: enter your server's address, e.g. `http://localhost:4200` or `http://<your-lan-ip>:4200`.
+Alternatively, open the public [Web UI](https://acc-aqt.github.io/track-back/web_ui/index.html). It first shows a **Server** field: enter your server's address, e.g. `http://localhost:4200` on the server machine. The public Web UI is served over HTTPS, so browsers only let it reach a server on another device if that server uses HTTPS too (see 6), e.g. `https://<your-lan-ip>:4200`. Otherwise use the URL the server prints.
 
 Every player enters a **Username** of up to 20 characters. Usernames and **Game Session Names** (up to 40 characters) follow the same rule: one or more words separated by single spaces, where each word uses only letters and digits from any script (Unicode categories L and N, e.g. `Jörg`, `李雷`, `٣٤`), `_` and `-`. No leading, trailing or double spaces.
 
@@ -225,7 +225,7 @@ If both variables are set, the server will automatically start with SSL enabled,
 
 ## 7. Development
 
-Not needed to play. Requires Python 3.11+.
+Not needed to play. Requires `python3` to be Python 3.11 or later.
 
 ```bash
 git clone https://github.com/acc-aqt/track-back.git
