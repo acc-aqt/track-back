@@ -64,7 +64,7 @@ class GameLogic:
             raise MusicPlaybackError(self.music_service.service_name) from e
         self.players = players
         self.running = True
-        self._read_round_song()
+        self.round_song = None
 
     def handle_guess(
         self, username: str, insert_index: int
@@ -121,19 +121,15 @@ class GameLogic:
             return False
         self.music_service.next_track()
         self.round_tracker.start_next()
-        self._read_round_song()
+        self.round_song = None
         return True
 
-    def _read_round_song(self) -> None:
-        """Read the Song of the Round that just started, or leave it to the first Guess."""
-        try:
-            self.round_song = self.music_service.current_song()
-        except MusicServiceError:
-            logger.warning("Could not read the Round's Song; retrying on a Guess.")
-            self.round_song = None
-
     def _round_song(self) -> Song:
-        """Return the Round's Song, reading it if the Round's start could not."""
+        """Return the Round's Song, reading it on the Round's first Guess.
+
+        Reading it then rather than at the Round's start gives a skip to the
+        next track time to take effect.
+        """
         if self.round_song is None:
             self.round_song = self.music_service.current_song()
         return self.round_song

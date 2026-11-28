@@ -1,4 +1,4 @@
-"""Every Guess in a Round is judged against the Song read when the Round started."""
+"""Every Guess in a Round is judged against the Song read on the Round's first Guess."""
 
 from contextlib import ExitStack
 from dataclasses import replace
@@ -40,13 +40,34 @@ class SkippingMusicService(AbstractMusicServiceAdapter):
         pass
 
 
+class SlowSkippingMusicService(AbstractMusicServiceAdapter):
+    """A Music Service whose skips land some time after they are requested."""
+
+    service_name = "Slow Skipping Music Service"
+
+    def __init__(self) -> None:
+        self.playing = 0
+        self.requested = 0
+
+    def current_song(self) -> Song:
+        return SONGS[self.playing % len(SONGS)]
+
+    def start_playback(self) -> None:
+        pass
+
+    def next_track(self) -> None:
+        self.requested += 1
+
+    def land_skips(self) -> None:
+        self.playing = self.requested
+
+
 @pytest.fixture
 def music_service() -> SkippingMusicService:
     return SkippingMusicService()
 
 
-@pytest.fixture
-def client(music_service: SkippingMusicService) -> TestClient:
+def _client_for(music_service: AbstractMusicServiceAdapter) -> TestClient:
     music_services = {
         **MUSIC_SERVICES,
         MusicServiceType.MOCK: replace(
@@ -55,6 +76,11 @@ def client(music_service: SkippingMusicService) -> TestClient:
     }
     server = Server(music_service=MusicServiceType.MOCK, music_services=music_services)
     return TestClient(server.app)
+
+
+@pytest.fixture
+def client(music_service: SkippingMusicService) -> TestClient:
+    return _client_for(music_service)
 
 
 def _receive(ws: WebSocketTestSession) -> dict[str, Any]:
@@ -106,4 +132,23 @@ def test_current_song_is_read_once_per_round(
 ) -> None:
     _play_first_round(client, "alice", "bob", "carol")
 
-    assert music_service.reads == 2, "one read per Round: the first and the next"
+    assert music_service.reads == 1, "the next Round's Song is read on its first Guess"
+
+
+def test_round_song_is_the_one_playing_at_the_first_guess() -> None:
+    music_service = SlowSkippingMusicService()
+    client = _client_for(music_service)
+    client.post("/create", json={"game_id": "party", "target_song_count": 3})
+    client.post("/join", json={"game_id": "party", "user_name": "solo"})
+
+    with client.websocket_connect("/ws/party/solo") as ws:
+        assert _receive(ws)["type"] == "welcome"
+        client.post("/start", json={"game_id": "party"})
+        assert _receive(ws)["type"] == "your_turn"
+        ws.send_json({"type": "guess", "index": 0})
+        assert _receive(ws)["last_song"]["title"] == "Yesterday"
+        assert _receive(ws)["type"] == "your_turn"
+
+        music_service.land_skips()
+        ws.send_json({"type": "guess", "index": 1})
+        assert _receive(ws)["last_song"]["title"] == "Bohemian Rhapsody"

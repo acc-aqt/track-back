@@ -107,7 +107,7 @@ def test_malformed_message_gets_error_and_socket_stays_usable(
         assert ws.receive_json()["type"] == "guess_result"
 
 
-def test_music_service_failure_at_round_start_is_reported_on_the_next_guess(
+def test_music_service_failure_on_the_rounds_first_guess_is_retryable(
     client: TestClient,
     create_and_join: Callable[..., None],
     get_session: Callable[[str], GameSession],
@@ -127,10 +127,6 @@ def test_music_service_failure_at_round_start_is_reported_on_the_next_guess(
         assert ws.receive_json()["type"] == "your_turn"
 
         monkeypatch.setattr(music_service, "current_song", broken_current_song)
-        ws.send_json({"type": "guess", "index": 0})
-        assert ws.receive_json()["type"] == "guess_result"
-        assert ws.receive_json()["type"] == "your_turn"
-
         ws.send_json({"type": "guess", "index": 0})
         response = ws.receive_json()
         assert response["type"] == "error"
