@@ -17,7 +17,7 @@ def test_round_does_not_advance_when_no_active_players_remain() -> None:
     assert game.player_disconnected("alice") is False
     assert game.player_disconnected("bob") is False
 
-    game.player_rejoined("alice")
+    alice.is_connected = True
     game.handle_guess("alice", 0)
     assert [song.title for song in alice.timeline] == ["Yesterday"]
 

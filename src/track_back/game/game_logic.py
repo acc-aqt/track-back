@@ -127,11 +127,6 @@ class GameLogic:
         self._start_next_round()
         return True
 
-    def player_rejoined(self, username: str) -> None:
-        """Count a rejoining player as connected again."""
-        if player := self.get_player(username):
-            player.is_connected = True
-
     def _connected_usernames(self) -> set[str]:
         return {player.name for player in self.players if player.is_connected}
 
