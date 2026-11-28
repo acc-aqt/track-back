@@ -81,48 +81,67 @@ class GameLogic:
 
         song = self._round_song()
         correct = self.verify_choice(player.timeline, insert_index, song)
+        won = correct and len(player.timeline) + 1 >= self.target_song_count
+        round_complete = not won and self._is_last_owed_guess(username)
+        if round_complete:
+            # Skip before recording anything, so a failed skip leaves the Guess retryable.
+            self.music_service.next_track()
+
         if correct:
             player.add_to_timeline(insert_index, song)
         other_players = [other for other in self.players if other != player]
-
-        if len(player.timeline) >= self.target_song_count:
+        if won:
             self.running = False
             self.winner = player
             return GuessResult(
                 player, correct, song, insert_index, other_players, winner=player
             )
 
-        self.round_tracker.record_guess(username)
+        if round_complete:
+            self._start_next_round()
+        else:
+            self.round_tracker.record_guess(username)
         return GuessResult(
             player,
             correct,
             song,
             insert_index,
             other_players,
-            round_complete=self._advance_round_if_complete(),
+            round_complete=round_complete,
         )
 
     def player_disconnected(self, username: str) -> bool:
         """Stop waiting for a departed player; return True if the round advanced."""
         if player := self.get_player(username):
             player.is_connected = False
-        return self._advance_round_if_complete()
+        if not self.running or not self.round_tracker.is_complete(
+            self._connected_usernames()
+        ):
+            return False
+        try:
+            self.music_service.next_track()
+        except MusicServiceError:
+            logger.warning(
+                "Could not skip to the next track; starting the Round anyway."
+            )
+        self._start_next_round()
+        return True
 
     def player_rejoined(self, username: str) -> None:
         """Count a rejoining player as connected again."""
         if player := self.get_player(username):
             player.is_connected = True
 
-    def _advance_round_if_complete(self) -> bool:
-        connected_usernames = {
-            player.name for player in self.players if player.is_connected
-        }
-        if not self.running or not self.round_tracker.is_complete(connected_usernames):
-            return False
-        self.music_service.next_track()
+    def _connected_usernames(self) -> set[str]:
+        return {player.name for player in self.players if player.is_connected}
+
+    def _is_last_owed_guess(self, username: str) -> bool:
+        guessed = self.round_tracker.players_already_guessed | {username}
+        return self._connected_usernames() <= guessed
+
+    def _start_next_round(self) -> None:
         self.round_tracker.start_next()
         self.round_song = None
-        return True
 
     def _round_song(self) -> Song:
         """Return the Round's Song, reading it on the Round's first Guess.

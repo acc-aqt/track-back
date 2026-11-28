@@ -20,7 +20,10 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
 
     def current_song(self) -> Song:
         """Get the currently playing song."""
-        playback = self.session.current_playback()
+        try:
+            playback = self.session.current_playback()
+        except spotipy.exceptions.SpotifyException as e:
+            raise MusicServiceError(f"Cannot read the Spotify playback: {e.msg}") from e
         if not playback or not playback.get("item"):
             raise MusicServiceError(
                 "No active Spotify playback. Start playing on a Spotify device."
@@ -55,7 +58,10 @@ class SpotifyAdapter(AbstractMusicServiceAdapter):
 
     def next_track(self) -> None:
         """Skip to the next track."""
-        self.session.next_track()
+        try:
+            self.session.next_track()
+        except spotipy.exceptions.SpotifyException as e:
+            raise MusicServiceError(f"Cannot skip to the next track: {e.msg}") from e
 
 
 def extract_year(date_str: str) -> int:

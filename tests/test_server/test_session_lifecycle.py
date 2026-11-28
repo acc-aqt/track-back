@@ -137,6 +137,40 @@ def test_music_service_failure_on_the_rounds_first_guess_is_retryable(
         assert ws.receive_json()["type"] == "guess_result"
 
 
+def test_failed_skip_on_the_rounds_last_guess_leaves_the_guess_retryable(
+    client: TestClient,
+    create_and_join: Callable[..., None],
+    get_session: Callable[[str], GameSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Guess whose Round can't advance isn't counted, so it can be sent again."""
+    session_name = "skip-failure"
+    create_and_join(session_name, "solo")
+    music_service = get_session(session_name).game_logic.music_service
+
+    def broken_next_track() -> None:
+        raise MusicServiceError("Cannot skip to the next track.")
+
+    with client.websocket_connect(f"/ws/{session_name}/solo") as ws:
+        assert ws.receive_json()["type"] == "welcome"
+        assert client.post("/start", json={"game_id": session_name}).status_code == 200
+        assert ws.receive_json()["type"] == "your_turn"
+
+        monkeypatch.setattr(music_service, "next_track", broken_next_track)
+        ws.send_json({"type": "guess", "index": 0})
+        assert ws.receive_json() == {
+            "type": "error",
+            "message": "Cannot skip to the next track.",
+        }
+
+        monkeypatch.undo()
+        ws.send_json({"type": "guess", "index": 0})
+        result = ws.receive_json()
+        assert result["type"] == "guess_result"
+        assert len(result["song_list"]) == 1
+        assert ws.receive_json()["type"] == "your_turn"
+
+
 @pytest.mark.parametrize(
     "user_name",
     ["<b>x</b>", "<img src=x onerror=alert(1)>", "", " padded", "a" * 21, "semi;colon"],

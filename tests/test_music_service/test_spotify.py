@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from spotipy.exceptions import SpotifyException
 
 from track_back.music_service.error import MusicServiceError
 from track_back.music_service.spotify import SpotifyAdapter
@@ -12,6 +13,19 @@ class FakeSpotify:
 
     def current_playback(self) -> dict[str, Any] | None:
         return self._playback
+
+
+class UnreachableSpotify:
+    """A Spotify client whose every request fails, like one with no active device."""
+
+    def _fail(self) -> None:
+        raise SpotifyException(404, -1, "Player command failed: No active device found")
+
+    def current_playback(self) -> None:
+        self._fail()
+
+    def next_track(self) -> None:
+        self._fail()
 
 
 def _adapter_with(playback: dict[str, Any] | None) -> SpotifyAdapter:
@@ -47,3 +61,13 @@ def test_current_song_reads_track_metadata() -> None:
         1965,
         "small.jpg",
     )
+
+
+def test_failed_skip_raises_music_service_error() -> None:
+    with pytest.raises(MusicServiceError, match="No active device"):
+        SpotifyAdapter(UnreachableSpotify()).next_track()
+
+
+def test_failed_playback_read_raises_music_service_error() -> None:
+    with pytest.raises(MusicServiceError, match="No active device"):
+        SpotifyAdapter(UnreachableSpotify()).current_song()
