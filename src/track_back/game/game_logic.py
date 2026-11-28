@@ -142,10 +142,16 @@ class GameLogic:
         """Return the Round's Song, reading it on the Round's first Guess.
 
         Reading it then rather than at the Round's start gives a skip to the
-        next track time to take effect.
+        next track time to take effect. If nothing is playing, for example
+        because the music was paused, it starts playback once and reads again.
         """
         if self.round_song is None:
-            self.round_song = self.music_service.current_song()
+            try:
+                self.round_song = self.music_service.current_song()
+            except MusicServiceError:
+                logger.info("Could not read the Round's Song; starting playback.")
+                self.music_service.start_playback()
+                self.round_song = self.music_service.current_song()
         return self.round_song
 
     @staticmethod

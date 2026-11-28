@@ -190,7 +190,7 @@ Messages the server sends:
 - `Game not running.`: `guess` before the game started or after it ended.
 - `<username> has already guessed this song.`: a second `guess` in the same round.
 - `Invalid position <index>.`: `index` is outside the timeline.
-- A music-service error text, if the Round's Song couldn't be read on the Round's first `guess`, or the music service couldn't skip to the next track on the Round's last `guess`. The server reads the Song on the first `guess`, not when the Round starts, so that a skip to the next track has time to take effect. The `guess` isn't counted and can be sent again.
+- A music-service error text, if the Round's Song couldn't be read on the Round's first `guess`, not even after the server started playback again, or the music service couldn't skip to the next track on the Round's last `guess`. The server reads the Song on the first `guess`, not when the Round starts, so that a skip to the next track has time to take effect. The `guess` isn't counted and can be sent again.
 - `Player '<username>' is not a player in game session <game_id>. Only one of the following players can rejoin: <names>.` / `Player '<username>' is already connected to game session <game_id>. Only one of the following players can rejoin: <names>.`: rejected rejoin. `POST /join` on a running game returns the same text as a 409.
 
 ## Client to server messages

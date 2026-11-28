@@ -10,6 +10,7 @@ from starlette.testclient import WebSocketTestSession
 
 from track_back.game.song import Song
 from track_back.music_service.abstract_adapter import AbstractMusicServiceAdapter
+from track_back.music_service.error import MusicServiceError
 from track_back.music_service.selection import MUSIC_SERVICES, MusicServiceType
 from track_back.server.server import Server
 
@@ -60,6 +61,26 @@ class SlowSkippingMusicService(AbstractMusicServiceAdapter):
 
     def land_skips(self) -> None:
         self.playing = self.requested
+
+
+class PausableMusicService(AbstractMusicServiceAdapter):
+    """A Music Service that can't read the current Song while it is paused."""
+
+    service_name = "Pausable Music Service"
+
+    def __init__(self) -> None:
+        self.paused = False
+
+    def current_song(self) -> Song:
+        if self.paused:
+            raise MusicServiceError("Nothing is playing.")
+        return SONGS[0]
+
+    def start_playback(self) -> None:
+        self.paused = False
+
+    def next_track(self) -> None:
+        pass
 
 
 @pytest.fixture
@@ -152,3 +173,23 @@ def test_round_song_is_the_one_playing_at_the_first_guess() -> None:
         music_service.land_skips()
         ws.send_json({"type": "guess", "index": 1})
         assert _receive(ws)["last_song"]["title"] == "Bohemian Rhapsody"
+
+
+def test_music_paused_mid_game_is_resumed_on_the_next_rounds_first_guess() -> None:
+    music_service = PausableMusicService()
+    client = _client_for(music_service)
+    client.post("/create", json={"game_id": "party", "target_song_count": 3})
+    client.post("/join", json={"game_id": "party", "user_name": "solo"})
+
+    with client.websocket_connect("/ws/party/solo") as ws:
+        assert _receive(ws)["type"] == "welcome"
+        client.post("/start", json={"game_id": "party"})
+        assert _receive(ws)["type"] == "your_turn"
+        ws.send_json({"type": "guess", "index": 0})
+        assert _receive(ws)["type"] == "guess_result"
+        assert _receive(ws)["type"] == "your_turn"
+
+        music_service.paused = True
+        ws.send_json({"type": "guess", "index": 0})
+        assert _receive(ws)["type"] == "guess_result"
+        assert not music_service.paused
